@@ -1,7 +1,7 @@
 # ADO Dashboard Migration — Repeatable Process
 
 **Purpose:** Migrate Azure DevOps dashboards (and the queries they depend on) from one organization/project to another via REST API.
-**First use case:** `dev.azure.com/SourceOrgName / SourceProjectName` → `dev.azure.com/TargetOrgName / TargetProjectName`
+**First use case:** `dev.azure.com/360sg / AEC Model Combo Project` → `dev.azure.com/HSOUSCloud / Internal Hub`
 **Owner:** Scott Priestley
 **Status:** Process designed; scripts ready for pilot run on one dashboard.
 
@@ -43,8 +43,8 @@ Three scripts, run in order. Each is idempotent enough to re-run after fixing is
 
 | Item          | Detail                                                                                                                                                                                                                        |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Source access | Account in the `SourceOrgName` org with read access to the project. PAT scopes: **Work Items (Read)**, **Team Dashboards (Read)**, Project & Team (Read). A read-only PAT is sufficient.                                              |
-| Target access | Account in `SourceProjectName` with **Team Administrator** (or dashboard edit) on the target team in Internal Hub. PAT scopes: **Work Items (Read & Write)**, **Team Dashboards (Manage)**.                                          |
+| Source access | Account in the `360sg` org with read access to the project. PAT scopes: **Work Items (Read)**, **Team Dashboards (Read)**, Project & Team (Read). A read-only PAT is sufficient.                                              |
+| Target access | Account in `HSOUSCloud` with **Team Administrator** (or dashboard edit) on the target team in Internal Hub. PAT scopes: **Work Items (Read & Write)**, **Team Dashboards (Manage)**.                                          |
 | PAT handling  | PATs are read from environment variables (`ADO_SOURCE_PAT`, `ADO_TARGET_PAT`) at runtime. Never stored in files, never passed on the command line, never committed.                                                           |
 | Extensions    | Any widget whose `contributionId` does not start with `ms.` comes from a Marketplace extension. That extension must be installed in the target org **before** import, or those widgets fail. The inventory report lists them. |
 | PowerShell    | PowerShell 7+. No modules required (plain `Invoke-RestMethod`).                                                                                                                                                               |
@@ -57,23 +57,23 @@ $env:ADO_SOURCE_PAT = "<source read PAT>"     # you type these yourself; don't s
 $env:ADO_TARGET_PAT = "<target manage PAT>"
 
 # 1. Export + inventory
-./scripts/01-export-dashboards.ps1 -Org "SourceOrgName" -Project "SourceProjectName" -OutDir ./export
+./scripts/01-export-dashboards.ps1 -Org "360sg" -Project "AEC Model Combo Project" -OutDir ./export
 
 #    >>> STOP. Read export/inventory.md. Decide:
 #    - Which dashboards are in scope (edit dashboards list or just delete unwanted JSON files)
-#    - Which extensions need installing in OrgName
+#    - Which extensions need installing in HSOUSCloud
 #    - Whether any widgets reference builds/repos/pipelines that won't exist in the target
 
 # 2. Recreate queries in target
-./scripts/02-migrate-queries.ps1 -TargetOrg "OrgName" -TargetProject "ProjectName" `
-    -ExportDir ./export -QueryFolderName "Migrated - ProjectName"
+./scripts/02-migrate-queries.ps1 -TargetOrg "HSOUSCloud" -TargetProject "Internal Hub" `
+    -ExportDir ./export -QueryFolderName "Migrated - AEC Model Combo"
 
 #    >>> Review export/querymap.json and any WIQL warnings (area/iteration paths that
 #        don't exist in the target will make queries return zero results, not fail).
 
 # 3. Fill in export/mapping.json (created as a template by step 1), then import
-./scripts/03-import-dashboards.ps1 -TargetOrg "TargetOrgName" -TargetProject "TargetProjectName" `
-    -TargetTeam "ProjectName Team" -ExportDir ./export
+./scripts/03-import-dashboards.ps1 -TargetOrg "HSOUSCloud" -TargetProject "Internal Hub" `
+    -TargetTeam "Internal Hub Team" -ExportDir ./export
 
 # 4. Validate (see checklist below)
 ```
@@ -98,7 +98,7 @@ $env:ADO_TARGET_PAT = "<target manage PAT>"
 - [ ] Open source and target side by side; layout/positions match.
 - [ ] Every query-based widget renders numbers (a rendering widget with a count of 0 may mean the WIQL's area/iteration path doesn't exist in target — check the query).
 - [ ] No "Widget failed to load" / "Configure widget" tiles. Each one traces to an unmapped reference — check the import script's flag report.
-- [ ] Queries landed under `Shared Queries/Migrated - ProjetName/` and are readable by the team.
+- [ ] Queries landed under `Shared Queries/Migrated - AEC Model Combo/` and are readable by the team.
 
 ## 7. Risks and limitations
 
