@@ -12,7 +12,7 @@
     project root, and creates the equivalent nodes under the TARGET project.
     Idempotent: nodes that already exist are left as-is. Paths that reference a
     DIFFERENT project (e.g. a cross-project 'ProServ PMO Sandbox\...') are reported,
-    not created. Does not add work items or set dates — it only makes the query WIQL valid.
+    not created. Does not add work items or set dates - it only makes the query WIQL valid.
 #>
 param(
     [Parameter(Mandatory)][string]$TargetOrg,
@@ -28,10 +28,10 @@ $TargetOrg = Get-OrgName $TargetOrg
 $headers   = Get-AdoAuthHeader -EnvVarName 'ADO_TARGET_PAT' -Purpose "TARGET org '$TargetOrg'"
 $base      = "https://dev.azure.com/$(UrlEnc $TargetOrg)"
 $projSeg   = UrlEnc $TargetProject
-$queries   = Get-Content (Join-Path $ExportDir 'queries.json') -Raw | ConvertFrom-Json
-if (-not $queries) { throw "No queries found in $ExportDir/queries.json — run step 1 first." }
+$queries   = Read-Utf8Text (Join-Path $ExportDir 'queries.json') | ConvertFrom-Json
+if (-not $queries) { throw "No queries found in $ExportDir/queries.json - run step 1 first." }
 if (-not $SourceProjectName) {
-    $SourceProjectName = (Get-Content (Join-Path $ExportDir 'mapping.json') -Raw | ConvertFrom-Json).sourceProjectName
+    $SourceProjectName = (Read-Utf8Text (Join-Path $ExportDir 'mapping.json') | ConvertFrom-Json).sourceProjectName
 }
 
 # --- Extract Area/Iteration path literals from WIQL ----------------------------
@@ -52,7 +52,7 @@ foreach ($q in $queries) {
             $p = $lit.Groups[1].Value
             if ([string]::IsNullOrWhiteSpace($p)) { continue }
             $segs = $p -split '\\'
-            if ($segs.Count -lt 2) { continue }   # bare project root — nothing to create
+            if ($segs.Count -lt 2) { continue }   # bare project root - nothing to create
             $root = $segs[0]
             if ($root -ieq $SourceProjectName -or $root -ieq $TargetProject) {
                 $rel = ($segs[1..($segs.Count - 1)] -join '\')
@@ -91,7 +91,7 @@ function Ensure-Node {
     } catch {
         $msg = "$($_.Exception.Message)"
         if ($msg -match 'already exists|VS402371|TF237018|409') { Write-Host "  exists  $Structure`: $RelPath"; return $true }
-        Write-Host "  FAILED  $Structure`: $RelPath — $msg" -ForegroundColor Red
+        Write-Host "  FAILED  $Structure`: $RelPath - $msg" -ForegroundColor Red
         return $false
     }
 }
@@ -109,10 +109,10 @@ Write-Host "`n=== Summary ===" -ForegroundColor Cyan
 Write-Host ("  nodes created/existing: {0}" -f $ok) -ForegroundColor Green
 if ($fail) { Write-Host ("  nodes failed:           {0}" -f $fail) -ForegroundColor Red }
 if ($foreign.Count) {
-    Write-Host "`nCross-project paths (belong to another project — create/repoint manually):" -ForegroundColor Yellow
+    Write-Host "`nCross-project paths (belong to another project - create/repoint manually):" -ForegroundColor Yellow
     $foreign | Sort-Object | ForEach-Object { Write-Host "  - $_" -ForegroundColor Yellow }
 }
 if (-not $WhatIfOnly) {
     Write-Host "`nNext: re-run step 2 to create the queries that were blocked on missing paths:" -ForegroundColor Green
-    Write-Host "  pwsh scripts/02-migrate-queries.ps1 -TargetOrg $TargetOrg -TargetProject `"$TargetProject`""
+    Write-Host "  pwsh `"$(Join-Path $PSScriptRoot '02-migrate-queries.ps1')`" -TargetOrg $TargetOrg -TargetProject `"$TargetProject`""
 }

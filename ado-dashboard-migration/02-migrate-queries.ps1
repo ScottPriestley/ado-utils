@@ -23,12 +23,12 @@ $TargetOrg = Get-OrgName $TargetOrg   # accept bare name or full URL
 $headers = Get-AdoAuthHeader -EnvVarName 'ADO_TARGET_PAT' -Purpose "TARGET org '$TargetOrg'"
 $base    = "https://dev.azure.com/$(UrlEnc $TargetOrg)"
 $projSeg = UrlEnc $TargetProject
-$queries = Get-Content (Join-Path $ExportDir 'queries.json') -Raw | ConvertFrom-Json
-if (-not $queries) { throw "No queries found in $ExportDir/queries.json — run step 1 first." }
+$queries = Read-Utf8Text (Join-Path $ExportDir 'queries.json') | ConvertFrom-Json
+if (-not $queries) { throw "No queries found in $ExportDir/queries.json - run step 1 first." }
 
 # Auto-detect source project name from mapping.json if not passed
 if (-not $SourceProjectName) {
-    $map = Get-Content (Join-Path $ExportDir 'mapping.json') -Raw | ConvertFrom-Json
+    $map = Read-Utf8Text (Join-Path $ExportDir 'mapping.json') | ConvertFrom-Json
     $SourceProjectName = $map.sourceProjectName
 }
 
@@ -50,7 +50,7 @@ $rootPath = if ($QueryFolderName) { Ensure-QueryFolder -ParentPath 'Shared Queri
 $queryMap      = @{}
 $warnings      = @()
 $skippedProc   = @()   # genuinely can't be created here: missing field/type/state
-$failedOther   = @()   # failed for another reason (e.g. transient) — rerun may fix
+$failedOther   = @()   # failed for another reason (e.g. transient) - rerun may fix
 $createdCount  = 0
 $reusedCount   = 0
 $rewroteCount  = 0
@@ -78,7 +78,7 @@ foreach ($q in $queries) {
     # WIQL transform: retarget explicit project references. @project needs no change.
     $wiql = $q.wiql
     if ($SourceProjectName -and $wiql -match [regex]::Escape($SourceProjectName)) {
-        $wiql = $wiql -replace [regex]::Escape($SourceProjectName), $TargetProject
+        $wiql = [regex]::Replace($wiql, [regex]::Escape($SourceProjectName), [System.Text.RegularExpressions.MatchEvaluator]{ param($match) $TargetProject }, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
         $rewroteCount++
     }
     if ($wiql -match '\[System\.(AreaPath|IterationPath)\]\s*(=|under|in)') { $areaFilterCnt++ }
@@ -101,23 +101,23 @@ foreach ($q in $queries) {
                 Set-Map $existing.id; $reusedCount++
                 Write-Host "  exists:  $parent/$($q.name) (reusing)"
             } catch {
-                $failedOther += "$($q.name): exists but couldn't read id — $(Get-AdoMsg $_)"
+                $failedOther += "$($q.name): exists but couldn't read id - $(Get-AdoMsg $_)"
             }
         }
         elseif ($postMsg -match 'TF51005|does not exist|is not (a )?valid|unknown field|not recognized|VS403|field') {
             # WIQL references a field/type/state the target process doesn't have.
-            $skippedProc += "$($q.name) — $postMsg"
+            $skippedProc += "$($q.name) - $postMsg"
             Write-Host "  skip:    $parent/$($q.name) (process mismatch)" -ForegroundColor DarkYellow
         }
         else {
-            # Something else (often transient after retries) — a rerun may succeed.
-            $failedOther += "$($q.name) — $postMsg"
-            Write-Host "  FAILED:  $parent/$($q.name) — $postMsg" -ForegroundColor Red
+            # Something else (often transient after retries) - a rerun may succeed.
+            $failedOther += "$($q.name) - $postMsg"
+            Write-Host "  FAILED:  $parent/$($q.name) - $postMsg" -ForegroundColor Red
         }
     }
 }
 
-$queryMap | ConvertTo-Json | Set-Content -Path (Join-Path $ExportDir 'querymap.json') -Encoding utf8
+Write-Utf8Text -Path (Join-Path $ExportDir 'querymap.json') -Text ($queryMap | ConvertTo-Json)
 
 Write-Host "`n=== Summary ===" -ForegroundColor Cyan
 Write-Host ("  created:        {0}" -f $createdCount) -ForegroundColor Green
@@ -125,15 +125,15 @@ Write-Host ("  reused:         {0}" -f $reusedCount)
 Write-Host ("  skipped (process mismatch): {0}" -f $skippedProc.Count) -ForegroundColor DarkYellow
 Write-Host ("  failed (other / transient): {0}" -f $failedOther.Count) -ForegroundColor $(if ($failedOther.Count) { 'Red' } else { 'Gray' })
 Write-Host ("  querymap entries written:   {0} -> {1}" -f $queryMap.Count, (Join-Path $ExportDir 'querymap.json'))
-if ($rewroteCount)  { Write-Host "  ($rewroteCount queries had the source project name rewritten in WIQL — verify area/iteration paths exist in target.)" }
-if ($areaFilterCnt) { Write-Host "  ($areaFilterCnt queries filter on Area/Iteration path — they return 0 results if that path doesn't exist in '$TargetProject'.)" }
+if ($rewroteCount)  { Write-Host "  ($rewroteCount queries had the source project name rewritten in WIQL - verify area/iteration paths exist in target.)" }
+if ($areaFilterCnt) { Write-Host "  ($areaFilterCnt queries filter on Area/Iteration path - they return 0 results if that path doesn't exist in '$TargetProject'.)" }
 
 if ($skippedProc) {
-    Write-Host "`nSkipped — target process is missing a field/type/state (can't recreate as-is):" -ForegroundColor DarkYellow
+    Write-Host "`nSkipped - target process is missing a field/type/state (can't recreate as-is):" -ForegroundColor DarkYellow
     $skippedProc | Sort-Object -Unique | ForEach-Object { Write-Host "  - $_" -ForegroundColor DarkYellow }
 }
 if ($failedOther) {
-    Write-Host "`nFailed for another reason — RERUN this script; these are often transient and idempotent:" -ForegroundColor Red
+    Write-Host "`nFailed for another reason - RERUN this script; these are often transient and idempotent:" -ForegroundColor Red
     $failedOther | Sort-Object -Unique | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red }
 }
-$skippedProc | Sort-Object -Unique | Set-Content -Path (Join-Path $ExportDir 'queries-skipped.txt') -Encoding utf8
+Write-Utf8Text -Path (Join-Path $ExportDir 'queries-skipped.txt') -Text (($skippedProc | Sort-Object -Unique) -join "`r`n")

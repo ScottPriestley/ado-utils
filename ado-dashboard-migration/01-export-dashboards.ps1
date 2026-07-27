@@ -8,7 +8,7 @@
     Output:   <OutDir>/dashboards/*.json   raw dashboard payloads (one per team+dashboard)
               <OutDir>/queries.json        referenced queries with folder path + WIQL
               <OutDir>/mapping.json        template for step 3 (fill in target values)
-              <OutDir>/inventory.md        human review report — read before proceeding
+              <OutDir>/inventory.md        human review report - read before proceeding
 #>
 param(
     [Parameter(Mandatory)][string]$Org,
@@ -94,7 +94,7 @@ Could not resolve project '$Project' in org '$Org'.
 "@
 }
 $teams = (Invoke-Ado -Headers $headers -Uri "$base/_apis/projects/$($proj.id)/teams?`$top=200&api-version=7.1").value
-Write-Host "Project '$Project' ($($proj.id)) — $($teams.Count) team(s)"
+Write-Host "Project '$Project' ($($proj.id)) - $($teams.Count) team(s)"
 
 # --- Dashboards + widgets ------------------------------------------------------
 $allGuids   = [System.Collections.Generic.HashSet[string]]::new()
@@ -115,7 +115,7 @@ foreach ($team in $teams) {
             sourceTeamId   = $team.id
             dashboard      = $dash
         }
-        $record | ConvertTo-Json -Depth 50 | Set-Content -Path (Join-Path $OutDir "dashboards/$safe.json") -Encoding utf8
+        Write-Utf8Text -Path (Join-Path $OutDir "dashboards/$safe.json") -Text ($record | ConvertTo-Json -Depth 50)
 
         foreach ($w in @($dash.widgets)) {
             $guids = Get-GuidsInText -Text ("$($w.settings) $($w.artifactId)")
@@ -135,7 +135,7 @@ foreach ($team in $teams) {
                 ContributionId = $w.contributionId; Guids = $guids
             }
         }
-        Write-Host "  exported: [$($team.name)] $($dash.name) — $(@($dash.widgets).Count) widget(s)"
+        Write-Host "  exported: [$($team.name)] $($dash.name) - $(@($dash.widgets).Count) widget(s)"
     }
 }
 
@@ -166,7 +166,7 @@ foreach ($g in $allGuids) {
 
 $sharedIndex = $null
 if ($failed) {
-    Write-Host "Direct lookup failed for $($failed.Count) GUID(s); indexing Shared Queries by name to recover…"
+    Write-Host "Direct lookup failed for $($failed.Count) GUID(s); indexing Shared Queries by name to recover..."
     $sharedIndex = Get-SharedQueryIndex -Headers $headers -Base $base -ProjSeg $projSeg
 }
 foreach ($g in $failed) {
@@ -187,13 +187,13 @@ foreach ($g in $failed) {
     }
     elseif ($ids.Count -gt 1) {
         $unresolved += $g
-        $ambiguous += "$g (names: $(@($guidNames[$g]) -join ' | ')) matches $($ids.Count) shared queries — pick one manually"
+        $ambiguous += "$g (names: $(@($guidNames[$g]) -join ' | ')) matches $($ids.Count) shared queries - pick one manually"
     }
     else { $unresolved += $g }
 }
 
 $queries = @($qById.Values)
-$queries | ConvertTo-Json -Depth 10 | Set-Content -Path (Join-Path $OutDir 'queries.json') -Encoding utf8
+Write-Utf8Text -Path (Join-Path $OutDir 'queries.json') -Text ($queries | ConvertTo-Json -Depth 10)
 
 # --- Mapping template for step 3 ----------------------------------------------
 [pscustomobject]@{
@@ -207,20 +207,20 @@ $queries | ConvertTo-Json -Depth 10 | Set-Content -Path (Join-Path $OutDir 'quer
                             @{ sourceTeamName = $_.name; sourceTeamId = $_.id
                                targetTeamName = "<FILL or leave to use -TargetTeam>"; targetTeamId = "" } } )
     extraGuidMap      = @{}   # any additional sourceGuid -> targetGuid substitutions
-} | ConvertTo-Json -Depth 10 | Set-Content -Path (Join-Path $OutDir 'mapping.json') -Encoding utf8
+} | ConvertTo-Json -Depth 10 | ForEach-Object { Write-Utf8Text -Path (Join-Path $OutDir 'mapping.json') -Text $_ }
 
 # --- Inventory report ----------------------------------------------------------
 $extWidgets = $widgetRows | Where-Object { $_.ContributionId -and $_.ContributionId -notlike 'ms.*' }
 $byContrib  = $widgetRows | Group-Object ContributionId | Sort-Object Count -Descending
 
 $report = @()
-$report += "# Export inventory — $Org / $Project"
+$report += "# Export inventory - $Org / $Project"
 $report += ""
 $report += "- Dashboards exported: **$dashCount** (across $($teams.Count) team(s))"
 $report += "- Widgets total: **$($widgetRows.Count)**"
 $report += "- Distinct queries to recreate: **$($queries.Count)** (see queries.json; includes name-recovered)"
 $report += "- Query GUIDs recovered by name (had drifted): **$($recovered.Count)**"
-$report += "- Test Plan/Suite chart refs (not queries — migrate separately): **$(@($testRefs | Sort-Object -Unique).Count)**"
+$report += "- Test Plan/Suite chart refs (not queries - migrate separately): **$(@($testRefs | Sort-Object -Unique).Count)**"
 $report += "- Still-unresolved GUIDs (need manual handling): **$($unresolved.Count)**"
 $report += ""
 $report += "## Widget types"
@@ -231,40 +231,40 @@ $report += ""
 $report += "## Marketplace-extension widgets (install these extensions in the TARGET org before import)"
 if ($extWidgets) {
     $extWidgets | Group-Object ContributionId | ForEach-Object {
-        $report += "- ``$($_.Name)`` — $($_.Count) widget(s)"
+        $report += "- ``$($_.Name)`` - $($_.Count) widget(s)"
     }
-} else { $report += "- none — all widgets are built-in" }
+} else { $report += "- none - all widgets are built-in" }
 $report += ""
 $report += "## Recovered queries (widget GUID had drifted; matched a live Shared Query by name)"
 if ($recovered) { $recovered | Sort-Object -Unique | ForEach-Object { $report += "- $_" } }
 else { $report += "- none" }
 $report += ""
 if ($ambiguous) {
-    $report += "## Ambiguous names (same name in multiple Shared Query folders — resolve manually)"
+    $report += "## Ambiguous names (same name in multiple Shared Query folders - resolve manually)"
     $ambiguous | Sort-Object -Unique | ForEach-Object { $report += "- $_" }
     $report += ""
 }
-$report += "## Test Plan/Suite charts (TcmChartWidget — migrate Test Plans/Suites separately, then reconfigure)"
+$report += "## Test Plan/Suite charts (TcmChartWidget - migrate Test Plans/Suites separately, then reconfigure)"
 if ($testRefs) {
     foreach ($g in ($testRefs | Sort-Object -Unique)) {
         $where = ($widgetRows | Where-Object { $_.Guids -contains $g } |
                   ForEach-Object { "[$($_.Team)] $($_.Dashboard) / $($_.Widget)" }) -join '; '
-        $report += "- ``$g`` — used by: $where"
+        $report += "- ``$g`` - used by: $where"
     }
 } else { $report += "- none" }
 $report += ""
-$report += "## Still-unresolved GUIDs (no name match in Shared Queries — likely personal 'My Queries', deleted, or cross-project)"
+$report += "## Still-unresolved GUIDs (no name match in Shared Queries - likely personal 'My Queries', deleted, or cross-project)"
 if ($unresolved) {
     foreach ($g in $unresolved) {
         $nm = if (@($guidNames[$g]).Count) { " (widget names: $(@($guidNames[$g]) -join ' | '))" } else { "" }
         $where = ($widgetRows | Where-Object { $_.Guids -contains $g } |
                   ForEach-Object { "[$($_.Team)] $($_.Dashboard) / $($_.Widget)" }) -join '; '
-        $report += "- ``$g``$nm — used by: $where"
+        $report += "- ``$g``$nm - used by: $where"
     }
 } else { $report += "- none" }
-$report -join "`n" | Set-Content -Path (Join-Path $OutDir 'inventory.md') -Encoding utf8
+Write-Utf8Text -Path (Join-Path $OutDir 'inventory.md') -Text ($report -join "`n")
 
 if ($recovered) { Write-Host "Recovered $($recovered.Count) drifted query GUID(s) by name." -ForegroundColor Green }
-if ($unresolved) { Write-Host "$($unresolved.Count) GUID(s) still unresolved — see inventory.md." -ForegroundColor Yellow }
+if ($unresolved) { Write-Host "$($unresolved.Count) GUID(s) still unresolved - see inventory.md." -ForegroundColor Yellow }
 
 Write-Host "`nDone. REVIEW $(Join-Path $OutDir 'inventory.md') before running step 2." -ForegroundColor Green

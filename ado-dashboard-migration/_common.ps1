@@ -3,7 +3,7 @@
 function Get-AdoAuthHeader {
     param(
         [Parameter(Mandatory)][string]$EnvVarName,
-        [string]$Purpose = ""   # e.g. "source org 360sg" — shown in the prompt
+        [string]$Purpose = ""   # e.g. "source org 360sg" - shown in the prompt
     )
     $pat = [Environment]::GetEnvironmentVariable($EnvVarName)
     if ([string]::IsNullOrWhiteSpace($pat)) {
@@ -12,7 +12,7 @@ function Get-AdoAuthHeader {
         $secure = Read-Host -Prompt "Enter the Azure DevOps PAT for $label (input hidden)" -AsSecureString
         $pat = [System.Net.NetworkCredential]::new('', $secure).Password
         if ([string]::IsNullOrWhiteSpace($pat)) {
-            throw "No PAT provided. Set it first:  `$env:$EnvVarName = '<pat>'  — or enter it when prompted."
+            throw "No PAT provided. Set it first:  `$env:$EnvVarName = '<pat>'  - or enter it when prompted."
         }
         # Cache for the rest of this session so later steps don't re-prompt.
         Set-Item -Path "Env:$EnvVarName" -Value $pat | Out-Null
@@ -47,14 +47,14 @@ function Invoke-Ado {
                            ($detail -match 'TF10216|CircuitBreaker|currently unavailable|TF400733|throttl')
             if ($isTransient -and $attempt -lt $MaxRetries) {
                 $wait = [math]::Min(30, [math]::Pow(2, $attempt))   # 1s,2s,4s,8s (cap 30s)
-                Write-Host "  transient ADO error (status $status) — retry $($attempt + 1)/$MaxRetries in ${wait}s…" -ForegroundColor DarkYellow
+                Write-Host "  transient ADO error (status $status) - retry $($attempt + 1)/$MaxRetries in ${wait}s..." -ForegroundColor DarkYellow
                 Start-Sleep -Seconds $wait
                 continue
             }
             if ($status -eq 302 -or $status -eq 401 -or $status -eq 203) {
-                throw "Auth failed calling $Uri — check the PAT (scope, expiry, correct org)."
+                throw "Auth failed calling $Uri - check the PAT (scope, expiry, correct org)."
             }
-            if ($detail) { throw "ADO API error calling $Uri`: $detail" }
+            if ($detail) { throw "ADO API error (status $status) calling $Uri`: $detail" }
             throw
         }
     }
@@ -69,6 +69,24 @@ function Get-GuidsInText {
 }
 
 function UrlEnc { param([string]$s) [uri]::EscapeDataString($s) }
+
+function Read-Utf8Text {
+    param([Parameter(Mandatory)][string]$Path)
+    $resolved = (Resolve-Path -LiteralPath $Path).Path
+    return [System.IO.File]::ReadAllText($resolved, [System.Text.Encoding]::UTF8)
+}
+
+function Write-Utf8Text {
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [AllowEmptyString()][string]$Text
+    )
+    $absolute = [System.IO.Path]::GetFullPath($Path)
+    # Emit a BOM so Windows PowerShell 5.1 and PowerShell 7 decode artifacts
+    # consistently when query names, WIQL, or dashboard settings contain Unicode.
+    $encoding = [System.Text.UTF8Encoding]::new($true)
+    [System.IO.File]::WriteAllText($absolute, $Text, $encoding)
+}
 
 # Accept an org as a bare name ("360sg") or a full URL
 # ("https://dev.azure.com/360sg", "https://360sg.visualstudio.com") and return
