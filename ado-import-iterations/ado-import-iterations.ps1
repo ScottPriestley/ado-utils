@@ -8,6 +8,7 @@
     It creates missing parent nodes first, creates missing leaf iterations with
     their dates, and skips existing leaf iterations unless -UpdateExisting is
     supplied. The default is preview only; add -Apply to make changes.
+    Organization accepts an organization name or URL.
 
 .EXAMPLE
     .\Import-AzureDevOpsIterations.ps1 `
@@ -24,7 +25,6 @@
 [CmdletBinding(SupportsShouldProcess)]
 param(
     [Parameter(Mandatory)]
-    [ValidatePattern('^https://dev\.azure\.com/[^/]+/?$')]
     [string]$Organization,
 
     [Parameter(Mandatory)]
@@ -47,6 +47,25 @@ function Get-PlainText([SecureString]$SecureValue) {
     $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecureValue)
     try { [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr) }
     finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
+}
+
+function Resolve-OrganizationUrl([string]$InputValue) {
+    if ([string]::IsNullOrWhiteSpace($InputValue)) {
+        throw 'Azure DevOps organization is required.'
+    }
+
+    $value = $InputValue.Trim().TrimEnd('/')
+    if ($value -match '^https?://dev\.azure\.com/([^/?#]+)$') {
+        return "https://dev.azure.com/$($Matches[1])"
+    }
+    if ($value -match '^https?://([^.]+)\.visualstudio\.com$') {
+        return "https://dev.azure.com/$($Matches[1])"
+    }
+    if ($value -match '^[^/\s]+$') {
+        return "https://dev.azure.com/$value"
+    }
+
+    throw 'Azure DevOps organization must be an organization name or URL (for example, contoso or https://dev.azure.com/contoso).'
 }
 
 function Read-ZipText($Archive, [string]$Path) {
@@ -119,6 +138,7 @@ function Get-RelativeIterationPath([string]$ApiPath, [string]$ApiRootPath) {
 }
 
 if ($UpdateExisting -and -not $Apply) { throw '-UpdateExisting requires -Apply.' }
+$Organization = Resolve-OrganizationUrl -InputValue $Organization
 if (-not $Pat) { $Pat = Read-Host 'Azure DevOps PAT (Work Items Read & Write)' -AsSecureString }
 $plainPat = Get-PlainText $Pat
 try {

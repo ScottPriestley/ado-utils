@@ -7,7 +7,7 @@ Connects to an Azure DevOps project, discovers every visible wiki and page, and
 writes each page as a UTF-8 Markdown file. Use WikiName to select one wiki.
 
 .PARAMETER Organization
-Azure DevOps organization name, such as contoso. Prompts when omitted.
+Source Azure DevOps organization name or URL. Prompts when omitted.
 
 .PARAMETER Project
 Azure DevOps project name or ID. Prompts when omitted.
@@ -44,6 +44,26 @@ function ConvertTo-UriSegment {
     )
 
     return [Uri]::EscapeDataString($Value)
+}
+
+function ConvertTo-AdoOrganizationName {
+    param(
+        [Parameter(Mandatory)]
+        [string]$OrganizationInput
+    )
+
+    $value = $OrganizationInput.Trim().TrimEnd('/')
+    if ($value -match '^https?://dev\.azure\.com/([^/?#]+)$') {
+        return $Matches[1]
+    }
+    if ($value -match '^https?://([^.]+)\.visualstudio\.com$') {
+        return $Matches[1]
+    }
+    if ($value -match '^[^/\s]+$') {
+        return $value
+    }
+
+    throw 'Azure DevOps organization must be an organization name or URL (for example, contoso or https://dev.azure.com/contoso).'
 }
 
 function Get-AzureDevOpsHeaders {
@@ -410,7 +430,7 @@ function Invoke-WikiExtraction {
     try {
         $resolvedOrganization = $Organization
         if ([string]::IsNullOrWhiteSpace($resolvedOrganization)) {
-            $resolvedOrganization = Read-Host 'Source organization name'
+            $resolvedOrganization = Read-Host -Prompt 'Source Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)'
         }
 
         $resolvedProject = $Project
@@ -421,6 +441,8 @@ function Invoke-WikiExtraction {
         if ([string]::IsNullOrWhiteSpace($resolvedOrganization) -or [string]::IsNullOrWhiteSpace($resolvedProject)) {
             throw 'Source organization and project are required.'
         }
+
+        $resolvedOrganization = ConvertTo-AdoOrganizationName -OrganizationInput $resolvedOrganization
 
         $personalAccessToken = Read-Host 'Source PAT token' -AsSecureString
         $headers = Get-AzureDevOpsHeaders -PersonalAccessToken $personalAccessToken

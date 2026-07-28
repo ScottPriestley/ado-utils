@@ -64,6 +64,26 @@ function ConvertTo-UriSegment {
     return [Uri]::EscapeDataString($Value)
 }
 
+function ConvertTo-AdoOrganizationName {
+    param(
+        [Parameter(Mandatory)]
+        [string]$OrganizationInput
+    )
+
+    $value = $OrganizationInput.Trim().TrimEnd('/')
+    if ($value -match '^https?://dev\.azure\.com/([^/?#]+)$') {
+        return $Matches[1]
+    }
+    if ($value -match '^https?://([^.]+)\.visualstudio\.com$') {
+        return $Matches[1]
+    }
+    if ($value -match '^[^/\s]+$') {
+        return $value
+    }
+
+    throw 'Azure DevOps organization must be an organization name or URL (for example, contoso or https://dev.azure.com/contoso).'
+}
+
 function Get-AzureDevOpsHeaders {
     param(
         [Parameter(Mandatory = $true)]
@@ -1156,10 +1176,10 @@ function Set-AzureDevOpsWikiPage {
 function Invoke-WikiMigration {
     try {
         Write-MigrationLog -Message '=== Azure DevOps Wiki Migration Started ==='
-        $sourceOrg = if ([string]::IsNullOrWhiteSpace($SourceOrganization)) { Read-Host 'Source organization name' } else { $SourceOrganization }
+        $sourceOrg = if ([string]::IsNullOrWhiteSpace($SourceOrganization)) { Read-Host -Prompt 'Source Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)' } else { $SourceOrganization }
         $sourceProjectName = if ([string]::IsNullOrWhiteSpace($SourceProject)) { Read-Host 'Source project name or ID' } else { $SourceProject }
         $sourcePat = Read-Host 'Source PAT token' -AsSecureString
-        $targetOrg = if ([string]::IsNullOrWhiteSpace($TargetOrganization)) { Read-Host 'Target organization name' } else { $TargetOrganization }
+        $targetOrg = if ([string]::IsNullOrWhiteSpace($TargetOrganization)) { Read-Host -Prompt 'Target Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)' } else { $TargetOrganization }
         $targetProjectName = if ([string]::IsNullOrWhiteSpace($TargetProject)) { Read-Host 'Target project name or ID' } else { $TargetProject }
         $targetPat = Read-Host 'Target PAT token' -AsSecureString
 
@@ -1167,6 +1187,9 @@ function Invoke-WikiMigration {
         Test-RequiredInput -Name 'Source project' -Value $sourceProjectName
         Test-RequiredInput -Name 'Target organization' -Value $targetOrg
         Test-RequiredInput -Name 'Target project' -Value $targetProjectName
+
+        $sourceOrg = ConvertTo-AdoOrganizationName -OrganizationInput $sourceOrg
+        $targetOrg = ConvertTo-AdoOrganizationName -OrganizationInput $targetOrg
 
         $sourceHeaders = Get-AzureDevOpsHeaders -PersonalAccessToken $sourcePat
         $targetHeaders = Get-AzureDevOpsHeaders -PersonalAccessToken $targetPat

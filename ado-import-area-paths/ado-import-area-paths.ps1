@@ -6,7 +6,7 @@
     Validates the supplied hierarchy, compares it to the project’s live Area
     Path tree, creates only missing nodes in parent-first order, and performs
     a final verification. The PAT is requested securely and is never written
-    to disk by this script.
+    to disk by this script. Organization accepts an organization name or URL.
 
 .CSV FORMAT
     Required columns: Name, AreaPath, ParentPath, Level
@@ -28,7 +28,6 @@
 [CmdletBinding(SupportsShouldProcess)]
 param(
     [Parameter(Mandatory)]
-    [ValidatePattern('^https://dev\.azure\.com/[^/]+/?$')]
     [string]$Organization,
 
     [Parameter(Mandatory)]
@@ -50,6 +49,25 @@ function Get-PlainText([SecureString]$SecureValue) {
     finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
 }
 
+function Resolve-OrganizationUrl([string]$InputValue) {
+    if ([string]::IsNullOrWhiteSpace($InputValue)) {
+        throw 'Azure DevOps organization is required.'
+    }
+
+    $value = $InputValue.Trim().TrimEnd('/')
+    if ($value -match '^https?://dev\.azure\.com/([^/?#]+)$') {
+        return "https://dev.azure.com/$($Matches[1])"
+    }
+    if ($value -match '^https?://([^.]+)\.visualstudio\.com$') {
+        return "https://dev.azure.com/$($Matches[1])"
+    }
+    if ($value -match '^[^/\s]+$') {
+        return "https://dev.azure.com/$value"
+    }
+
+    throw 'Azure DevOps organization must be an organization name or URL (for example, contoso or https://dev.azure.com/contoso).'
+}
+
 function Get-RelativeAreaPath([string]$ApiPath, [string]$ApiRootPath) {
     if ($ApiPath -eq $ApiRootPath) { return $null }
     $prefix = "$ApiRootPath\"
@@ -59,6 +77,7 @@ function Get-RelativeAreaPath([string]$ApiPath, [string]$ApiRootPath) {
     return $ApiPath.Substring($prefix.Length)
 }
 
+$Organization = Resolve-OrganizationUrl -InputValue $Organization
 if (-not $Pat) { $Pat = Read-Host 'Azure DevOps PAT (Work Items Read & Write)' -AsSecureString }
 $plainPat = Get-PlainText $Pat
 try {

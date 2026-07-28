@@ -62,9 +62,22 @@ function Get-PlainText([SecureString]$SecureValue) {
 }
 
 function Resolve-OrgUrl([string]$Org) {
-    $Org = $Org.Trim().TrimEnd('/')
-    if ($Org -match '^https?://') { return $Org }
-    return "https://dev.azure.com/$Org"
+    if ([string]::IsNullOrWhiteSpace($Org)) {
+        throw 'Azure DevOps organization is required.'
+    }
+
+    $value = $Org.Trim().TrimEnd('/')
+    if ($value -match '^https?://dev\.azure\.com/([^/?#]+)$') {
+        return "https://dev.azure.com/$($Matches[1])"
+    }
+    if ($value -match '^https?://([^.]+)\.visualstudio\.com$') {
+        return "https://dev.azure.com/$($Matches[1])"
+    }
+    if ($value -match '^[^/\s]+$') {
+        return "https://dev.azure.com/$value"
+    }
+
+    throw 'Azure DevOps organization must be an organization name or URL (for example, contoso or https://dev.azure.com/contoso).'
 }
 
 function New-AuthHeader([SecureString]$Pat) {
@@ -125,10 +138,10 @@ $vFields = 'api-version=7.1'             # org-level wit/fields (GA)
 # ----------------------------------------------------------------- prompts ---
 
 if (-not $WorkItemTypeName)   { $WorkItemTypeName   = Read-Host 'Work Item Type name (as shown in the process, e.g. "Business Process")' }
-if (-not $SourceOrganization) { $SourceOrganization = Read-Host 'SOURCE organization (name or https://dev.azure.com/<org>)' }
+if (-not $SourceOrganization) { $SourceOrganization = Read-Host -Prompt 'Source Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)' }
 if (-not $SourceProcess)      { $SourceProcess      = Read-Host 'SOURCE process name' }
 if (-not $SourcePat)          { $SourcePat          = Read-Host 'SOURCE PAT (Work Items + Process read/write)' -AsSecureString }
-if (-not $TargetOrganization) { $TargetOrganization = Read-Host 'TARGET organization (name or https://dev.azure.com/<org>)' }
+if (-not $TargetOrganization) { $TargetOrganization = Read-Host -Prompt 'Target Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)' }
 if (-not $TargetProcess)      { $TargetProcess      = Read-Host 'TARGET process name' }
 if (-not $TargetPat) {
     $sameOrg = (Resolve-OrgUrl $SourceOrganization) -eq (Resolve-OrgUrl $TargetOrganization)

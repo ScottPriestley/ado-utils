@@ -12,7 +12,7 @@ Path to one extracted wiki folder containing wiki-export-manifest.json. Prompts
 when omitted.
 
 .PARAMETER Organization
-Target Azure DevOps organization name. Prompts when omitted.
+Target Azure DevOps organization name or URL. Prompts when omitted.
 
 .PARAMETER Project
 Target Azure DevOps project name or ID. Prompts when omitted.
@@ -42,6 +42,26 @@ function ConvertTo-UriSegment {
     )
 
     return [Uri]::EscapeDataString($Value)
+}
+
+function ConvertTo-AdoOrganizationName {
+    param(
+        [Parameter(Mandatory)]
+        [string]$OrganizationInput
+    )
+
+    $value = $OrganizationInput.Trim().TrimEnd('/')
+    if ($value -match '^https?://dev\.azure\.com/([^/?#]+)$') {
+        return $Matches[1]
+    }
+    if ($value -match '^https?://([^.]+)\.visualstudio\.com$') {
+        return $Matches[1]
+    }
+    if ($value -match '^[^/\s]+$') {
+        return $value
+    }
+
+    throw 'Azure DevOps organization must be an organization name or URL (for example, contoso or https://dev.azure.com/contoso).'
 }
 
 function Get-AzureDevOpsHeaders {
@@ -442,7 +462,7 @@ function Invoke-WikiLoad {
 
         $resolvedOrganization = $Organization
         if ([string]::IsNullOrWhiteSpace($resolvedOrganization)) {
-            $resolvedOrganization = Read-Host 'Target organization name'
+            $resolvedOrganization = Read-Host -Prompt 'Target Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)'
         }
 
         $resolvedProject = $Project
@@ -455,6 +475,8 @@ function Invoke-WikiLoad {
             [string]::IsNullOrWhiteSpace($resolvedProject)) {
             throw 'Source path, target organization, and target project are required.'
         }
+
+        $resolvedOrganization = ConvertTo-AdoOrganizationName -OrganizationInput $resolvedOrganization
 
         Write-Host 'Validating source wiki export...' -ForegroundColor Cyan
         $wikiExport = Resolve-WikiExport -Path $resolvedSourcePath

@@ -88,13 +88,25 @@ function Write-Utf8Text {
     [System.IO.File]::WriteAllText($absolute, $Text, $encoding)
 }
 
-# Accept an org as a bare name ("360sg") or a full URL
-# ("https://dev.azure.com/360sg", "https://360sg.visualstudio.com") and return
-# the bare org name. Prevents the double-prefix "dangerous Request.Path" error.
+# Accept an organization name or URL and return the bare organization name.
+# Supported URL forms are https://dev.azure.com/contoso and
+# https://contoso.visualstudio.com.
 function Get-OrgName {
-    param([string]$Org)
-    $o = "$Org".Trim().TrimEnd('/')
-    if ($o -match '^https?://dev\.azure\.com/([^/]+)')  { return $Matches[1] }
-    if ($o -match '^https?://([^.]+)\.visualstudio\.com') { return $Matches[1] }
-    return $o
+    param(
+        [Parameter(Mandatory)]
+        [string]$Org
+    )
+
+    $value = $Org.Trim().TrimEnd('/')
+    if ($value -match '^https?://dev\.azure\.com/([^/?#]+)$') {
+        return $Matches[1]
+    }
+    if ($value -match '^https?://([^.]+)\.visualstudio\.com$') {
+        return $Matches[1]
+    }
+    if ($value -match '^[^/\s]+$') {
+        return $value
+    }
+
+    throw "Azure DevOps organization must be an organization name or URL (for example, contoso or https://dev.azure.com/contoso)."
 }

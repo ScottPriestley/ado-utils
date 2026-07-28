@@ -36,16 +36,18 @@ function Resolve-OrganizationUrl([string]$InputValue, [string]$Label) {
         throw "$Label is required."
     }
 
-    $value = $InputValue.Trim()
-    if ($value -match '^https://dev\.azure\.com/[^/]+/?$') {
-        return $value.TrimEnd('/')
+    $value = $InputValue.Trim().TrimEnd('/')
+    if ($value -match '^https?://dev\.azure\.com/([^/?#]+)$') {
+        return "https://dev.azure.com/$($Matches[1])"
     }
-
+    if ($value -match '^https?://([^.]+)\.visualstudio\.com$') {
+        return "https://dev.azure.com/$($Matches[1])"
+    }
     if ($value -match '^[^/\s]+$') {
         return "https://dev.azure.com/$value"
     }
 
-    throw "$Label must be either an organization name (for example: contoso) or URL (for example: https://dev.azure.com/contoso)."
+    throw "$Label must be an organization name or URL (for example, contoso or https://dev.azure.com/contoso)."
 }
 
 function Get-ClassificationTree([string]$Organization, [string]$Project, [hashtable]$Headers) {
@@ -93,7 +95,7 @@ function Get-RelativeAreaSet($Tree) {
     return ,$set
 }
 
-$sourceOrganizationInput = Read-Host 'Source Azure DevOps organization (name like contoso-source or URL like https://dev.azure.com/contoso-source)'
+$sourceOrganizationInput = Read-Host -Prompt 'Source Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)'
 $sourceOrganization = Resolve-OrganizationUrl -InputValue $sourceOrganizationInput -Label 'Source organization'
 
 $sourceProject = Read-Host 'Source project name'
@@ -102,7 +104,7 @@ if ([string]::IsNullOrWhiteSpace($sourceProject)) { throw 'Source project name i
 $sourcePatSecure = Read-Host 'Source Azure DevOps PAT (Work Items Read & Write)' -AsSecureString
 $sourcePlainPat = Get-PlainText -SecureValue $sourcePatSecure
 
-$targetOrganizationInput = Read-Host 'Target Azure DevOps organization (name like contoso-target or URL like https://dev.azure.com/contoso-target)'
+$targetOrganizationInput = Read-Host -Prompt 'Target Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)'
 $targetOrganization = Resolve-OrganizationUrl -InputValue $targetOrganizationInput -Label 'Target organization'
 
 $targetProject = Read-Host 'Target project name'

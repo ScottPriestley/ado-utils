@@ -40,25 +40,21 @@ function Normalize-AdoOrganization {
         [string]$OrganizationInput
     )
 
-    $trimmedInput = $OrganizationInput.Trim()
-
-    if ($trimmedInput -match '^[a-z]+://') {
-        $uri = [Uri]$trimmedInput
-        $pathSegments = $uri.AbsolutePath.Trim('/') -split '/'
-
-        if ($uri.Host -ieq 'dev.azure.com' -and $pathSegments.Count -ge 1) {
-            return $pathSegments[0]
-        }
-
-        if ($uri.Host -match '^[^.]+\.visualstudio\.com$') {
-            return ($uri.Host -split '\.')[0]
-        }
+    $value = $OrganizationInput.Trim().TrimEnd('/')
+    if ($value -match '^https?://dev\.azure\.com/([^/?#]+)$') {
+        return $Matches[1]
+    }
+    if ($value -match '^https?://([^.]+)\.visualstudio\.com$') {
+        return $Matches[1]
+    }
+    if ($value -match '^[^/\s]+$') {
+        return $value
     }
 
-    return $trimmedInput.Trim('/')
+    throw 'Azure DevOps organization must be an organization name or URL (for example, contoso or https://dev.azure.com/contoso).'
 }
 
-$org = Get-RequiredValue -Value $org -Prompt "Enter the source Azure DevOps organization name or URL" -Placeholder "PASTE-ORG-HERE"
+$org = Get-RequiredValue -Value $org -Prompt 'Source Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)' -Placeholder "PASTE-ORG-HERE"
 $pat = Get-RequiredValue -Value $pat -Prompt "Enter the source Azure DevOps PAT" -Placeholder "PASTE-PAT-HERE" -Secure
 $processId = Get-RequiredValue -Value $processId -Prompt "Enter the source Azure DevOps process ID" -Placeholder "PASTE-PROCESS-ID-HERE"
 $org = Normalize-AdoOrganization -OrganizationInput $org
