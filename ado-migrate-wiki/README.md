@@ -19,6 +19,7 @@ Each script is self-contained. The direct migration script does not call the Ext
 - Creates parent pages before child pages.
 - Creates missing target pages and updates matching target paths.
 - Uses the current target ETag when updating an existing page.
+- Migrates files and images referenced through `.attachments/...` links during direct wiki migration.
 - Reads target pages back after writing and fails on content differences.
 - Supports project names, wiki names, and page paths containing spaces.
 - Requires no Azure CLI extensions or third-party PowerShell modules.
@@ -88,6 +89,8 @@ Pass the folder containing `wiki-export-manifest.json`:
 ## Direct Migration
 
 `ado-migrate-wiki.ps1` reads one source wiki and writes it directly to a target project wiki. It supports projects in the same organization or different organizations.
+It also copies files and images referenced from source Markdown with `.attachments/...` links before writing pages, so those relative wiki image/file links can resolve in the target wiki.
+If a source page contains a stale `.attachments/...` reference that no longer exists in the source wiki repository or its history, the script logs a warning, skips that missing attachment, and continues creating or updating pages. Use `-StrictAttachmentValidation` when you want missing attachments to fail the run before any target page writes.
 
 ```powershell
 .\ado-migrate-wiki.ps1 `
@@ -113,6 +116,8 @@ When `-TargetWikiName` is omitted, the first existing project wiki is used. If n
 | `TargetOrganization` | Target Azure DevOps organization name. Prompts when omitted. |
 | `TargetProject` | Target project name or ID. Prompts when omitted. |
 | `TargetWikiName` | Optional target wiki name or ID. Selects an existing match or names a new project wiki. |
+| `StrictAttachmentValidation` | Fails the direct migration before target writes if a referenced source attachment cannot be resolved. By default, unresolved attachments are skipped with warnings so page reloads can continue. |
+| `AllowMissingAttachments` | Explicitly allows missing attachments to be skipped. Rarely needed — this is already the default unless `-StrictAttachmentValidation` is set. |
 | `NoExecute` | Loads the script functions without starting the interactive migration. Intended for testing. |
 
 ### Migration output
@@ -239,7 +244,8 @@ These tools migrate current Markdown page content and hierarchy through the Azur
 
 - Wiki Git commit history, authors, timestamps, or page revisions.
 - `.order` files or exact navigation ordering.
-- Attachments or other binary files.
+- Attachments or other binary files that are not referenced with relative `.attachments/...` links during direct migration.
+- Attachments or other binary files in the offline Extract and Load workflow.
 - Wiki permissions and security settings.
 - Comments, deleted pages, or other project configuration.
 

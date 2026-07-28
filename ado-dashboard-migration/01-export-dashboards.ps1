@@ -40,8 +40,8 @@ function Get-SharedQueryIndex {
             $node = Invoke-Ado -Headers $Headers `
                 -Uri "$Base/$ProjSeg/_apis/wit/queries/$fid`?`$depth=1&`$expand=wiql&api-version=7.1"
         } catch { continue }
-        foreach ($c in @($node.children)) {
-            if ($c.isFolder) { $folders.Enqueue($c.id) }
+        foreach ($c in @($(if ($node.PSObject.Properties.Name -contains 'children') { $node.children } else { @() }) | Where-Object { $_ })) {
+            if ($(if ($c.PSObject.Properties.Name -contains 'isFolder') { $c.isFolder } else { $false })) { $folders.Enqueue($c.id) }
             elseif (-not [string]::IsNullOrWhiteSpace($c.name)) {
                 $k = "$($c.name)".ToLowerInvariant()
                 if (-not $index.ContainsKey($k)) { $index[$k] = @() }
@@ -75,9 +75,9 @@ function Get-QueryRefsFromWidget {
         }
         @{ guid = "$guid".ToLowerInvariant(); names = @($names | Select-Object -Unique); kind = $kind }
     }
-    if     ($cid -like '*QueryScalarWidget*' -and $cfg.queryId)       { $refs += (& $mk $cfg.queryId       @($cfg.queryName, $cfg.lastArtifactName)       'query') }
-    elseif ($cid -like '*WitViewWidget*'     -and $cfg.query.queryId) { $refs += (& $mk $cfg.query.queryId @($cfg.query.queryName, $cfg.lastArtifactName) 'query') }
-    elseif ($cid -like '*WitChartWidget*'    -and $cfg.groupKey)      { $refs += (& $mk $cfg.groupKey      @($cfg.lastArtifactName, $cfg.title)          'chart') }
+    if     ($cid -like '*QueryScalarWidget*' -and $cfg.queryId)       { $refs += (& $mk $cfg.queryId       @($cfg.queryName, $(if ($cfg.PSObject.Properties.Name -contains 'lastArtifactName') { $cfg.lastArtifactName }))       'query') }
+    elseif ($cid -like '*WitViewWidget*'     -and $cfg.query -and $cfg.query.queryId) { $refs += (& $mk $cfg.query.queryId @($cfg.query.queryName, $(if ($cfg.query.PSObject.Properties.Name -contains 'lastArtifactName') { $cfg.query.lastArtifactName })) 'query') }
+    elseif ($cid -like '*WitChartWidget*'    -and $cfg.groupKey)      { $refs += (& $mk $cfg.groupKey      @($(if ($cfg.PSObject.Properties.Name -contains 'lastArtifactName') { $cfg.lastArtifactName }), $(if ($cfg.PSObject.Properties.Name -contains 'title') { $cfg.title }))          'chart') }
     elseif ($cid -like '*TcmChartWidget*')                            { $refs += @{ guid = $null; names = @(); kind = 'test' } }
     return $refs
 }
@@ -117,7 +117,7 @@ foreach ($team in $teams) {
         }
         Write-Utf8Text -Path (Join-Path $OutDir "dashboards/$safe.json") -Text ($record | ConvertTo-Json -Depth 50)
 
-        foreach ($w in @($dash.widgets)) {
+        foreach ($w in @($dash.widgets | Where-Object { $_ })) {
             $guids = Get-GuidsInText -Text ("$($w.settings) $($w.artifactId)")
             $guids | ForEach-Object { [void]$allGuids.Add($_) }
             foreach ($ref in (Get-QueryRefsFromWidget -Widget $w)) {
@@ -135,7 +135,7 @@ foreach ($team in $teams) {
                 ContributionId = $w.contributionId; Guids = $guids
             }
         }
-        Write-Host "  exported: [$($team.name)] $($dash.name) - $(@($dash.widgets).Count) widget(s)"
+        Write-Host "  exported: [$($team.name)] $($dash.name) - $(@($dash.widgets | Where-Object { $_ }).Count) widget(s)"
     }
 }
 
@@ -157,7 +157,7 @@ foreach ($g in $allGuids) {
     if ($testGuids.Contains($g))            { $testRefs += $g; continue }
     try {
         $q = Invoke-Ado -Headers $headers -Uri "$base/$projSeg/_apis/wit/queries/$g`?`$expand=wiql&api-version=7.1"
-        if (-not $q.isFolder -and -not $qById.Contains($g)) {
+        if (-not ($(if ($q.PSObject.Properties.Name -contains 'isFolder') { $q.isFolder } else { $false })) -and -not $qById.Contains($g)) {
             $qById[$g] = [pscustomobject]@{ id = $g; name = $q.name; path = $q.path; wiql = $q.wiql; aliasIds = @() }
         }
     }
@@ -211,7 +211,7 @@ Write-Utf8Text -Path (Join-Path $OutDir 'queries.json') -Text ($queries | Conver
 
 # --- Inventory report ----------------------------------------------------------
 $extWidgets = $widgetRows | Where-Object { $_.ContributionId -and $_.ContributionId -notlike 'ms.*' }
-$byContrib  = $widgetRows | Group-Object ContributionId | Sort-Object Count -Descending
+$byContrib  = ($widgetRows | Group-Object { if ([string]::IsNullOrWhiteSpace($_.ContributionId)) { '<null>' } else { $_.ContributionId } } | Sort-Object Count -Descending)
 
 $report = @()
 $report += "# Export inventory - $Org / $Project"
@@ -236,17 +236,17 @@ if ($extWidgets) {
 } else { $report += "- none - all widgets are built-in" }
 $report += ""
 $report += "## Recovered queries (widget GUID had drifted; matched a live Shared Query by name)"
-if ($recovered) { $recovered | Sort-Object -Unique | ForEach-Object { $report += "- $_" } }
+if (@($recovered).Count) { @($recovered) | Sort-Object -Unique | ForEach-Object { $report += "- $_" } }
 else { $report += "- none" }
 $report += ""
-if ($ambiguous) {
+if (@($ambiguous).Count) {
     $report += "## Ambiguous names (same name in multiple Shared Query folders - resolve manually)"
-    $ambiguous | Sort-Object -Unique | ForEach-Object { $report += "- $_" }
+    @($ambiguous) | Sort-Object -Unique | ForEach-Object { $report += "- $_" }
     $report += ""
 }
 $report += "## Test Plan/Suite charts (TcmChartWidget - migrate Test Plans/Suites separately, then reconfigure)"
-if ($testRefs) {
-    foreach ($g in ($testRefs | Sort-Object -Unique)) {
+if (@($testRefs).Count) {
+    foreach ($g in (@($testRefs) | Sort-Object -Unique)) {
         $where = ($widgetRows | Where-Object { $_.Guids -contains $g } |
                   ForEach-Object { "[$($_.Team)] $($_.Dashboard) / $($_.Widget)" }) -join '; '
         $report += "- ``$g`` - used by: $where"
@@ -254,9 +254,10 @@ if ($testRefs) {
 } else { $report += "- none" }
 $report += ""
 $report += "## Still-unresolved GUIDs (no name match in Shared Queries - likely personal 'My Queries', deleted, or cross-project)"
-if ($unresolved) {
-    foreach ($g in $unresolved) {
-        $nm = if (@($guidNames[$g]).Count) { " (widget names: $(@($guidNames[$g]) -join ' | '))" } else { "" }
+if (@($unresolved).Count) {
+    foreach ($g in @($unresolved)) {
+        $guidNamesList = @($guidNames[$g] | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        $nm = if ($guidNamesList.Count) { " (widget names: $($guidNamesList -join ' | '))" } else { "" }
         $where = ($widgetRows | Where-Object { $_.Guids -contains $g } |
                   ForEach-Object { "[$($_.Team)] $($_.Dashboard) / $($_.Widget)" }) -join '; '
         $report += "- ``$g``$nm - used by: $where"
@@ -264,7 +265,7 @@ if ($unresolved) {
 } else { $report += "- none" }
 Write-Utf8Text -Path (Join-Path $OutDir 'inventory.md') -Text ($report -join "`n")
 
-if ($recovered) { Write-Host "Recovered $($recovered.Count) drifted query GUID(s) by name." -ForegroundColor Green }
-if ($unresolved) { Write-Host "$($unresolved.Count) GUID(s) still unresolved - see inventory.md." -ForegroundColor Yellow }
+if (@($recovered).Count) { Write-Host "Recovered $(@($recovered).Count) drifted query GUID(s) by name." -ForegroundColor Green }
+if (@($unresolved).Count) { Write-Host "$(@($unresolved).Count) GUID(s) still unresolved - see inventory.md." -ForegroundColor Yellow }
 
 Write-Host "`nDone. REVIEW $(Join-Path $OutDir 'inventory.md') before running step 2." -ForegroundColor Green

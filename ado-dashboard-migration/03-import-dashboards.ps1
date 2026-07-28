@@ -21,11 +21,29 @@ param(
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_common.ps1')
 
+if (-not [System.IO.Path]::IsPathRooted($ExportDir)) {
+    $ExportDir = Join-Path $PSScriptRoot $ExportDir
+}
+$ExportDir = [System.IO.Path]::GetFullPath($ExportDir)
+
+$mappingPath = Join-Path $ExportDir 'mapping.json'
+$queryMapPath = Join-Path $ExportDir 'querymap.json'
+$dashboardsDir = Join-Path $ExportDir 'dashboards'
+foreach ($requiredPath in @($mappingPath, $queryMapPath, $dashboardsDir)) {
+    if (-not (Test-Path -LiteralPath $requiredPath)) {
+        throw "Required import artifact not found: $requiredPath - run steps 1 and 2 first, or pass the correct -ExportDir."
+    }
+}
+$dashboardFiles = @(Get-ChildItem -LiteralPath $dashboardsDir -Filter *.json -File)
+if (-not $dashboardFiles.Count) {
+    throw "No dashboard JSON files found in $dashboardsDir - run step 1 first or check -ExportDir."
+}
+
 $TargetOrg = Get-OrgName $TargetOrg   # accept bare name or full URL
 $headers  = Get-AdoAuthHeader -EnvVarName 'ADO_TARGET_PAT' -Purpose "TARGET org '$TargetOrg'"
 $base     = "https://dev.azure.com/$(UrlEnc $TargetOrg)"
 $projSeg  = UrlEnc $TargetProject
-$mapping  = Read-Utf8Text (Join-Path $ExportDir 'mapping.json') | ConvertFrom-Json
+$mapping  = Read-Utf8Text $mappingPath | ConvertFrom-Json
 if (-not ($mapping.sourceProjectId -match '^[0-9a-fA-F-]{36}$')) {
     throw "mapping.json has an invalid sourceProjectId. Run step 1 again or correct the mapping file."
 }
@@ -33,8 +51,17 @@ if ([string]::IsNullOrWhiteSpace("$($mapping.sourceOrg)") -or
     [string]::IsNullOrWhiteSpace("$($mapping.sourceProjectName)")) {
     throw "mapping.json is missing sourceOrg or sourceProjectName. Run step 1 again or correct the mapping file."
 }
+$sourceOrgName = Get-OrgName $mapping.sourceOrg
+if ($mapping.targetOrg -and $mapping.targetOrg -notlike '<FILL*' -and (Get-OrgName $mapping.targetOrg) -ne $TargetOrg) {
+    throw "mapping.json targetOrg '$($mapping.targetOrg)' does not match -TargetOrg '$TargetOrg'. Update mapping.json or pass the intended target org."
+}
+if ($mapping.targetProjectName -and $mapping.targetProjectName -notlike '<FILL*' -and $mapping.targetProjectName -ne $TargetProject) {
+    throw "mapping.json targetProjectName '$($mapping.targetProjectName)' does not match -TargetProject '$TargetProject'. Update mapping.json or pass the intended target project."
+}
 $queryMap = @{}
-(Read-Utf8Text (Join-Path $ExportDir 'querymap.json') | ConvertFrom-Json).psobject.Properties |
+$queryMapJson = Read-Utf8Text $queryMapPath | ConvertFrom-Json
+if (-not $queryMapJson) { throw "querymap.json is empty or invalid: $queryMapPath - run step 2 first." }
+$queryMapJson.psobject.Properties |
     ForEach-Object { $queryMap[$_.Name.ToLowerInvariant()] = $_.Value }
 
 # --- Resolve target project + teams -------------------------------------------
@@ -52,20 +79,29 @@ if ($missingTeams.Count) {
 
 # --- Build the substitution table (source token -> target token) ---------------
 $subs = [ordered]@{}
-$subs["https://dev.azure.com/$($mapping.sourceOrg)"] = "https://dev.azure.com/$TargetOrg"
+$subs["https://dev.azure.com/$sourceOrgName"] = "https://dev.azure.com/$TargetOrg"
+$subs["https://$sourceOrgName.visualstudio.com"] = "https://dev.azure.com/$TargetOrg"
 $subs[$mapping.sourceProjectId.ToLowerInvariant()]   = $tproj.id
 $subs[$mapping.sourceProjectName]                    = $TargetProject
 foreach ($k in $queryMap.Keys) { $subs[$k] = $queryMap[$k] }
 foreach ($tm in @($mapping.teamMap)) {
+    if (-not ($tm.sourceTeamId -match '^[0-9a-fA-F-]{36}$')) {
+        throw "mapping.json has an invalid sourceTeamId for '$($tm.sourceTeamName)': '$($tm.sourceTeamId)'. Run step 1 again or correct the mapping file."
+    }
     $targetName = if ($tm.targetTeamName -and $tm.targetTeamName -notlike '<FILL*') { $tm.targetTeamName } else { $TargetTeam }
     $tt = $tteams | Where-Object { $_.name -eq $targetName }
     if ($tt) { $subs[$tm.sourceTeamId.ToLowerInvariant()] = $tt.id }
 }
 if ($mapping.extraGuidMap) {
-    $mapping.extraGuidMap.psobject.Properties | ForEach-Object { $subs[$_.Name.ToLowerInvariant()] = $_.Value }
+    $mapping.extraGuidMap.psobject.Properties | ForEach-Object {
+        if (-not ($_.Name -match '^[0-9a-fA-F-]{36}$') -or -not ("$($_.Value)" -match '^[0-9a-fA-F-]{36}$')) {
+            throw "mapping.json extraGuidMap entry '$($_.Name)' -> '$($_.Value)' is not a valid GUID-to-GUID mapping."
+        }
+        $subs[$_.Name.ToLowerInvariant()] = $_.Value
+    }
 }
 
-function Apply-Subs {
+function Update-TextReferences {
     param([string]$Text)
     if ([string]::IsNullOrEmpty($Text)) { return $Text }
     foreach ($k in $subs.Keys) {
@@ -80,9 +116,15 @@ $knownTargetGuids = @($tproj.id) + @($tteams.id) + @($queryMap.Values) + @($subs
 
 # --- Import --------------------------------------------------------------------
 $flags = @()
-Get-ChildItem (Join-Path $ExportDir 'dashboards') -Filter *.json | ForEach-Object {
+$dashboardFiles | ForEach-Object {
     $rec  = Read-Utf8Text $_.FullName | ConvertFrom-Json
     $dash = $rec.dashboard
+    if (-not $dash -or [string]::IsNullOrWhiteSpace("$($dash.name)")) {
+        throw "Dashboard export '$($_.FullName)' is missing dashboard.name. Re-run step 1 or remove the bad export file."
+    }
+    if (-not ($rec.sourceTeamId -match '^[0-9a-fA-F-]{36}$')) {
+        throw "Dashboard export '$($_.FullName)' has an invalid sourceTeamId '$($rec.sourceTeamId)'. Re-run step 1 or correct the export file."
+    }
     $name = "$($dash.name)$NameSuffix"
 
     # Which target team owns this dashboard?
@@ -98,7 +140,7 @@ Get-ChildItem (Join-Path $ExportDir 'dashboards') -Filter *.json | ForEach-Objec
 
     $widgets = @()
     foreach ($w in @($dash.widgets)) {
-        $newSettings = Apply-Subs -Text $w.settings
+        $newSettings = Update-TextReferences -Text $w.settings
 
         # Flag any GUID that survived substitution and isn't a known target id
         $leftover = (Get-GuidsInText -Text $newSettings) | Where-Object { $knownTargetGuids -notcontains $_ }
@@ -114,7 +156,7 @@ Get-ChildItem (Join-Path $ExportDir 'dashboards') -Filter *.json | ForEach-Objec
             $flags += "[$teamName] $name / '$($w.name)': extension widget '$($w.contributionId)' - ensure the extension is installed in $TargetOrg."
         }
 
-        $widgets += @{
+        $widget = @{
             name            = $w.name
             contributionId  = $w.contributionId
             position        = @{ row = $w.position.row; column = $w.position.column }
@@ -122,6 +164,12 @@ Get-ChildItem (Join-Path $ExportDir 'dashboards') -Filter *.json | ForEach-Objec
             settings        = $newSettings
             settingsVersion = $w.settingsVersion
         }
+        foreach ($optionalField in @('artifactId', 'isEnabled', 'contentUri')) {
+            if ($w.PSObject.Properties.Name -contains $optionalField -and $null -ne $w.$optionalField) {
+                $widget[$optionalField] = $w.$optionalField
+            }
+        }
+        $widgets += $widget
     }
 
     $body = @{
@@ -131,7 +179,7 @@ Get-ChildItem (Join-Path $ExportDir 'dashboards') -Filter *.json | ForEach-Objec
     }
     $created = Invoke-Ado -Headers $headers -Method POST `
         -Uri "$base/$projSeg/$teamSeg/_apis/dashboard/dashboards?api-version=7.1-preview.3" -Body $body
-    Write-Host "CREATED [$teamName] '$name' - $($widgets.Count)/$(@($dash.widgets).Count) widgets" -ForegroundColor Green
+    Write-Host "CREATED [$teamName] '$name' ($($created.id)) - $($widgets.Count)/$(@($dash.widgets).Count) widgets" -ForegroundColor Green
 }
 
 if ($flags) {

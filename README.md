@@ -1,266 +1,105 @@
 # ADO Utils
 
-Practical Azure DevOps automation for process migration, iteration/area path setup, dashboard query portability, wiki migration, and work item reporting.
+Standalone PowerShell scripts for common Azure DevOps setup and migration tasks: process/work item type migration, area path and iteration hierarchy loading, dashboard/query portability, wiki migration, and process field auditing.
 
-This repository is built for real delivery work: quickly moving structure and configuration between projects while staying safe, repeatable, and auditable.
+Each folder is self-contained — there's no shared build, no package manager, and no cross-folder dependency (aside from `ado-dashboard-migration/_common.ps1`, which is dot-sourced only by scripts in that same folder). Clone the repo, `cd` into the folder you need, and run the script.
 
-## Why This Repo Exists
+## Why this repo exists
 
-Azure DevOps setup and migration work is often repetitive and risky:
+Azure DevOps setup and migration work is repetitive and easy to get wrong by hand:
 
-- Complex hierarchy imports (iterations, area paths)
-- Process and work item type migration across templates
-- Query portability when starting new projects
-- Wiki content migration with verification
-- Field usage validation across multiple projects
+- Migrating a custom work item type (fields, picklists, states, rules, form layout) between processes.
+- Loading area path or iteration hierarchies into a new project from CSV/Excel.
+- Carrying dashboards and their underlying queries from one project to another.
+- Migrating wiki content between projects, with or without a local backup step.
+- Auditing which fields a process actually defines, for documentation or governance.
 
-These scripts automate those tasks with a bias toward:
+These scripts favor:
 
-- Idempotent operations
-- Preview-first patterns before writes
-- Strong validation and useful logs
-- Minimal external dependencies where possible
+- **Idempotent operations** — safe to re-run; existing items are detected and reused/patched, not duplicated.
+- **Preview-first where it matters** — the iteration importer defaults to preview and requires `-Apply` to write.
+- **Verification after writes** — area/iteration migrations re-read the target and fail loudly if anything's still missing; wiki migration reads pages back and compares content.
+- **No exotic dependencies** — plain PowerShell and the Azure DevOps REST API. No Azure CLI, no external modules, no Python.
 
-## At a Glance
-
-| Goal | Start with |
-|---|---|
-| Export and replicate an inherited process | `export_process.mjs`, then `migrate_process.mjs` |
-| Migrate one custom work item type | `ADO Utils/ado-migrate-workitemtype.ps1` |
-| Load iteration hierarchy from Excel | `build_iteration_template.mjs` + `Import-AzureDevOpsIterations-Excel.ps1` |
-| Load area hierarchy from CSV | `ADO Utils/ado-import-area-paths.ps1` |
-| Move dashboard queries between projects | `ADO Utils/ado-export-dashboard-queries.ps1` + `ADO Utils/ado-import-dashboard-queries.ps1` |
-| Migrate wiki content safely | `ADO Utils/ado-migrate-wiki.ps1` or `ado-extract-wiki.ps1` + `ado-load-wiki.ps1` |
-| Validate cross-project field usage | `ado_validate_complete.mjs` and `review_ado_changes.mjs` |
-
-## What You Can Do
-
-### Process and WIT migration
-
-- Export a full inherited process definition to JSON.
-- Rebuild a CMMI-based process onto an Agile inherited process.
-- Migrate a specific work item type including fields, picklists, states, rules, and layout.
-
-### Hierarchy loading
-
-- Import Area Paths from CSV (creates only missing nodes).
-- Import Iterations from Excel template, with preview and optional apply/update behavior.
-- Generate a styled iteration template workbook and previews.
-
-### Query portability and migration
-
-- Export dashboard query packs from one project.
-- Import dashboard queries into a target project with WIQL transformations for portability.
-
-### Wiki migration
-
-- Direct wiki-to-wiki migration.
-- Extract wiki content to Markdown with manifest/hash verification.
-- Load manifest-backed Markdown exports into a target wiki.
-
-### Validation and reporting
-
-- Validate field usage across multiple projects against workbook references.
-- Reconcile and update workbook output artifacts.
-- Export overdue task reports to CSV.
-
-## Repository Layout
+## Repository layout
 
 ```text
 .
-|-- ADO Utils/
-|   |-- ado-migrate-wiki.ps1
-|   |-- ado-extract-wiki.ps1
-|   |-- ado-load-wiki.ps1
-|   |-- ado-import-area-paths.ps1
-|   |-- ado-import-iterations.ps1
-|   |-- ado-export-dashboard-queries.ps1
-|   |-- ado-import-dashboard-queries.ps1
-|   `-- ado-migrate-workitemtype.ps1
-|-- outputs/
-|-- *.mjs
-|-- *.ps1
-`-- CSV/XLSX working files
+|-- ado-dashboard-migration/     # Steps 1-4: export/migrate dashboards + their queries
+|-- ado-field-extraction/        # Audit all fields defined by a process, export to CSV
+|-- ado-import-area-paths/       # Load/migrate Area Path hierarchy
+|-- ado-import-iterations/       # Load/migrate Iteration Path hierarchy (with dates)
+|-- ado-migrate-wiki/            # Direct wiki migration, or extract-to-Markdown + load
+`-- ado-migrate-workitemtype/    # Migrate one custom work item type between processes
 ```
+
+Each folder has its own `README.md` with full parameter tables, examples, and troubleshooting — this file is the index.
+
+## At a glance
+
+| Goal | Folder | Start with |
+|---|---|---|
+| Migrate a custom work item type between processes | [ado-migrate-workitemtype](ado-migrate-workitemtype/README.md) | `ado-migrate-workitemtype.ps1` |
+| Load an Area Path hierarchy from CSV, or copy it between projects | [ado-import-area-paths](ado-import-area-paths/README.md) | `ado-import-area-paths.ps1` / `ado-migrate-area-paths.ps1` |
+| Load an Iteration (sprint) hierarchy from Excel, or copy it between projects | [ado-import-iterations](ado-import-iterations/README.md) | `ado-import-iterations.ps1` / `ado-migrate-iterations.ps1` |
+| Move dashboards and their queries between projects | [ado-dashboard-migration](ado-dashboard-migration/readme.md) | `01-export-dashboards.ps1` → `02-migrate-queries.ps1` → `03-import-dashboards.ps1` |
+| Migrate wiki content between projects | [ado-migrate-wiki](ado-migrate-wiki/README.md) | `ado-migrate-wiki.ps1` (direct) or `ado-extract-wiki.ps1` + `ado-load-wiki.ps1` (via Markdown) |
+| List every field a process defines, exported to CSV | [ado-field-extraction](ado-field-extraction/README.md) | `ado-organization-ID-listing.ps1` then `ado-process-fields.ps1` |
 
 ## Prerequisites
 
-### Core
+- PowerShell 7+ (Windows PowerShell 5.1 also works for most scripts — see each folder's README for specifics).
+- Azure DevOps Personal Access Token(s) with the scopes each script needs (documented per folder). Scripts prompt securely for a PAT when one isn't supplied, and none of them write a PAT to disk or logs.
+- `ado-import-iterations.ps1` reads `.xlsx` workbooks directly via .NET's built-in ZIP/XML support — no Excel installation or extra module required.
 
-- PowerShell 7+ (Windows PowerShell 5.1 also works for many scripts)
-- Node.js 20+ (for `.mjs` scripts)
-- Azure DevOps PAT(s) with appropriate permissions
+No Node.js, no `npm install`, no Azure CLI is required by anything in this repo.
 
-### Optional
+## Authentication notes
 
-- Azure CLI (`az`) for scripts that obtain bearer tokens
-- Microsoft Excel desktop for `Import-AzureDevOpsIterations-Excel.ps1`
+All scripts use PAT-over-Basic auth against `https://dev.azure.com`. Most accept the organization as either a bare name (`contoso`) or a full URL (`https://dev.azure.com/contoso`, `https://contoso.visualstudio.com`) and normalize it automatically.
 
-### Node dependencies
+Minimum PAT scopes generally needed, by task:
 
-Several `.mjs` scripts use `@oai/artifact-tool` for workbook import/export and inspection.
-
-```powershell
-npm install @oai/artifact-tool
-```
-
-If this repository is consumed as a standalone clone, add your own `package.json` as needed.
-
-## Quick Start
-
-### 1) Clone and open
-
-```powershell
-git clone https://github.com/ScottPriestley/ado-utils.git
-cd ado-utils
-```
-
-### 2) Set PAT environment variables (example)
-
-```powershell
-$env:ADO_PAT_JULY = "<pat>"
-$env:ADO_PAT_HUB = "<pat>"
-$env:ADO_PAT_AEC = "<pat>"
-$env:ADO_TOKEN = "<bearer-token-if-needed>"
-```
-
-Note: many PowerShell scripts prompt securely for PAT input if not provided.
-
-### 3) Run a common workflow
-
-### Validate workbook field usage across three projects
-
-```powershell
-node ado_validate_complete.mjs
-```
-
-### Build iteration template workbook
-
-```powershell
-node build_iteration_template.mjs
-```
-
-### Preview iteration import from Excel
-
-```powershell
-./Import-AzureDevOpsIterations-Excel.ps1 `
-  -Organization "https://dev.azure.com/your-org" `
-  -Project "Your Project" `
-  -ExcelFile ".\outputs\ado_iteration_loader\ADO_Iteration_Load_Template.xlsx"
-```
-
-### Apply iteration import
-
-```powershell
-./Import-AzureDevOpsIterations-Excel.ps1 `
-  -Organization "https://dev.azure.com/your-org" `
-  -Project "Your Project" `
-  -ExcelFile ".\outputs\ado_iteration_loader\ADO_Iteration_Load_Template.xlsx" `
-  -Apply
-```
-
-## Script Index
-
-### Root `.mjs` scripts
-
-| Script | Purpose |
+| Task | Typical scopes |
 |---|---|
-| `export_process.mjs` | Export full inherited process metadata (WITs, fields, states, rules, layout, behaviors, picklists). |
-| `migrate_process.mjs` | Rebuild source process customizations onto a new Agile-based inherited process. |
-| `ado_validate.mjs` / `ado_validate_complete.mjs` | Validate field reference usage across multiple ADO projects and write `ado_validation.json`. |
-| `review_ado_changes.mjs` | Print detected validation changes from `ado_validation.json`. |
-| `update_where_used.mjs` | Update/revalidate workbook values and render output previews. |
-| `build_iteration_template.mjs` | Generate a styled iteration import workbook and preview image. |
-| `inspect_workbook.mjs` / `inspect_workbook_values.mjs` | Inspect workbook structure and raw values for troubleshooting. |
-| `ado_list_aec_projects.mjs` | List projects from a target ADO org using PAT auth. |
+| Read-only export/audit (field extraction, dashboard export, wiki extract) | Work Items (Read), Project and Team (Read), Dashboards (Read) as applicable |
+| Area/Iteration import or migration | Work Items (Read & Write) |
+| Dashboard/query import | Work Items (Read & Write), Team Dashboards (Manage) |
+| Wiki migration (target side) | Read/write on the target project and wiki |
+| Work item type migration (target side) | Work Items (Read & Write), Process (Read & Write); org-level field creation needs Project Collection Administrator or equivalent |
 
-### Root `.ps1` scripts
+Use least-privilege, short-lived PATs, and revoke migration-specific PATs once you've validated the result.
 
-| Script | Purpose |
-|---|---|
-| `Import-AzureDevOpsIterations-Excel.ps1` | Excel-COM wrapper for iteration loader; includes in-memory date validation patch. |
-| `Import-AzureDevOpsIterations.ps1` | Import/preview iteration hierarchy from XLSX using ZIP/XML (no Python or COM). |
-| `Run-AzureDevOpsIterations.ps1` | Wrapper to run the patched iteration loader in a predictable way. |
-| `ado-overdue.ps1` | Query overdue ADO tasks and export CSV report. |
+## Safety and repeatability
 
-### `ADO Utils` folder
+- Most write operations are **create-missing**, not destructive replace — re-running a script after a partial failure fills in what's still missing rather than duplicating or overwriting unrelated content.
+- Area/Iteration scripts verify against a fresh read of the target after writing and throw if anything requested is still absent.
+- Wiki migration reads every written page back and fails the run if the content doesn't match what was sent.
+- Even with idempotent design, run against a non-production project first when the target is unfamiliar or the operation is new to you.
 
-| Script | Purpose |
-|---|---|
-| `ado-import-area-paths.ps1` | Idempotent Area Path import from CSV with final verification. |
-| `ado-import-iterations.ps1` | Iteration import with preview/apply behavior. |
-| `ado-export-dashboard-queries.ps1` | Export dashboard query folder tree, WIQL, metadata, and package zip. |
-| `ado-import-dashboard-queries.ps1` | Import query packages with portability transforms and optional placeholders. |
-| `ado-migrate-workitemtype.ps1` | Migrate a single WIT between inherited processes (fields/states/rules/layout). |
-| `ado-migrate-wiki.ps1` | Direct wiki migration between projects/orgs. |
-| `ado-extract-wiki.ps1` | Extract wiki pages to manifest-backed Markdown files. |
-| `ado-load-wiki.ps1` | Load extracted Markdown package into target project wiki. |
+## Typical migration playbook
 
-For full wiki migration guidance, see `ADO Utils/ado-migrate-wiki README.md`.
+For standing up a new project from an existing one:
 
-## Authentication Notes
+1. Migrate any custom work item types the new project needs (`ado-migrate-workitemtype`).
+2. Load the Area Path and Iteration Path hierarchies (`ado-import-area-paths`, `ado-import-iterations`).
+3. Migrate dashboards and their queries (`ado-dashboard-migration`, steps 1–4).
+4. Migrate wiki content (`ado-migrate-wiki`).
+5. Review each step's generated report/log before moving to the next.
 
-Different scripts use different auth styles:
+## Outputs and artifacts
 
-- PAT over Basic auth (most PowerShell and some Node scripts)
-- Bearer tokens from Azure CLI (`az account get-access-token`) for process migration flows
-
-Minimum PAT scopes depend on operation, usually including:
-
-- Work Items: Read / Write
-- Process: Read & Write (for process/WIT customization)
-- Project/Wiki read-write where wiki scripts are used
-
-Use least-privilege, short-lived PATs when possible.
-
-## Outputs and Artifacts
-
-Common generated outputs:
-
-- `ado_validation.json`
-- `outputs/migration_log.jsonl`
-- `outputs/ado_iteration_loader/*`
-- `outputs/where_used_revalidated/*`
-- timestamped logs from migration/import scripts
-
-Treat exported artifacts as potentially sensitive project data.
-
-## Safety and Repeatability
-
-Many scripts are designed for safe reruns:
-
-- Create-missing behavior instead of destructive replacement
-- Preview-first defaults for hierarchy imports
-- Verification passes after write operations
-- Conflict and validation logging
-
-Even with idempotent design, run first against non-production projects where possible.
-
-## Typical Migration Playbook
-
-1. Export current process and baseline artifacts.
-2. Build/validate target process migration.
-3. Import area/iteration hierarchy with preview first.
-4. Port dashboard queries with transformations.
-5. Migrate wiki content and verify.
-6. Run validation scripts and review deltas.
+Scripts that export data write it into the current directory or a folder you specify (never into this repo's tracked source unless you point them there): timestamped wiki migration logs, dashboard export folders (`dashboards/`, `queries.json`, `inventory.md`, etc.), and CSV field exports. Treat these as potentially sensitive project data — they can contain query text, project structure, and page content.
 
 ## Contributing
 
-Contributions are welcome, especially:
+If you add a new script:
 
-- Additional idempotent migration utilities
-- Better diagnostics/logging
-- Safer dry-run capabilities
-- Documentation improvements and scenario examples
-
-If you add a new script, include:
-
-- A concise synopsis/help block
-- Example usage
-- Required permissions/scopes
-- Output expectations
+- Include a `.SYNOPSIS`/`.DESCRIPTION` comment-based help block and at least one `.EXAMPLE`.
+- Document required PAT scopes and expected output.
+- Prefer idempotent, create-missing behavior over destructive replacement; verify writes where practical.
+- Add or update the relevant folder's `README.md`, and add a row to the **At a glance** table above if it's a new top-level workflow.
 
 ## Disclaimer
 
-These scripts can make live changes in Azure DevOps projects and processes. Review, test, and validate in non-production environments before running against production data.
+These scripts make live changes to Azure DevOps projects and processes. Review, test, and validate against non-production projects before running against production data.

@@ -55,6 +55,10 @@ function Get-AzureDevOpsHeaders {
     $credential = [pscredential]::new('pat', $PersonalAccessToken)
     $plainTextPat = $credential.GetNetworkCredential().Password
     try {
+        if ([string]::IsNullOrWhiteSpace($plainTextPat)) {
+            throw 'A non-empty Azure DevOps PAT is required.'
+        }
+
         $encodedToken = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$plainTextPat"))
         return @{
             Authorization = "Basic $encodedToken"
@@ -75,7 +79,63 @@ function Invoke-AzureDevOpsGet {
         [hashtable]$Headers
     )
 
-    return Invoke-RestMethod -Uri $Uri -Headers $Headers -Method Get -ErrorAction Stop
+    try {
+        return Invoke-RestMethod -Uri $Uri -Headers $Headers -Method Get -ErrorAction Stop
+    }
+    catch {
+        $statusCode = if ($null -ne $_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 0 }
+        $responseText = $null
+        if ($null -ne $_.ErrorDetails -and -not [string]::IsNullOrWhiteSpace($_.ErrorDetails.Message)) {
+            $responseText = $_.ErrorDetails.Message
+        }
+        elseif ($null -ne $_.Exception.Response) {
+            try {
+                $stream = $_.Exception.Response.GetResponseStream()
+                if ($null -ne $stream) {
+                    $reader = [IO.StreamReader]::new($stream)
+                    try { $responseText = $reader.ReadToEnd() }
+                    finally { $reader.Dispose() }
+                }
+            }
+            catch {
+                $responseText = $null
+            }
+        }
+
+        if ([string]::IsNullOrWhiteSpace($responseText)) {
+            throw "Azure DevOps GET failed for '$Uri' with status $statusCode. $($_.Exception.Message)"
+        }
+
+        throw "Azure DevOps GET failed for '$Uri' with status $statusCode. $responseText"
+    }
+}
+
+function Resolve-OutputDirectory {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $normalizedPath = $Path.Trim()
+    if ($normalizedPath.Length -ge 2) {
+        $firstCharacter = $normalizedPath[0]
+        $lastCharacter = $normalizedPath[$normalizedPath.Length - 1]
+        if (($firstCharacter -eq '"' -and $lastCharacter -eq '"') -or
+            ($firstCharacter -eq "'" -and $lastCharacter -eq "'")) {
+            $normalizedPath = $normalizedPath.Substring(1, $normalizedPath.Length - 2)
+        }
+    }
+
+    if ([string]::IsNullOrWhiteSpace($normalizedPath)) {
+        throw 'Output path is empty.'
+    }
+
+    $fullPath = [IO.Path]::GetFullPath($normalizedPath)
+    if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
+        throw "Output path points to a file, not a folder: '$fullPath'."
+    }
+
+    return $fullPath
 }
 
 function Get-AzureDevOpsWikis {
@@ -201,6 +261,10 @@ function ConvertTo-RelativeMarkdownPath {
         [string]$WikiPagePath
     )
 
+    if ([string]::IsNullOrWhiteSpace($WikiPagePath) -or $WikiPagePath -eq '/' -or -not $WikiPagePath.StartsWith('/')) {
+        throw "Wiki page path '$WikiPagePath' does not identify a writable page."
+    }
+
     $segments = @($WikiPagePath.Trim('/') -split '/' | ForEach-Object {
         ConvertTo-SafePathSegment -Value $_
     })
@@ -251,26 +315,58 @@ function Export-AzureDevOpsWiki {
 
     $wikiFolderName = ConvertTo-SafePathSegment -Value ([string]$Wiki.name)
     $wikiDirectory = Join-Path $DestinationRoot $wikiFolderName
+
+    if (Test-Path -LiteralPath $wikiDirectory -PathType Leaf) {
+        throw "Destination wiki path points to a file, not a folder: '$wikiDirectory'."
+    }
+
+    if (Test-Path -LiteralPath $wikiDirectory -PathType Container) {
+        $existingItems = @(Get-ChildItem -LiteralPath $wikiDirectory -Force -ErrorAction Stop | Select-Object -First 1)
+        if ($existingItems.Count -gt 0) {
+            throw "Destination wiki folder already contains files: '$wikiDirectory'. Choose an empty output path to avoid overwriting an earlier export."
+        }
+    }
+
     $null = New-Item -ItemType Directory -Path $wikiDirectory -Force
 
     Write-Host "Discovering pages in wiki '$($Wiki.name)'..." -ForegroundColor Cyan
     $pagePaths = @(Get-AzureDevOpsWikiPagePaths -Organization $Organization -Project $Project `
         -WikiIdentifier ([string]$Wiki.id) -Headers $Headers)
+    if ($pagePaths.Count -eq 0) {
+        throw "Wiki '$($Wiki.name)' contains no writable pages to export."
+    }
 
     $relativePaths = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
     $manifestPages = [System.Collections.Generic.List[object]]::new()
     $utf8WithoutBom = [Text.UTF8Encoding]::new($false)
+    $plannedPages = [System.Collections.Generic.List[object]]::new()
 
     foreach ($pagePath in $pagePaths) {
-        $page = Get-AzureDevOpsWikiPage -Organization $Organization -Project $Project `
-            -WikiIdentifier ([string]$Wiki.id) -PagePath $pagePath -Headers $Headers
         $relativePath = ConvertTo-RelativeMarkdownPath -WikiPagePath $pagePath
-
         if (-not $relativePaths.Add($relativePath)) {
             throw "Multiple wiki pages map to the same local path '$relativePath'. No files were overwritten."
         }
 
-        $filePath = Join-Path $wikiDirectory $relativePath
+        $filePath = [IO.Path]::GetFullPath((Join-Path $wikiDirectory $relativePath))
+        $wikiRoot = [IO.Path]::GetFullPath($wikiDirectory).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
+        $wikiRootPrefix = "$wikiRoot$([IO.Path]::DirectorySeparatorChar)"
+        if (-not $filePath.StartsWith($wikiRootPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Wiki page path '$pagePath' resolves outside the destination folder."
+        }
+
+        $plannedPages.Add([pscustomobject]@{
+            WikiPath     = $pagePath
+            RelativePath = $relativePath
+            FilePath     = $filePath
+        })
+    }
+
+    foreach ($plannedPage in $plannedPages) {
+        $pagePath = $plannedPage.WikiPath
+        $page = Get-AzureDevOpsWikiPage -Organization $Organization -Project $Project `
+            -WikiIdentifier ([string]$Wiki.id) -PagePath $pagePath -Headers $Headers
+        $relativePath = $plannedPage.RelativePath
+        $filePath = $plannedPage.FilePath
         $parentDirectory = Split-Path -Parent $filePath
         $null = New-Item -ItemType Directory -Path $parentDirectory -Force
 
@@ -347,7 +443,7 @@ function Invoke-WikiExtraction {
             $timestamp = Get-Date -Format 'yyyyMMdd_HHmmss'
             $resolvedOutputPath = Join-Path (Get-Location) "WikiExport_${resolvedProject}_$timestamp"
         }
-        $resolvedOutputPath = [IO.Path]::GetFullPath($resolvedOutputPath)
+        $resolvedOutputPath = Resolve-OutputDirectory -Path $resolvedOutputPath
         $null = New-Item -ItemType Directory -Path $resolvedOutputPath -Force
 
         $exportedWikis = [System.Collections.Generic.List[object]]::new()
