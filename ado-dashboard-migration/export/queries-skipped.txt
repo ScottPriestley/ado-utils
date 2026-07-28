@@ -1,3 +1,0 @@
-﻿Finance Issues - P1 - TF51011: The specified iteration path does not exist. The error is caused by \u00AB\u0027ProServ PMO Sandbox\\Go Live and Hypercare\u0027\u00BB.
-Finance Issues - P2 - TF51011: The specified iteration path does not exist. The error is caused by \u00AB\u0027ProServ PMO Sandbox\\Go Live and Hypercare\u0027\u00BB.
-Finance Issues - P3 - TF51011: The specified iteration path does not exist. The error is caused by \u00AB\u0027ProServ PMO Sandbox\\Go Live and Hypercare\u0027\u00BB.
