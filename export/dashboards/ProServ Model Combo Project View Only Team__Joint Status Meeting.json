@@ -1,0 +1,780 @@
+﻿{
+  "sourceTeamName": "ProServ Model Combo Project View Only Team",
+  "sourceTeamId": "5958ba6f-7d96-45b3-b413-c4e82f034ae6",
+  "dashboard": {
+    "id": "b0347c1b-e7d3-4d7a-849f-a88c39e87cc5",
+    "name": "Joint Status Meeting",
+    "description": "",
+    "refreshInterval": 0,
+    "position": 3,
+    "eTag": "116",
+    "widgets": [
+      {
+        "id": "89aa8a0a-8584-408f-b976-03f0ca027588",
+        "eTag": "9",
+        "name": "Due Next 2 Weeks - All Work Items by Assigned To",
+        "position": {
+          "row": 4,
+          "column": 6
+        },
+        "size": {
+          "rowSpan": 2,
+          "columnSpan": 4
+        },
+        "settings": "{\"chartType\":\"stackBarChart\",\"groupKey\":\"536e0056-e85f-4449-b88f-c9a2225beba6\",\"scope\":\"WorkitemTracking.Queries\",\"title\":\"Due Next 2 Weeks - All Work Items by Assigned To\",\"transformOptions\":{\"filter\":\"536e0056-e85f-4449-b88f-c9a2225beba6\",\"groupBy\":\"System.WorkItemType\",\"orderBy\":{\"direction\":\"descending\",\"propertyName\":\"value\"},\"measure\":{\"aggregation\":\"count\",\"propertyName\":\"\"},\"historyRange\":null,\"series\":\"System.AssignedTo\",\"groupByTags\":true,\"FilteredGroups\":[]},\"userColors\":[{\"value\":\"Question\",\"backgroundColor\":\"#3f9bd8\"},{\"value\":\"User Story\",\"backgroundColor\":\"#fbbc3d\"}],\"lastArtifactName\":\"Due Next 2 Weeks - All Work Items by Assigned To\"}",
+        "settingsVersion": {
+          "major": 3,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/89aa8a0a-8584-408f-b976-03f0ca027588",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/89aa8a0a-8584-408f-b976-03f0ca027588"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20View%20Only%20Team/_apis/Dashboard/Dashboards/b0347c1b-e7d3-4d7a-849f-a88c39e87cc5"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/ChartLoading.png",
+        "lightboxOptions": {
+          "width": 900,
+          "height": 700,
+          "resizable": true
+        }
+      },
+      {
+        "id": "8e0f084d-dd9e-45ce-a2f8-1e40cdb8e0e9",
+        "eTag": "4",
+        "name": "Markdown",
+        "position": {
+          "row": 2,
+          "column": 1
+        },
+        "size": {
+          "rowSpan": 2,
+          "columnSpan": 1
+        },
+        "settings": "#Past Due\n###All Workstreams",
+        "settingsVersion": {
+          "major": 1,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/8e0f084d-dd9e-45ce-a2f8-1e40cdb8e0e9",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/8e0f084d-dd9e-45ce-a2f8-1e40cdb8e0e9"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20View%20Only%20Team/_apis/Dashboard/Dashboards/b0347c1b-e7d3-4d7a-849f-a88c39e87cc5"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget.Configuration",
+        "isNameConfigurable": false,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/markdownLoading.png",
+        "lightboxOptions": {
+          "width": 600,
+          "height": 500,
+          "resizable": true
+        }
+      },
+      {
+        "id": "072cd525-f8b0-43ed-b978-330a93451e14",
+        "eTag": "1",
+        "name": "Missing SME",
+        "position": {
+          "row": 1,
+          "column": 5
+        },
+        "size": {
+          "rowSpan": 1,
+          "columnSpan": 1
+        },
+        "settings": "{\"defaultBackgroundColor\":\"#a8ce4b\",\"queryId\":\"2d063dcc-9aeb-4b5f-bbb0-617b54e74c86\",\"queryName\":\"Missing Client SME\",\"colorRules\":[{\"isEnabled\":true,\"backgroundColor\":\"#fbbc3d\",\"thresholdCount\":5,\"operator\":\">\"},{\"isEnabled\":true,\"backgroundColor\":\"#7f1725\",\"thresholdCount\":10,\"operator\":\">\"}],\"lastArtifactName\":\"Missing Client SME\"}",
+        "settingsVersion": {
+          "major": 1,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/072cd525-f8b0-43ed-b978-330a93451e14",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/072cd525-f8b0-43ed-b978-330a93451e14"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20View%20Only%20Team/_apis/Dashboard/Dashboards/b0347c1b-e7d3-4d7a-849f-a88c39e87cc5"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/scalarLoading.png"
+      },
+      {
+        "id": "296ca8c8-c7f3-4b4e-8540-3c5b2c523eac",
+        "eTag": "2",
+        "name": "Past Due - All Work Items by Due Date",
+        "position": {
+          "row": 2,
+          "column": 2
+        },
+        "size": {
+          "rowSpan": 2,
+          "columnSpan": 4
+        },
+        "settings": "{\"chartType\":\"ColumnChart\",\"groupKey\":\"df184d6d-8d62-43f3-8609-15189c55ddfa\",\"scope\":\"WorkitemTracking.Queries\",\"title\":\"Past Due - All Work Items by Due Date\",\"transformOptions\":{\"filter\":\"df184d6d-8d62-43f3-8609-15189c55ddfa\",\"groupBy\":\"Microsoft.VSTS.Scheduling.DueDate\",\"orderBy\":{\"propertyName\":\"label\",\"direction\":\"ascending\"},\"measure\":{\"aggregation\":\"count\",\"propertyName\":\"\"},\"historyRange\":null,\"groupByTags\":true,\"FilteredGroups\":[]},\"userColors\":[],\"lastArtifactName\":\"Past Due - All Work Items by Due Date\"}",
+        "settingsVersion": {
+          "major": 3,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/296ca8c8-c7f3-4b4e-8540-3c5b2c523eac",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/296ca8c8-c7f3-4b4e-8540-3c5b2c523eac"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20View%20Only%20Team/_apis/Dashboard/Dashboards/b0347c1b-e7d3-4d7a-849f-a88c39e87cc5"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/ChartLoading.png",
+        "lightboxOptions": {
+          "width": 900,
+          "height": 700,
+          "resizable": true
+        }
+      },
+      {
+        "id": "570bce8d-e60b-4f79-94e7-4dd549396a72",
+        "eTag": "6",
+        "name": "Past Due - All Work Items by Assigned To",
+        "position": {
+          "row": 2,
+          "column": 6
+        },
+        "size": {
+          "rowSpan": 2,
+          "columnSpan": 4
+        },
+        "settings": "{\"chartType\":\"stackBarChart\",\"groupKey\":\"df184d6d-8d62-43f3-8609-15189c55ddfa\",\"scope\":\"WorkitemTracking.Queries\",\"title\":\"Past Due - All Work Items by Assigned To\",\"transformOptions\":{\"filter\":\"df184d6d-8d62-43f3-8609-15189c55ddfa\",\"groupBy\":\"System.WorkItemType\",\"orderBy\":{\"propertyName\":\"value\",\"direction\":\"descending\"},\"measure\":{\"aggregation\":\"count\",\"propertyName\":\"\"},\"historyRange\":null,\"series\":\"System.AssignedTo\",\"groupByTags\":true,\"FilteredGroups\":[]},\"userColors\":[{\"value\":\"Configuration\",\"backgroundColor\":\"#cccccc\"},{\"value\":\"User Story\",\"backgroundColor\":\"#fbbc3d\"},{\"value\":\"Decision\",\"backgroundColor\":\"#f58b1f\"},{\"value\":\"Question\",\"backgroundColor\":\"#3f9bd8\"}],\"lastArtifactName\":\"Past Due - All Work Items by Assigned To\"}",
+        "settingsVersion": {
+          "major": 3,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/570bce8d-e60b-4f79-94e7-4dd549396a72",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/570bce8d-e60b-4f79-94e7-4dd549396a72"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20View%20Only%20Team/_apis/Dashboard/Dashboards/b0347c1b-e7d3-4d7a-849f-a88c39e87cc5"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/ChartLoading.png",
+        "lightboxOptions": {
+          "width": 900,
+          "height": 700,
+          "resizable": true
+        }
+      },
+      {
+        "id": "6294f6e6-c4ab-43b0-9566-657a3e9f8e69",
+        "eTag": "7",
+        "name": "Markdown",
+        "position": {
+          "row": 1,
+          "column": 1
+        },
+        "size": {
+          "rowSpan": 1,
+          "columnSpan": 3
+        },
+        "settings": "#Joint Status Meeting\n####Current FO Iteration:     Planned End Date: \n####Current CE Iteration:     Planned End Date:\n####Current ETL:     Planned End Date:",
+        "settingsVersion": {
+          "major": 1,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/6294f6e6-c4ab-43b0-9566-657a3e9f8e69",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/6294f6e6-c4ab-43b0-9566-657a3e9f8e69"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20View%20Only%20Team/_apis/Dashboard/Dashboards/b0347c1b-e7d3-4d7a-849f-a88c39e87cc5"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget.Configuration",
+        "isNameConfigurable": false,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/markdownLoading.png",
+        "lightboxOptions": {
+          "width": 600,
+          "height": 500,
+          "resizable": true
+        }
+      },
+      {
+        "id": "11e2bf59-69a2-4436-a465-8c46317e844e",
+        "eTag": "1",
+        "name": "Markdown",
+        "position": {
+          "row": 1,
+          "column": 8
+        },
+        "size": {
+          "rowSpan": 1,
+          "columnSpan": 7
+        },
+        "settings": "",
+        "settingsVersion": {
+          "major": 1,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/11e2bf59-69a2-4436-a465-8c46317e844e",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/11e2bf59-69a2-4436-a465-8c46317e844e"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20View%20Only%20Team/_apis/Dashboard/Dashboards/b0347c1b-e7d3-4d7a-849f-a88c39e87cc5"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget.Configuration",
+        "isNameConfigurable": false,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/markdownLoading.png",
+        "lightboxOptions": {
+          "width": 600,
+          "height": 500,
+          "resizable": true
+        }
+      },
+      {
+        "id": "9ef036c3-f3d6-482c-a25c-a9b79dd9418c",
+        "eTag": "1",
+        "name": "Markdown",
+        "position": {
+          "row": 6,
+          "column": 1
+        },
+        "size": {
+          "rowSpan": 2,
+          "columnSpan": 1
+        },
+        "settings": "#Scope Management",
+        "settingsVersion": {
+          "major": 1,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/9ef036c3-f3d6-482c-a25c-a9b79dd9418c",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/9ef036c3-f3d6-482c-a25c-a9b79dd9418c"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20View%20Only%20Team/_apis/Dashboard/Dashboards/b0347c1b-e7d3-4d7a-849f-a88c39e87cc5"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget.Configuration",
+        "isNameConfigurable": false,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/markdownLoading.png",
+        "lightboxOptions": {
+          "width": 600,
+          "height": 500,
+          "resizable": true
+        }
+      },
+      {
+        "id": "e04b96de-2768-40a2-b916-ab4ad6aab509",
+        "eTag": "3",
+        "name": "Requirements ALL by Identified When",
+        "position": {
+          "row": 6,
+          "column": 2
+        },
+        "size": {
+          "rowSpan": 2,
+          "columnSpan": 4
+        },
+        "settings": "{\"chartType\":\"ColumnChart\",\"groupKey\":\"b1fef614-da6f-41bb-8cf0-6b0334a2f233\",\"scope\":\"WorkitemTracking.Queries\",\"title\":\"Requirements ALL by Identified When\",\"transformOptions\":{\"filter\":\"b1fef614-da6f-41bb-8cf0-6b0334a2f233\",\"groupBy\":\"Custom.IdentifiedWhen\",\"orderBy\":{\"propertyName\":\"label\",\"direction\":\"ascending\"},\"measure\":{\"aggregation\":\"count\",\"propertyName\":\"\"},\"historyRange\":null,\"groupByTags\":false},\"userColors\":[],\"lastArtifactName\":\"Requirements ALL by Identified When\"}",
+        "settingsVersion": {
+          "major": 3,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/e04b96de-2768-40a2-b916-ab4ad6aab509",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/e04b96de-2768-40a2-b916-ab4ad6aab509"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20View%20Only%20Team/_apis/Dashboard/Dashboards/b0347c1b-e7d3-4d7a-849f-a88c39e87cc5"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/ChartLoading.png",
+        "lightboxOptions": {
+          "width": 900,
+          "height": 700,
+          "resizable": true
+        }
+      },
+      {
+        "id": "f2573c26-7537-47bf-86c8-d798c68d8590",
+        "eTag": "5",
+        "name": "Markdown",
+        "position": {
+          "row": 4,
+          "column": 1
+        },
+        "size": {
+          "rowSpan": 2,
+          "columnSpan": 1
+        },
+        "settings": "#Due Next 2 Weeks\n### All Workstreams",
+        "settingsVersion": {
+          "major": 1,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/f2573c26-7537-47bf-86c8-d798c68d8590",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/f2573c26-7537-47bf-86c8-d798c68d8590"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20View%20Only%20Team/_apis/Dashboard/Dashboards/b0347c1b-e7d3-4d7a-849f-a88c39e87cc5"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget.Configuration",
+        "isNameConfigurable": false,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/markdownLoading.png",
+        "lightboxOptions": {
+          "width": 600,
+          "height": 500,
+          "resizable": true
+        }
+      },
+      {
+        "id": "e852053b-afe5-4d7d-a138-e551ad4bda2b",
+        "eTag": "5",
+        "name": "Past Due - All Work Items by Area Path",
+        "position": {
+          "row": 2,
+          "column": 10
+        },
+        "size": {
+          "rowSpan": 2,
+          "columnSpan": 4
+        },
+        "settings": "{\"chartType\":\"stackBarChart\",\"groupKey\":\"df184d6d-8d62-43f3-8609-15189c55ddfa\",\"scope\":\"WorkitemTracking.Queries\",\"title\":\"Past Due - All Work Items by Area Path\",\"transformOptions\":{\"filter\":\"df184d6d-8d62-43f3-8609-15189c55ddfa\",\"groupBy\":\"System.WorkItemType\",\"orderBy\":{\"direction\":\"descending\",\"propertyName\":\"value\"},\"measure\":{\"aggregation\":\"count\",\"propertyName\":\"\"},\"historyRange\":null,\"series\":\"System.AreaPath\",\"groupByTags\":true,\"FilteredGroups\":[]},\"userColors\":[],\"lastArtifactName\":\"Past Due - All Work Items by Area Path\"}",
+        "settingsVersion": {
+          "major": 3,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/e852053b-afe5-4d7d-a138-e551ad4bda2b",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/e852053b-afe5-4d7d-a138-e551ad4bda2b"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20View%20Only%20Team/_apis/Dashboard/Dashboards/b0347c1b-e7d3-4d7a-849f-a88c39e87cc5"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/ChartLoading.png",
+        "lightboxOptions": {
+          "width": 900,
+          "height": 700,
+          "resizable": true
+        }
+      },
+      {
+        "id": "8b7e099c-1ad4-4c5a-b462-e553d0904588",
+        "eTag": "1",
+        "name": "Missing HSO",
+        "position": {
+          "row": 1,
+          "column": 6
+        },
+        "size": {
+          "rowSpan": 1,
+          "columnSpan": 1
+        },
+        "settings": "{\"defaultBackgroundColor\":\"#a8ce4b\",\"queryId\":\"3b5a0e8a-a43b-46d7-8f34-afb09a72e1e5\",\"queryName\":\"Missing HSO Consultant\",\"colorRules\":[{\"isEnabled\":true,\"backgroundColor\":\"#fbbc3d\",\"thresholdCount\":5,\"operator\":\">\"},{\"isEnabled\":true,\"backgroundColor\":\"#7f1725\",\"thresholdCount\":10,\"operator\":\">\"}],\"lastArtifactName\":\"Missing HSO Consultant\"}",
+        "settingsVersion": {
+          "major": 1,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/8b7e099c-1ad4-4c5a-b462-e553d0904588",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/8b7e099c-1ad4-4c5a-b462-e553d0904588"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20View%20Only%20Team/_apis/Dashboard/Dashboards/b0347c1b-e7d3-4d7a-849f-a88c39e87cc5"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/scalarLoading.png"
+      },
+      {
+        "id": "b0fe66d7-c4f1-454f-a441-e7e56d1db913",
+        "eTag": "1",
+        "name": "Missing Parent Link",
+        "position": {
+          "row": 1,
+          "column": 4
+        },
+        "size": {
+          "rowSpan": 1,
+          "columnSpan": 1
+        },
+        "settings": "{\"defaultBackgroundColor\":\"#a8ce4b\",\"queryId\":\"95e6c48b-ef36-4ea4-9657-ccae232d7ca5\",\"queryName\":\"Missing Parent Link\",\"colorRules\":[{\"isEnabled\":true,\"backgroundColor\":\"#7f1725\",\"thresholdCount\":10,\"operator\":\">\"},{\"isEnabled\":true,\"backgroundColor\":\"#fbbc3d\",\"thresholdCount\":5,\"operator\":\">\"}],\"lastArtifactName\":\"Missing Parent Link\"}",
+        "settingsVersion": {
+          "major": 1,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/b0fe66d7-c4f1-454f-a441-e7e56d1db913",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/b0fe66d7-c4f1-454f-a441-e7e56d1db913"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20View%20Only%20Team/_apis/Dashboard/Dashboards/b0347c1b-e7d3-4d7a-849f-a88c39e87cc5"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/scalarLoading.png"
+      },
+      {
+        "id": "c23e211d-252a-4ad9-bdfe-f5b7d91291af",
+        "eTag": "2",
+        "name": "Due Next 2 Weeks - All Work Items by Due Date",
+        "position": {
+          "row": 4,
+          "column": 2
+        },
+        "size": {
+          "rowSpan": 2,
+          "columnSpan": 4
+        },
+        "settings": "{\"chartType\":\"ColumnChart\",\"groupKey\":\"536e0056-e85f-4449-b88f-c9a2225beba6\",\"scope\":\"WorkitemTracking.Queries\",\"title\":\"Due Next 2 Weeks - All Work Items by Due Date\",\"transformOptions\":{\"filter\":\"536e0056-e85f-4449-b88f-c9a2225beba6\",\"groupBy\":\"Microsoft.VSTS.Scheduling.DueDate\",\"orderBy\":{\"direction\":\"descending\",\"propertyName\":\"value\"},\"measure\":{\"aggregation\":\"count\",\"propertyName\":\"\"},\"historyRange\":null,\"groupByTags\":true,\"FilteredGroups\":[]},\"userColors\":[],\"lastArtifactName\":\"Due Next 2 Weeks - All Work Items by Due Date\"}",
+        "settingsVersion": {
+          "major": 3,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/c23e211d-252a-4ad9-bdfe-f5b7d91291af",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/c23e211d-252a-4ad9-bdfe-f5b7d91291af"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20View%20Only%20Team/_apis/Dashboard/Dashboards/b0347c1b-e7d3-4d7a-849f-a88c39e87cc5"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/ChartLoading.png",
+        "lightboxOptions": {
+          "width": 900,
+          "height": 700,
+          "resizable": true
+        }
+      },
+      {
+        "id": "c4aea954-a728-4452-ba2c-f66acbd01830",
+        "eTag": "8",
+        "name": "Due Next 2 Weeks - All Work Items by Area Path",
+        "position": {
+          "row": 4,
+          "column": 10
+        },
+        "size": {
+          "rowSpan": 2,
+          "columnSpan": 4
+        },
+        "settings": "{\"chartType\":\"stackBarChart\",\"groupKey\":\"536e0056-e85f-4449-b88f-c9a2225beba6\",\"scope\":\"WorkitemTracking.Queries\",\"title\":\"Due Next 2 Weeks - All Work Items by Area Path\",\"transformOptions\":{\"filter\":\"536e0056-e85f-4449-b88f-c9a2225beba6\",\"groupBy\":\"System.WorkItemType\",\"orderBy\":{\"direction\":\"descending\",\"propertyName\":\"value\"},\"measure\":{\"aggregation\":\"count\",\"propertyName\":\"\"},\"historyRange\":null,\"series\":\"System.AreaPath\",\"groupByTags\":true,\"FilteredGroups\":[]},\"userColors\":[],\"lastArtifactName\":\"Due Next 2 Weeks - All Work Items by Area Path\"}",
+        "settingsVersion": {
+          "major": 3,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/c4aea954-a728-4452-ba2c-f66acbd01830",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/c4aea954-a728-4452-ba2c-f66acbd01830"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20View%20Only%20Team/_apis/Dashboard/Dashboards/b0347c1b-e7d3-4d7a-849f-a88c39e87cc5"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/ChartLoading.png",
+        "lightboxOptions": {
+          "width": 900,
+          "height": 700,
+          "resizable": true
+        }
+      },
+      {
+        "id": "1763da3d-75d8-46dc-b521-fa51a8c1034b",
+        "eTag": "2",
+        "name": "No Due Date",
+        "position": {
+          "row": 1,
+          "column": 7
+        },
+        "size": {
+          "rowSpan": 1,
+          "columnSpan": 1
+        },
+        "settings": "{\"defaultBackgroundColor\":\"#a8ce4b\",\"queryId\":\"6578bd1d-4ad0-4a92-a009-3fb0586ad0c9\",\"queryName\":\"Assigned with No Due Date\",\"colorRules\":[{\"isEnabled\":true,\"backgroundColor\":\"#fbbc3d\",\"thresholdCount\":5,\"operator\":\">\"},{\"isEnabled\":true,\"backgroundColor\":\"#7f1725\",\"thresholdCount\":10,\"operator\":\">=\"}],\"lastArtifactName\":\"Assigned with No Due Date\"}",
+        "settingsVersion": {
+          "major": 1,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/1763da3d-75d8-46dc-b521-fa51a8c1034b",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/1763da3d-75d8-46dc-b521-fa51a8c1034b"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20View%20Only%20Team/_apis/Dashboard/Dashboards/b0347c1b-e7d3-4d7a-849f-a88c39e87cc5"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/scalarLoading.png"
+      }
+    ],
+    "groupId": "5958ba6f-7d96-45b3-b413-c4e82f034ae6",
+    "ownerId": "5958ba6f-7d96-45b3-b413-c4e82f034ae6",
+    "dashboardScope": "project_Team",
+    "modifiedDate": "2025-06-24T15:59:35.38Z",
+    "modifiedBy": "c0bb7546-64a4-6d88-8aef-32595d62fbde",
+    "lastAccessedDate": "2026-07-27T00:00:00Z",
+    "globalParametersConfig": null,
+    "url": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20View%20Only%20Team/_apis/Dashboard/Dashboards/b0347c1b-e7d3-4d7a-849f-a88c39e87cc5",
+    "_links": {
+      "self": {
+        "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20View%20Only%20Team/_apis/Dashboard/Dashboards/b0347c1b-e7d3-4d7a-849f-a88c39e87cc5"
+      },
+      "group": {
+        "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20View%20Only%20Team/_apis/Dashboard/Dashboards"
+      },
+      "widget": [
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/89aa8a0a-8584-408f-b976-03f0ca027588"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/8e0f084d-dd9e-45ce-a2f8-1e40cdb8e0e9"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/072cd525-f8b0-43ed-b978-330a93451e14"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/296ca8c8-c7f3-4b4e-8540-3c5b2c523eac"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/570bce8d-e60b-4f79-94e7-4dd549396a72"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/6294f6e6-c4ab-43b0-9566-657a3e9f8e69"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/11e2bf59-69a2-4436-a465-8c46317e844e"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/9ef036c3-f3d6-482c-a25c-a9b79dd9418c"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/e04b96de-2768-40a2-b916-ab4ad6aab509"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/f2573c26-7537-47bf-86c8-d798c68d8590"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/e852053b-afe5-4d7d-a138-e551ad4bda2b"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/8b7e099c-1ad4-4c5a-b462-e553d0904588"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/b0fe66d7-c4f1-454f-a441-e7e56d1db913"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/c23e211d-252a-4ad9-bdfe-f5b7d91291af"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/c4aea954-a728-4452-ba2c-f66acbd01830"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/1763da3d-75d8-46dc-b521-fa51a8c1034b"
+        }
+      ]
+    }
+  }
+}

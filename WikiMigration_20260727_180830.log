@@ -1,0 +1,2 @@
+[2026-07-27 18:08:30.884] [Info] Migrating 1 referenced wiki attachment(s).
+[2026-07-27 18:08:30.968] [Warning] Skipping missing source attachment 'missing.png' referenced as '.attachments/missing.png'. The source wiki repo does not contain that file under .attachments.

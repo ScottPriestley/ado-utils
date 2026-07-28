@@ -1,0 +1,7 @@
+[2026-07-27 20:33:51.588] [Info] Preflighting 1 referenced wiki attachment(s).
+[2026-07-27 20:33:51.705] [Info] Source wiki 'wiki': repositoryId 'repo-id', mappedPath '/', attachment scopePath '/.attachments'.
+[2026-07-27 20:33:51.806] [Info] Source wiki attachment listing returned 0 item(s) under '/.attachments'.
+[2026-07-27 20:33:52.028] [Warning] Diagnostic: no path in the source attachment listing (0 total item(s)) resembles 'missing.png'. Expected path was '/.attachments/missing.png'.
+[2026-07-27 20:33:52.276] [Warning] Skipping unresolved attachment (missing): '.attachments/missing.png' on '/Page' was not found at '/.attachments/missing.png' or in its Git history.
+[2026-07-27 20:33:52.449] [Info] Writing attachments to repository 'repo-id' branch 'refs/heads/wikiMain' under '/'.
+[2026-07-27 20:33:52.624] [Warning] Skipped 1 unresolved attachment(s); affected pages keep their existing broken link(s): '.attachments/missing.png' on '/Page' was not found at '/.attachments/missing.png' or in its Git history.

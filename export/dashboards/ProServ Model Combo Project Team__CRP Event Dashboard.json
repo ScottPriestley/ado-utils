@@ -1,0 +1,176 @@
+﻿{
+  "sourceTeamName": "ProServ Model Combo Project Team",
+  "sourceTeamId": "bc024d5f-70f7-4813-9b67-a88103578610",
+  "dashboard": {
+    "id": "b2146ed9-f2de-4843-ab8d-96da1fcbe3ae",
+    "name": "CRP Event Dashboard",
+    "description": "",
+    "refreshInterval": 0,
+    "position": 5,
+    "eTag": "15",
+    "widgets": [
+      {
+        "id": "5502286f-6d2e-466f-9f05-a95d14b2332c",
+        "eTag": "4",
+        "name": "Bugs and Issues created during CRP by Created Date",
+        "position": {
+          "row": 3,
+          "column": 2
+        },
+        "size": {
+          "rowSpan": 2,
+          "columnSpan": 4
+        },
+        "settings": "{\"scope\":\"WorkitemTracking.Queries\",\"groupKey\":\"6b8c7aae-1611-4f1b-a345-b77024eb57ba\",\"title\":\"Bugs and Issues created during CRP by Created Date\",\"chartType\":\"ColumnChart\",\"transformOptions\":{\"filter\":\"6b8c7aae-1611-4f1b-a345-b77024eb57ba\",\"groupBy\":\"System.CreatedDate\",\"orderBy\":{\"propertyName\":\"label\",\"direction\":\"descending\"},\"measure\":{\"aggregation\":\"count\",\"propertyName\":\"\"},\"historyRange\":null,\"groupByTags\":false},\"userColors\":[],\"lastArtifactName\":\"Bugs and Issues created during CRP by Created Date\"}",
+        "settingsVersion": {
+          "major": 3,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/5502286f-6d2e-466f-9f05-a95d14b2332c",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/5502286f-6d2e-466f-9f05-a95d14b2332c"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/b2146ed9-f2de-4843-ab8d-96da1fcbe3ae"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/ChartLoading.png",
+        "lightboxOptions": {
+          "width": 900,
+          "height": 700,
+          "resizable": true
+        }
+      },
+      {
+        "id": "358fb968-ec93-496c-8006-b997c27ea9a6",
+        "eTag": "3",
+        "name": "Markdown",
+        "position": {
+          "row": 1,
+          "column": 1
+        },
+        "size": {
+          "rowSpan": 4,
+          "columnSpan": 1
+        },
+        "settings": "#CRP Test Results and Bug Resolution Status\n___\nPush from CRP or UAT Test Plan, a pie chart of Test Results by Outcome and stacked bar chart of testing outcome by Tester (DO NOT INCLUDE THIS DIRECTION ON CLIENT DASHBOARD)",
+        "settingsVersion": {
+          "major": 1,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/358fb968-ec93-496c-8006-b997c27ea9a6",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/358fb968-ec93-496c-8006-b997c27ea9a6"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/b2146ed9-f2de-4843-ab8d-96da1fcbe3ae"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget.Configuration",
+        "isNameConfigurable": false,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/markdownLoading.png",
+        "lightboxOptions": {
+          "width": 600,
+          "height": 500,
+          "resizable": true
+        }
+      },
+      {
+        "id": "93c41238-ea5c-47f9-a3ef-d4c060459328",
+        "eTag": "2",
+        "name": "PO_FO Iteration 1 Test Plan - Query Based - Charts",
+        "position": {
+          "row": 1,
+          "column": 2
+        },
+        "size": {
+          "rowSpan": 2,
+          "columnSpan": 2
+        },
+        "settings": "{\"scope\":\"TestManagement.Reports\",\"groupKey\":\"103291\",\"title\":\"PO_FO Iteration 1 Test Plan - Query Based - Charts\",\"chartType\":\"PieChart\",\"transformOptions\":{\"filter\":\"planId=103290&suiteId=103291&chartDataSource=execution\",\"groupBy\":\"Outcome\",\"orderBy\":{\"direction\":\"descending\",\"propertyName\":\"value\"},\"measure\":{\"aggregation\":\"count\",\"propertyName\":\"\"},\"historyRange\":null,\"groupByTags\":false},\"userColors\":[],\"lastArtifactName\":\"PO_FO Iteration 1 Test Plan - Query Based - Charts\"}",
+        "settingsVersion": {
+          "major": 3,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/93c41238-ea5c-47f9-a3ef-d4c060459328",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/93c41238-ea5c-47f9-a3ef-d4c060459328"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/b2146ed9-f2de-4843-ab8d-96da1fcbe3ae"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.TcmChartWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.TcmChartWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.TcmChartWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.TcmChartWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/ChartLoading.png",
+        "lightboxOptions": {
+          "width": 900,
+          "height": 700,
+          "resizable": true
+        }
+      }
+    ],
+    "groupId": "bc024d5f-70f7-4813-9b67-a88103578610",
+    "ownerId": "bc024d5f-70f7-4813-9b67-a88103578610",
+    "dashboardScope": "project_Team",
+    "modifiedDate": "2025-08-21T18:30:30.977Z",
+    "modifiedBy": "c0bb7546-64a4-6d88-8aef-32595d62fbde",
+    "lastAccessedDate": "2026-07-27T00:00:00Z",
+    "globalParametersConfig": null,
+    "url": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/b2146ed9-f2de-4843-ab8d-96da1fcbe3ae",
+    "_links": {
+      "self": {
+        "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/b2146ed9-f2de-4843-ab8d-96da1fcbe3ae"
+      },
+      "group": {
+        "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards"
+      },
+      "widget": [
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/5502286f-6d2e-466f-9f05-a95d14b2332c"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/358fb968-ec93-496c-8006-b997c27ea9a6"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/93c41238-ea5c-47f9-a3ef-d4c060459328"
+        }
+      ]
+    }
+  }
+}

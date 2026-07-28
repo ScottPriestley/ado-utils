@@ -1,0 +1,439 @@
+{
+  "sourceTeamName": "ProServ Model Combo Project Team",
+  "sourceTeamId": "bc024d5f-70f7-4813-9b67-a88103578610",
+  "dashboard": {
+    "id": "7828fd54-20af-4166-934b-47da7c8bf5a5",
+    "name": "Data Migration",
+    "description": "",
+    "refreshInterval": 0,
+    "position": 4,
+    "eTag": "59",
+    "widgets": [
+      {
+        "id": "b5cbd823-0bb6-4611-a6d6-0890852a9e7e",
+        "eTag": "2",
+        "name": "DM Open Decisions",
+        "position": {
+          "row": 3,
+          "column": 3
+        },
+        "size": {
+          "rowSpan": 1,
+          "columnSpan": 1
+        },
+        "settings": "{\"defaultBackgroundColor\":\"#a8ce4b\",\"queryId\":\"8856cd0c-b49a-4dda-b3be-ff5189c8836b\",\"queryName\":\"DM Open Decisions\",\"colorRules\":[{\"isEnabled\":true,\"backgroundColor\":\"#7f1725\",\"thresholdCount\":5,\"operator\":\">\"},{\"isEnabled\":true,\"backgroundColor\":\"#fbbc3d\",\"thresholdCount\":0,\"operator\":\">\"}],\"lastArtifactName\":\"DM Open Decisions\"}",
+        "settingsVersion": {
+          "major": 1,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/b5cbd823-0bb6-4611-a6d6-0890852a9e7e",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/b5cbd823-0bb6-4611-a6d6-0890852a9e7e"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/7828fd54-20af-4166-934b-47da7c8bf5a5"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/scalarLoading.png"
+      },
+      {
+        "id": "a18efcec-d1c9-46df-b041-49568c438b18",
+        "eTag": "4",
+        "name": "Markdown",
+        "position": {
+          "row": 1,
+          "column": 1
+        },
+        "size": {
+          "rowSpan": 5,
+          "columnSpan": 2
+        },
+        "settings": "#Current DM ETL Details\n\n## ETL = Extract Transform Load\n- ####CRP Load (ETL3):  (fill in with dates)\n- *CRP*:   (fill in with dates)\n\n- ####UAT Load (ETL4):   (fill in with dates)\n- *UAT*:   (fill in with dates)\n\n- ####Cutover (ETL5):   (fill in with dates)\n\n- ###Go-Live:   (fill in with date)\n\nLinks\nFull Data Migration List Tree View\n\n\n#CURRENT ETL:\n\n\n##ETL Stage Gate Check Criteria:\n- ####All Required Entities to be loaded for the iteration have been loaded\n- ####All Decisions to be made have been made\n- ####No critical issues remain open\n- ####All Entities to be [Client] validated for the iteration have been validated",
+        "settingsVersion": {
+          "major": 1,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/a18efcec-d1c9-46df-b041-49568c438b18",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/a18efcec-d1c9-46df-b041-49568c438b18"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/7828fd54-20af-4166-934b-47da7c8bf5a5"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget.Configuration",
+        "isNameConfigurable": false,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/markdownLoading.png",
+        "lightboxOptions": {
+          "width": 600,
+          "height": 500,
+          "resizable": true
+        }
+      },
+      {
+        "id": "2230c09c-2357-48de-847f-5e329106f033",
+        "eTag": "2",
+        "name": "DM Entity Schedule - Current ETL by State",
+        "position": {
+          "row": 1,
+          "column": 3
+        },
+        "size": {
+          "rowSpan": 2,
+          "columnSpan": 3
+        },
+        "settings": "{\"chartType\":\"PieChart\",\"groupKey\":\"76c000ca-b0ee-4c91-9a51-219ec2fd62ad\",\"scope\":\"WorkitemTracking.Queries\",\"title\":\"DM Entity Schedule - Current ETL by State\",\"transformOptions\":{\"filter\":\"76c000ca-b0ee-4c91-9a51-219ec2fd62ad\",\"groupBy\":\"System.State\",\"orderBy\":{\"direction\":\"descending\",\"propertyName\":\"value\"},\"measure\":{\"aggregation\":\"count\",\"propertyName\":\"\"},\"historyRange\":null,\"groupByTags\":true,\"FilteredGroups\":[]},\"userColors\":[],\"lastArtifactName\":\"DM Entity Schedule - Current ETL by State\"}",
+        "settingsVersion": {
+          "major": 3,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/2230c09c-2357-48de-847f-5e329106f033",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/2230c09c-2357-48de-847f-5e329106f033"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/7828fd54-20af-4166-934b-47da7c8bf5a5"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/ChartLoading.png",
+        "lightboxOptions": {
+          "width": 900,
+          "height": 700,
+          "resizable": true
+        }
+      },
+      {
+        "id": "647b7a4e-17e7-4296-a690-7503c38b1274",
+        "eTag": "3",
+        "name": "DM Open Tasks",
+        "position": {
+          "row": 3,
+          "column": 7
+        },
+        "size": {
+          "rowSpan": 1,
+          "columnSpan": 1
+        },
+        "settings": "{\"defaultBackgroundColor\":\"#a8ce4b\",\"queryId\":\"270bdf7e-63bd-4bd1-acb5-eb7e49ae54e9\",\"queryName\":\"DM Open Tasks\",\"colorRules\":[{\"isEnabled\":true,\"backgroundColor\":\"#7f1725\",\"thresholdCount\":5,\"operator\":\">\"},{\"isEnabled\":true,\"backgroundColor\":\"#fbbc3d\",\"thresholdCount\":10,\"operator\":\">\"}],\"lastArtifactName\":\"DM Open Tasks\"}",
+        "settingsVersion": {
+          "major": 1,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/647b7a4e-17e7-4296-a690-7503c38b1274",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/647b7a4e-17e7-4296-a690-7503c38b1274"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/7828fd54-20af-4166-934b-47da7c8bf5a5"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/scalarLoading.png"
+      },
+      {
+        "id": "d976bbe5-8f2b-47ee-86aa-a8d283e146f0",
+        "eTag": "2",
+        "name": "DM Open Deliverables",
+        "position": {
+          "row": 3,
+          "column": 4
+        },
+        "size": {
+          "rowSpan": 1,
+          "columnSpan": 1
+        },
+        "settings": "{\"defaultBackgroundColor\":\"#a8ce4b\",\"queryId\":\"3789e780-922c-43a0-96cc-8af4fbcce098\",\"queryName\":\"DM Open De;iverables\",\"colorRules\":[{\"isEnabled\":true,\"backgroundColor\":\"#7f1725\",\"thresholdCount\":5,\"operator\":\">\"},{\"isEnabled\":true,\"backgroundColor\":\"#fbbc3d\",\"thresholdCount\":0,\"operator\":\">\"}],\"lastArtifactName\":\"DM Open De;iverables\"}",
+        "settingsVersion": {
+          "major": 1,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/d976bbe5-8f2b-47ee-86aa-a8d283e146f0",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/d976bbe5-8f2b-47ee-86aa-a8d283e146f0"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/7828fd54-20af-4166-934b-47da7c8bf5a5"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/scalarLoading.png"
+      },
+      {
+        "id": "11c81371-8df9-4ee0-b8aa-c1bfc0e315e3",
+        "eTag": "3",
+        "name": "Iteration X Entity schedule",
+        "position": {
+          "row": 4,
+          "column": 3
+        },
+        "size": {
+          "rowSpan": 2,
+          "columnSpan": 8
+        },
+        "settings": "{\"query\":{\"queryId\":\"76c000ca-b0ee-4c91-9a51-219ec2fd62ad\",\"queryName\":\"DM Issues - All, Not Removed\"},\"selectedColumns\":[{\"name\":\"ID\",\"referenceName\":\"System.Id\"},{\"name\":\"Title\",\"referenceName\":\"System.Title\"},{\"name\":\"Assigned To\",\"referenceName\":\"System.AssignedTo\"},{\"name\":\"State\",\"referenceName\":\"System.State\"},{\"name\":\"Due Date\",\"referenceName\":\"Microsoft.VSTS.Scheduling.DueDate\"},{\"name\":\"Extract Owner\",\"referenceName\":\"Custom.ExtractOwner\"},{\"name\":\"Extract Due Date\",\"referenceName\":\"Custom.ExtractDueDate\"},{\"name\":\"Pre Validation Owner\",\"referenceName\":\"Custom.PreValidationOwner\"},{\"name\":\"Pre Validation Date\",\"referenceName\":\"Custom.PreValidationDate\"},{\"name\":\"Load Owner\",\"referenceName\":\"Custom.LoadOwner\"},{\"name\":\"Load Date\",\"referenceName\":\"Custom.LoadDate\"},{\"name\":\"Client Validation Owner\",\"referenceName\":\"Custom.ClientValidationOwner\"},{\"name\":\"Client Validation Date\",\"referenceName\":\"Custom.ClientValidationDate\"}],\"lastArtifactName\":\"DM Issues - All, Not Removed\"}",
+        "settingsVersion": {
+          "major": 1,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/11c81371-8df9-4ee0-b8aa-c1bfc0e315e3",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/11c81371-8df9-4ee0-b8aa-c1bfc0e315e3"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/7828fd54-20af-4166-934b-47da7c8bf5a5"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-mywork-web.Microsoft.VisualStudioOnline.MyWork.WitViewWidget",
+        "typeId": "Microsoft.VisualStudioOnline.MyWork.WitViewWidget",
+        "configurationContributionId": "ms.vss-mywork-web.Microsoft.VisualStudioOnline.MyWork.WitViewWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.MyWork.WitViewWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/MyWork/queryResultsLoading.png",
+        "lightboxOptions": {
+          "width": 900,
+          "height": 700,
+          "resizable": true
+        }
+      },
+      {
+        "id": "87e38297-ea96-4436-8e24-c28359a8acb8",
+        "eTag": "2",
+        "name": "DM Open Issues",
+        "position": {
+          "row": 3,
+          "column": 5
+        },
+        "size": {
+          "rowSpan": 1,
+          "columnSpan": 1
+        },
+        "settings": "{\"defaultBackgroundColor\":\"#a8ce4b\",\"queryId\":\"f5711dd6-7544-4f99-ba45-66c6f3e9895b\",\"queryName\":\"DM Open Issues\",\"colorRules\":[{\"isEnabled\":true,\"backgroundColor\":\"#7f1725\",\"thresholdCount\":5,\"operator\":\">\"},{\"isEnabled\":true,\"backgroundColor\":\"#fbbc3d\",\"thresholdCount\":0,\"operator\":\">\"}],\"lastArtifactName\":\"DM Open Issues\"}",
+        "settingsVersion": {
+          "major": 1,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/87e38297-ea96-4436-8e24-c28359a8acb8",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/87e38297-ea96-4436-8e24-c28359a8acb8"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/7828fd54-20af-4166-934b-47da7c8bf5a5"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/scalarLoading.png"
+      },
+      {
+        "id": "e9f44b79-e3ae-450a-8c36-d5c49f91396f",
+        "eTag": "4",
+        "name": "DM Open Questions",
+        "position": {
+          "row": 3,
+          "column": 6
+        },
+        "size": {
+          "rowSpan": 1,
+          "columnSpan": 1
+        },
+        "settings": "{\"defaultBackgroundColor\":\"#a8ce4b\",\"queryId\":\"011a6695-27fd-4f68-9b92-f34f52b6f62a\",\"queryName\":\"DM Open Questions\",\"colorRules\":[{\"isEnabled\":true,\"backgroundColor\":\"#7f1725\",\"thresholdCount\":5,\"operator\":\">\"},{\"isEnabled\":true,\"backgroundColor\":\"#fbbc3d\",\"thresholdCount\":0,\"operator\":\">\"}],\"lastArtifactName\":\"DM Open Questions\"}",
+        "settingsVersion": {
+          "major": 1,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/e9f44b79-e3ae-450a-8c36-d5c49f91396f",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/e9f44b79-e3ae-450a-8c36-d5c49f91396f"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/7828fd54-20af-4166-934b-47da7c8bf5a5"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/scalarLoading.png"
+      },
+      {
+        "id": "762f0564-1ad5-48eb-a524-d779ca9cfacd",
+        "eTag": "4",
+        "name": "DM Past Due Work by Work Item Type",
+        "position": {
+          "row": 1,
+          "column": 6
+        },
+        "size": {
+          "rowSpan": 2,
+          "columnSpan": 3
+        },
+        "settings": "{\"chartType\":\"stackBarChart\",\"groupKey\":\"12f9611c-3129-4bf2-bca2-542cc59af1c4\",\"scope\":\"WorkitemTracking.Queries\",\"title\":\"DM Past Due Work by Work Item Type\",\"transformOptions\":{\"filter\":\"12f9611c-3129-4bf2-bca2-542cc59af1c4\",\"groupBy\":\"System.State\",\"orderBy\":{\"propertyName\":\"label\",\"direction\":\"descending\"},\"measure\":{\"aggregation\":\"count\",\"propertyName\":\"\"},\"historyRange\":null,\"series\":\"System.WorkItemType\",\"groupByTags\":true,\"FilteredGroups\":[]},\"userColors\":[],\"lastArtifactName\":\"DM Past Due Work by Work Item Type\"}",
+        "settingsVersion": {
+          "major": 3,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/762f0564-1ad5-48eb-a524-d779ca9cfacd",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/762f0564-1ad5-48eb-a524-d779ca9cfacd"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/7828fd54-20af-4166-934b-47da7c8bf5a5"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/ChartLoading.png",
+        "lightboxOptions": {
+          "width": 900,
+          "height": 700,
+          "resizable": true
+        }
+      }
+    ],
+    "groupId": "bc024d5f-70f7-4813-9b67-a88103578610",
+    "ownerId": "bc024d5f-70f7-4813-9b67-a88103578610",
+    "dashboardScope": "project_Team",
+    "modifiedDate": "2025-06-05T21:20:56.61Z",
+    "modifiedBy": "c0bb7546-64a4-6d88-8aef-32595d62fbde",
+    "lastAccessedDate": "2026-07-24T00:00:00Z",
+    "globalParametersConfig": null,
+    "url": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/7828fd54-20af-4166-934b-47da7c8bf5a5",
+    "_links": {
+      "self": {
+        "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/7828fd54-20af-4166-934b-47da7c8bf5a5"
+      },
+      "group": {
+        "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards"
+      },
+      "widget": [
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/b5cbd823-0bb6-4611-a6d6-0890852a9e7e"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/a18efcec-d1c9-46df-b041-49568c438b18"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/2230c09c-2357-48de-847f-5e329106f033"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/647b7a4e-17e7-4296-a690-7503c38b1274"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/d976bbe5-8f2b-47ee-86aa-a8d283e146f0"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/11c81371-8df9-4ee0-b8aa-c1bfc0e315e3"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/87e38297-ea96-4436-8e24-c28359a8acb8"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/e9f44b79-e3ae-450a-8c36-d5c49f91396f"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/762f0564-1ad5-48eb-a524-d779ca9cfacd"
+        }
+      ]
+    }
+  }
+}

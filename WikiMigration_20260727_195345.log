@@ -1,0 +1,53 @@
+[2026-07-27 19:53:45.560] [Info] === Azure DevOps Wiki Migration Started ===
+[2026-07-27 19:54:30.303] [Success] Connected to source and target projects.
+[2026-07-27 19:54:30.702] [Info] Reading source wiki 'ProServ-Model-Combo-Project.wiki'.
+[2026-07-27 19:54:31.036] [Info] Retrieved content for '/Dashboards & Purpose'.
+[2026-07-27 19:54:31.225] [Info] Retrieved content for '/Environment Definitions'.
+[2026-07-27 19:54:31.392] [Info] Retrieved content for '/Project Stages'.
+[2026-07-27 19:54:31.564] [Info] Retrieved content for '/Project Stages/Deployment'.
+[2026-07-27 19:54:31.742] [Info] Retrieved content for '/Project Stages/Deployment/CRP - Conference Room Pilot'.
+[2026-07-27 19:54:31.916] [Info] Retrieved content for '/Project Stages/Deployment/Cutover'.
+[2026-07-27 19:54:32.141] [Info] Retrieved content for '/Project Stages/Deployment/Mock Go Live'.
+[2026-07-27 19:54:32.362] [Info] Retrieved content for '/Project Stages/Deployment/Performance Testing'.
+[2026-07-27 19:54:32.633] [Info] Retrieved content for '/Project Stages/Deployment/UAT - User Acceptance Testing'.
+[2026-07-27 19:54:32.898] [Info] Retrieved content for '/Project Stages/Design and Build'.
+[2026-07-27 19:54:33.145] [Info] Retrieved content for '/Project Stages/Design and Build/Iterations'.
+[2026-07-27 19:54:33.391] [Info] Retrieved content for '/Project Stages/Design and Build/Iterations/Design and Build Tips for Success'.
+[2026-07-27 19:54:33.681] [Info] Retrieved content for '/Project Stages/Design and Build/Iterations/Workshops'.
+[2026-07-27 19:54:33.908] [Info] Retrieved content for '/Project Stages/Design and Build/Test Management'.
+[2026-07-27 19:54:34.213] [Info] Retrieved content for '/Project Stages/Go Live & Hypercare'.
+[2026-07-27 19:54:34.573] [Info] Retrieved content for '/Project Stages/Go Live & Hypercare/Hypercare'.
+[2026-07-27 19:54:34.869] [Info] Retrieved content for '/Project Stages/Project Initiation'.
+[2026-07-27 19:54:35.128] [Info] Retrieved content for '/Project Stages/Project Initiation/Questionnaire'.
+[2026-07-27 19:54:35.437] [Info] Retrieved content for '/Project Stages/Project Initiation/Solution Validation'.
+[2026-07-27 19:54:35.816] [Info] Retrieved content for '/Project Stages/Stabilization - Should this be Maintain - that is what is in the PMO intro deck'.
+[2026-07-27 19:54:36.026] [Info] Retrieved content for '/Project Stages/Stabilization - Should this be Maintain - that is what is in the PMO intro deck/Phase 2'.
+[2026-07-27 19:54:36.294] [Info] Retrieved content for '/Project Stages/Stabilization - Should this be Maintain - that is what is in the PMO intro deck/Transition to Managed Services'.
+[2026-07-27 19:54:36.575] [Info] Retrieved content for '/Project Summary'.
+[2026-07-27 19:54:36.826] [Info] Retrieved content for '/Project Timeline (High Level)'.
+[2026-07-27 19:54:37.078] [Info] Retrieved content for '/Requirement to Gap to Development Flow'.
+[2026-07-27 19:54:37.315] [Info] Retrieved content for '/Work Item Definitions'.
+[2026-07-27 19:54:37.591] [Info] Retrieved content for '/Work Item Definitions/Bug Work Item'.
+[2026-07-27 19:54:37.819] [Info] Retrieved content for '/Work Item Definitions/Configuration Work Item'.
+[2026-07-27 19:54:38.063] [Info] Retrieved content for '/Work Item Definitions/Data Migration Work Item'.
+[2026-07-27 19:54:38.335] [Info] Retrieved content for '/Work Item Definitions/Decision Work Item'.
+[2026-07-27 19:54:38.680] [Info] Retrieved content for '/Work Item Definitions/Deliverable Work Item'.
+[2026-07-27 19:54:39.027] [Info] Retrieved content for '/Work Item Definitions/GAP Work Item'.
+[2026-07-27 19:54:39.281] [Info] Retrieved content for '/Work Item Definitions/Issue Work Item'.
+[2026-07-27 19:54:39.523] [Info] Retrieved content for '/Work Item Definitions/Question Work Item'.
+[2026-07-27 19:54:39.740] [Info] Retrieved content for '/Work Item Definitions/Requirement Work Item'.
+[2026-07-27 19:54:41.045] [Info] Retrieved content for '/Work Item Definitions/Test Case Work Item'.
+[2026-07-27 19:54:41.269] [Info] Retrieved content for '/Work Item Definitions/User Story Work Item'.
+[2026-07-27 19:54:41.364] [Success] Retrieved content for 37 source page(s).
+[2026-07-27 19:54:41.866] [Info] Using existing target wiki 'Unity---HSO'.
+[2026-07-27 19:54:42.160] [Info] Preflighting 15 referenced wiki attachment(s).
+[2026-07-27 19:54:42.698] [Error] Migration failed: Azure DevOps GET failed for 'https://dev.azure.com/360sg/a44951d4-1792-4aa2-a4d2-db6af55ea351/_apis/git/repositories/354a44d3-4fe0-4800-a32c-7a970962179a/commits?searchCriteria.itemPath=%2F.attachments%2Fimage-f15f7ac0-d911-4cad-a7af-ea5f93fc68fc.png&searchCriteria.excludeDeletes=false&%24top=1000&searchCriteria.itemVersion.version=wikiMaster&api-version=7.1' with status 404. 
+{
+  "$id": "1",
+  "innerException": null,
+  "message": "TF401174: The item \u0027.attachments/image-f15f7ac0-d911-4cad-a7af-ea5f93fc68fc.png\u0027 could not be found in the repository \u0027ProServ-Model-Combo-Project.wiki\u0027 at the version specified by \u0027\u003CBranch: wikiMaster \u003E\u0027 (resolved to commit \u0027668bdb1caa615c9b46c4ad7e29168e603f7a3f26\u0027)",
+  "typeName": "Microsoft.TeamFoundation.Git.Server.GitItemNotFoundException, Microsoft.TeamFoundation.Git.Server",
+  "typeKey": "GitItemNotFoundException",
+  "errorCode": 0,
+  "eventId": 3000
+}

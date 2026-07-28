@@ -1,0 +1,454 @@
+﻿{
+  "sourceTeamName": "ProServ Model Combo Project Team",
+  "sourceTeamId": "bc024d5f-70f7-4813-9b67-a88103578610",
+  "dashboard": {
+    "id": "715f396f-a90c-4e46-a3c5-fd4db6bf011b",
+    "name": "Questionnaire",
+    "description": "",
+    "refreshInterval": 0,
+    "position": 3,
+    "eTag": "50",
+    "widgets": [
+      {
+        "id": "35e95e56-7e15-422d-a140-22532e09c045",
+        "eTag": "1",
+        "name": "Markdown",
+        "position": {
+          "row": 1,
+          "column": 1
+        },
+        "size": {
+          "rowSpan": 1,
+          "columnSpan": 2
+        },
+        "settings": "# Questionnaire Tracking\n#Dashboard",
+        "settingsVersion": {
+          "major": 1,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/35e95e56-7e15-422d-a140-22532e09c045",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/35e95e56-7e15-422d-a140-22532e09c045"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/715f396f-a90c-4e46-a3c5-fd4db6bf011b"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget.Configuration",
+        "isNameConfigurable": false,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/markdownLoading.png",
+        "lightboxOptions": {
+          "width": 600,
+          "height": 500,
+          "resizable": true
+        }
+      },
+      {
+        "id": "466f3f77-914c-4dcb-b158-33ed57f43d7d",
+        "eTag": "5",
+        "name": "Questionnaire - All by Assigned To",
+        "position": {
+          "row": 2,
+          "column": 8
+        },
+        "size": {
+          "rowSpan": 2,
+          "columnSpan": 4
+        },
+        "settings": "{\"chartType\":\"stackBarChart\",\"groupKey\":\"ceaa56db-5afe-47f1-9417-69f132fb5232\",\"scope\":\"WorkitemTracking.Queries\",\"title\":\"Questionnaire - All by Assigned To\",\"transformOptions\":{\"filter\":\"ceaa56db-5afe-47f1-9417-69f132fb5232\",\"groupBy\":\"System.State\",\"orderBy\":{\"propertyName\":\"value\",\"direction\":\"descending\"},\"measure\":{\"aggregation\":\"count\",\"propertyName\":\"\"},\"historyRange\":null,\"series\":\"System.AssignedTo\",\"groupByTags\":true,\"FilteredGroups\":[]},\"userColors\":[{\"value\":\"00 New\",\"backgroundColor\":\"#7f1725\"}],\"lastArtifactName\":\"Questionnaire - All by Assigned To\"}",
+        "settingsVersion": {
+          "major": 3,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/466f3f77-914c-4dcb-b158-33ed57f43d7d",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/466f3f77-914c-4dcb-b158-33ed57f43d7d"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/715f396f-a90c-4e46-a3c5-fd4db6bf011b"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/ChartLoading.png",
+        "lightboxOptions": {
+          "width": 900,
+          "height": 700,
+          "resizable": true
+        }
+      },
+      {
+        "id": "dfe9366e-5eea-45a3-8b3e-442e5731da86",
+        "eTag": "4",
+        "name": "Missing Due Date",
+        "position": {
+          "row": 5,
+          "column": 1
+        },
+        "size": {
+          "rowSpan": 1,
+          "columnSpan": 1
+        },
+        "settings": "{\"defaultBackgroundColor\":\"#a8ce4b\",\"queryId\":\"1c8f3044-5c9d-45d6-b223-beb669484632\",\"queryName\":\"Questionnaire - Missing Due Date\",\"colorRules\":[{\"isEnabled\":true,\"backgroundColor\":\"#7f1725\",\"thresholdCount\":0,\"operator\":\">\"}],\"lastArtifactName\":\"Questionnaire - Missing Due Date\"}",
+        "settingsVersion": {
+          "major": 1,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/dfe9366e-5eea-45a3-8b3e-442e5731da86",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/dfe9366e-5eea-45a3-8b3e-442e5731da86"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/715f396f-a90c-4e46-a3c5-fd4db6bf011b"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/scalarLoading.png"
+      },
+      {
+        "id": "3d89e9cb-54a1-4368-94e6-64f180fc8671",
+        "eTag": "9",
+        "name": "Questionnaire by Area Path by State",
+        "position": {
+          "row": 2,
+          "column": 4
+        },
+        "size": {
+          "rowSpan": 2,
+          "columnSpan": 4
+        },
+        "settings": "{\"chartId\":null,\"chartType\":\"stackBarChart\",\"groupKey\":\"ceaa56db-5afe-47f1-9417-69f132fb5232\",\"scope\":\"WorkitemTracking.Queries\",\"title\":\"Questionnaire by Area Path by State\",\"transformOptions\":{\"transformId\":\"440bf7dd-9653-4aee-86cd-705886888b8d\",\"filter\":\"ceaa56db-5afe-47f1-9417-69f132fb5232\",\"groupBy\":\"System.State\",\"orderBy\":{\"direction\":\"ascending\",\"propertyName\":\"label\"},\"measure\":{\"propertyName\":\"\",\"aggregation\":\"count\"},\"historyRange\":null,\"series\":\"System.AreaPath\",\"groupByTags\":true,\"FilteredGroups\":[]},\"userColors\":[{\"value\":\"00 Not Started\",\"backgroundColor\":\"#009CCC\"},{\"value\":\"00 New\",\"backgroundColor\":\"#7f1725\"}],\"lastArtifactName\":\"Questionnaire - All by Area Path\"}",
+        "settingsVersion": {
+          "major": 3,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/3d89e9cb-54a1-4368-94e6-64f180fc8671",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/3d89e9cb-54a1-4368-94e6-64f180fc8671"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/715f396f-a90c-4e46-a3c5-fd4db6bf011b"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/ChartLoading.png",
+        "lightboxOptions": {
+          "width": 900,
+          "height": 700,
+          "resizable": true
+        }
+      },
+      {
+        "id": "2d4e1c12-f517-4e73-8dc2-75a032fee6b9",
+        "eTag": "1",
+        "name": "Markdown",
+        "position": {
+          "row": 1,
+          "column": 3
+        },
+        "size": {
+          "rowSpan": 1,
+          "columnSpan": 9
+        },
+        "settings": "- ###Complete Questionnaire by filling in \"Answer\" and then assign to HSO Consultant listed on the Question\n- ###Target Completion Date: [FILL IN DATE HERE]",
+        "settingsVersion": {
+          "major": 1,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/2d4e1c12-f517-4e73-8dc2-75a032fee6b9",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/2d4e1c12-f517-4e73-8dc2-75a032fee6b9"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/715f396f-a90c-4e46-a3c5-fd4db6bf011b"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.MarkdownWidget.Configuration",
+        "isNameConfigurable": false,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/markdownLoading.png",
+        "lightboxOptions": {
+          "width": 600,
+          "height": 500,
+          "resizable": true
+        }
+      },
+      {
+        "id": "6932854d-17c6-4e76-a463-880b526f475f",
+        "eTag": "5",
+        "name": "Questionnaire - All by State",
+        "position": {
+          "row": 2,
+          "column": 1
+        },
+        "size": {
+          "rowSpan": 2,
+          "columnSpan": 3
+        },
+        "settings": "{\"chartType\":\"PieChart\",\"groupKey\":\"ceaa56db-5afe-47f1-9417-69f132fb5232\",\"scope\":\"WorkitemTracking.Queries\",\"title\":\"Questionnaire - All by State\",\"transformOptions\":{\"filter\":\"ceaa56db-5afe-47f1-9417-69f132fb5232\",\"groupBy\":\"System.State\",\"orderBy\":{\"propertyName\":\"label\",\"direction\":\"ascending\"},\"measure\":{\"aggregation\":\"count\",\"propertyName\":\"\"},\"historyRange\":null,\"groupByTags\":true,\"FilteredGroups\":[]},\"userColors\":[{\"value\":\"00 Not Started\",\"backgroundColor\":\"#7f1725\"},{\"value\":\"02 In Progress\",\"backgroundColor\":\"#c9e7e7\"},{\"value\":\"00 New\",\"backgroundColor\":\"#7f1725\"}],\"lastArtifactName\":\"Questionnaire - All by State\"}",
+        "settingsVersion": {
+          "major": 3,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/6932854d-17c6-4e76-a463-880b526f475f",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/6932854d-17c6-4e76-a463-880b526f475f"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/715f396f-a90c-4e46-a3c5-fd4db6bf011b"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/ChartLoading.png",
+        "lightboxOptions": {
+          "width": 900,
+          "height": 700,
+          "resizable": true
+        }
+      },
+      {
+        "id": "ce59e730-0452-4f18-b43d-bed0d84b88e0",
+        "eTag": "3",
+        "name": "Past Due",
+        "position": {
+          "row": 4,
+          "column": 1
+        },
+        "size": {
+          "rowSpan": 1,
+          "columnSpan": 1
+        },
+        "settings": "{\"defaultBackgroundColor\":\"#a8ce4b\",\"queryId\":\"300a5b1f-2f8d-445a-937c-d677d1fdd775\",\"queryName\":\"Questionnaire - Past Due\",\"colorRules\":[{\"isEnabled\":true,\"backgroundColor\":\"#7f1725\",\"thresholdCount\":0,\"operator\":\">\"}],\"lastArtifactName\":\"Questionnaire - Past Due\"}",
+        "settingsVersion": {
+          "major": 1,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/ce59e730-0452-4f18-b43d-bed0d84b88e0",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/ce59e730-0452-4f18-b43d-bed0d84b88e0"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/715f396f-a90c-4e46-a3c5-fd4db6bf011b"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.QueryScalarWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/scalarLoading.png"
+      },
+      {
+        "id": "ffdd2638-b362-4e86-a48e-f2a47508e572",
+        "eTag": "10",
+        "name": "Questionnaire - Past Due",
+        "position": {
+          "row": 4,
+          "column": 6
+        },
+        "size": {
+          "rowSpan": 2,
+          "columnSpan": 6
+        },
+        "settings": "{\"query\":{\"queryId\":\"300a5b1f-2f8d-445a-937c-d677d1fdd775\",\"queryName\":\"Questionnaire - Past Due\"},\"selectedColumns\":[{\"name\":\"ID\",\"referenceName\":\"System.Id\"},{\"name\":\"Title\",\"referenceName\":\"System.Title\"},{\"name\":\"Assigned To\",\"referenceName\":\"System.AssignedTo\"},{\"name\":\"State\",\"referenceName\":\"System.State\"},{\"name\":\"Due Date\",\"referenceName\":\"Microsoft.VSTS.Scheduling.DueDate\"}],\"lastArtifactName\":\"Questionnaire - Past Due\"}",
+        "settingsVersion": {
+          "major": 1,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/ffdd2638-b362-4e86-a48e-f2a47508e572",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/ffdd2638-b362-4e86-a48e-f2a47508e572"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/715f396f-a90c-4e46-a3c5-fd4db6bf011b"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-mywork-web.Microsoft.VisualStudioOnline.MyWork.WitViewWidget",
+        "typeId": "Microsoft.VisualStudioOnline.MyWork.WitViewWidget",
+        "configurationContributionId": "ms.vss-mywork-web.Microsoft.VisualStudioOnline.MyWork.WitViewWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.MyWork.WitViewWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/MyWork/queryResultsLoading.png",
+        "lightboxOptions": {
+          "width": 900,
+          "height": 700,
+          "resizable": true
+        }
+      },
+      {
+        "id": "9b3f9898-0e99-4845-8529-f3337b8b4f6c",
+        "eTag": "10",
+        "name": "Questionnaire - Past Due by Assigned To",
+        "position": {
+          "row": 4,
+          "column": 2
+        },
+        "size": {
+          "rowSpan": 2,
+          "columnSpan": 4
+        },
+        "settings": "{\"chartType\":\"ColumnChart\",\"groupKey\":\"300a5b1f-2f8d-445a-937c-d677d1fdd775\",\"scope\":\"WorkitemTracking.Queries\",\"title\":\"Questionnaire - Past Due by Assigned To\",\"transformOptions\":{\"filter\":\"300a5b1f-2f8d-445a-937c-d677d1fdd775\",\"groupBy\":\"System.AssignedTo\",\"orderBy\":{\"propertyName\":\"value\",\"direction\":\"descending\"},\"measure\":{\"aggregation\":\"count\",\"propertyName\":\"\"},\"historyRange\":null,\"groupByTags\":true,\"FilteredGroups\":[]},\"userColors\":[],\"lastArtifactName\":\"Questionnaire - Past Due by Assigned To\"}",
+        "settingsVersion": {
+          "major": 3,
+          "minor": 0,
+          "patch": 0
+        },
+        "artifactId": "",
+        "url": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/9b3f9898-0e99-4845-8529-f3337b8b4f6c",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/9b3f9898-0e99-4845-8529-f3337b8b4f6c"
+          },
+          "group": {
+            "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets"
+          },
+          "dashboard": {
+            "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/715f396f-a90c-4e46-a3c5-fd4db6bf011b"
+          }
+        },
+        "isEnabled": true,
+        "contentUri": null,
+        "contributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "typeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget",
+        "configurationContributionId": "ms.vss-dashboards-web.Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "configurationContributionRelativeId": "Microsoft.VisualStudioOnline.Dashboards.WitChartWidget.Configuration",
+        "isNameConfigurable": true,
+        "loadingImageUrl": "https://dev.azure.com/360sg/_static/Widgets/ChartLoading.png",
+        "lightboxOptions": {
+          "width": 900,
+          "height": 700,
+          "resizable": true
+        }
+      }
+    ],
+    "groupId": "bc024d5f-70f7-4813-9b67-a88103578610",
+    "ownerId": "bc024d5f-70f7-4813-9b67-a88103578610",
+    "dashboardScope": "project_Team",
+    "modifiedDate": "2025-05-23T14:59:04.787Z",
+    "modifiedBy": "c0bb7546-64a4-6d88-8aef-32595d62fbde",
+    "lastAccessedDate": "2026-07-27T00:00:00Z",
+    "globalParametersConfig": null,
+    "url": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/715f396f-a90c-4e46-a3c5-fd4db6bf011b",
+    "_links": {
+      "self": {
+        "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards/715f396f-a90c-4e46-a3c5-fd4db6bf011b"
+      },
+      "group": {
+        "href": "https://dev.azure.com/360sg/AEC%20Model%20Combo%20Project/ProServ%20Model%20Combo%20Project%20Team/_apis/Dashboard/Dashboards"
+      },
+      "widget": [
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/35e95e56-7e15-422d-a140-22532e09c045"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/466f3f77-914c-4dcb-b158-33ed57f43d7d"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/dfe9366e-5eea-45a3-8b3e-442e5731da86"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/3d89e9cb-54a1-4368-94e6-64f180fc8671"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/2d4e1c12-f517-4e73-8dc2-75a032fee6b9"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/6932854d-17c6-4e76-a463-880b526f475f"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/ce59e730-0452-4f18-b43d-bed0d84b88e0"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/ffdd2638-b362-4e86-a48e-f2a47508e572"
+        },
+        {
+          "href": "https://dev.azure.com/360sg/_apis/Dashboard/dashboards/Widgets/9b3f9898-0e99-4845-8529-f3337b8b4f6c"
+        }
+      ]
+    }
+  }
+}

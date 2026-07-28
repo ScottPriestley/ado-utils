@@ -1,0 +1,541 @@
+﻿[
+  {
+    "id": "818a4ec0-e0fc-43ad-b004-589bc5d1829a",
+    "name": "@Me Past Due",
+    "path": "Shared Queries/Dashboard Queries/My Dashboard/@Me Past Due",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.IterationPath], [System.AreaPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.State] = '99 Removed, Closed,,90 Not Approved, 91 Cancelled, 92 Deferred, 13 Modeling Complete, 24 Unit Testing Passed,44 ETL1 Complete, 45 ETL2 Complete, 46 ETL3 Complete, 47 ETL4 Complete, 48 GoLive Complete' and [System.AssignedTo] = @me and [Microsoft.VSTS.Scheduling.DueDate] < @startOfDay and [Microsoft.VSTS.Scheduling.DueDate] <> '' order by [Microsoft.VSTS.Scheduling.DueDate], [System.State], [System.Id]",
+    "aliasIds": []
+  },
+  {
+    "id": "ee5b4d29-b7f7-4aaa-a570-e6baf9af7aed",
+    "name": "@me = Client SME or HSO Consultant",
+    "path": "Shared Queries/Dashboard Queries/My Dashboard/@me = Client SME or HSO Consultant",
+    "wiql": "select [System.Id], [Microsoft.VSTS.Scheduling.DueDate], [System.WorkItemType], [System.Title], [System.AssignedTo], [Custom.ClientSME], [Custom.HSOConsultant], [System.State], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and (not [System.State] in ('13 Modeling Complete', '24 Unit Testing Passed', '44 ETL1 Complete', '45 ETL2 Complete', '46 ETL3 Complete', '47 ETL4 Complete', '48 ETLGo-Live Complete', '90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed', 'Closed') and ([Custom.ClientSME] = @me or [Custom.HSOConsultant] = @me) and [Microsoft.VSTS.Scheduling.DueDate] <> '') order by [Microsoft.VSTS.Scheduling.DueDate], [System.AssignedTo], [System.Id]",
+    "aliasIds": []
+  },
+  {
+    "id": "433765a6-d471-497a-85be-f5f52bed21b9",
+    "name": "@me Open",
+    "path": "Shared Queries/Dashboard Queries/My Dashboard/@me Open",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.IterationPath], [System.AreaPath] from WorkItems where [System.TeamProject] = @project and not [System.State] in ('Completed', 'Closed', 'Resolved', 'Removed', '13 Modeling Complete', '90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed', 'Pass', '44 ETL1 Complete', '45 ETL2 Complete', '46 ETL3 Complete', '47 ETL4 Complete', '48 ETLGo-Live Complete', 'Closed') and [System.AssignedTo] = @me order by [Microsoft.VSTS.Scheduling.DueDate], [System.Id]",
+    "aliasIds": []
+  },
+  {
+    "id": "80b470e7-bb97-49ac-9021-cfb4517d8a54",
+    "name": "@me Open with No Date",
+    "path": "Shared Queries/Dashboard Queries/My Dashboard/@me Open with No Date",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.State], [System.AssignedTo], [Microsoft.VSTS.Scheduling.DueDate], [System.IterationPath], [System.AreaPath] from WorkItems where [System.TeamProject] = @project and not [System.State] in ('Completed', 'Closed', 'Resolved', 'Removed', '13 Modeling Complete', '90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed', 'Pass', '44 ETL1 Complete', '45 ETL2 Complete', '46 ETL3 Complete', '47 ETL4 Complete', '48 ETLGo-Live Complete', 'Closed') and [System.AssignedTo] = @me and [Microsoft.VSTS.Scheduling.DueDate] = '' order by [System.Id]",
+    "aliasIds": []
+  },
+  {
+    "id": "58c3a088-f60f-4b19-a2a8-41455b6aa881",
+    "name": "@me Due in Next 2 weeks",
+    "path": "Shared Queries/Dashboard Queries/My Dashboard/@me Due in Next 2 weeks",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.IterationPath], [System.AreaPath] from WorkItems where [System.TeamProject] = @project and not [System.State] in ('13 Modeling Complete', '24 Unit Testing Passed', '44 ETL1 Complete', '45 ETL2 Complete', '46 ETL3 Complete', '47 ETL4 Complete', '48 ETLGo-Live Complete', '90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed', 'Closed') and [System.AssignedTo] = @me and [Microsoft.VSTS.Scheduling.DueDate] >= @startOfDay and [Microsoft.VSTS.Scheduling.DueDate] <= @startOfDay('14d') order by [Microsoft.VSTS.Scheduling.DueDate], [System.Id]",
+    "aliasIds": []
+  },
+  {
+    "id": "b1fef614-da6f-41bb-8cf0-6b0334a2f233",
+    "name": "Requirements ALL",
+    "path": "Shared Queries/Dashboard Queries/Requirements, Gaps, and Development/Requirements ALL",
+    "wiql": "select [System.Id], [System.Title], [System.State], [System.AssignedTo], [Microsoft.VSTS.Scheduling.DueDate], [Microsoft.VSTS.Common.Priority], [Custom.IdentifiedWhen], [Custom.FitGapAssessment], [Custom.GapClosure], [Custom.TimelineImpact], [Custom.TeeshirtSize], [Custom.ChangeOrderRequired], [Custom.ChangeOrderNumber] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Requirement'",
+    "aliasIds": []
+  },
+  {
+    "id": "71e33216-b67f-46f2-bed4-2614ff4fe237",
+    "name": "Development",
+    "path": "Shared Queries/Dashboard Queries/Requirements, Gaps, and Development/Development",
+    "wiql": "select [System.Id], [System.Title], [System.State], [System.AssignedTo], [Custom.ClientSME], [Custom.HSOConsultant], [Microsoft.VSTS.Scheduling.DueDate], [Microsoft.VSTS.Common.Priority], [Custom.EstimatedHours], [Custom.ChangeOrderRequired], [Custom.ChangeOrderNumber] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'GAP' and [System.State] >= '19 In Dev - Unassigned' and [System.State] < '90 Not Approved'",
+    "aliasIds": []
+  },
+  {
+    "id": "7cf52eb9-2f75-4c4a-82ca-031b8c50cb36",
+    "name": "Development Deferred",
+    "path": "Shared Queries/Dashboard Queries/Requirements, Gaps, and Development/Development Deferred",
+    "wiql": "select [System.Id], [System.Title], [System.State], [System.AssignedTo], [Custom.ClientSME], [Custom.HSOConsultant], [Microsoft.VSTS.Scheduling.DueDate], [Microsoft.VSTS.Common.Priority], [Custom.TeeshirtSize], [Custom.EstimatedHours], [Custom.ChangeOrderRequired], [Custom.ChangeOrderNumber] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] in ('GAP', 'Requirement') and [System.State] = '92 Deferred'",
+    "aliasIds": []
+  },
+  {
+    "id": "a8655b22-85cf-4b36-b538-4785c78a92e8",
+    "name": "Requirements Scope Impact",
+    "path": "Shared Queries/Dashboard Queries/Requirements, Gaps, and Development/Requirements Scope Impact",
+    "wiql": "select [System.Id], [System.Title], [System.State], [System.AssignedTo], [Microsoft.VSTS.Scheduling.DueDate], [Microsoft.VSTS.Common.Priority], [Custom.IdentifiedWhen], [Custom.FitGapAssessment], [Custom.GapClosure], [Custom.TimelineImpact], [Custom.TeeshirtSize], [Custom.ChangeOrderRequired], [Custom.ChangeOrderNumber] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Requirement' and [Custom.ScopeImpact] = True and not [System.State] in ('90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed')",
+    "aliasIds": []
+  },
+  {
+    "id": "16043764-f886-4840-853c-b0ada8727f72",
+    "name": "Requirements Timeline Impact",
+    "path": "Shared Queries/Dashboard Queries/Requirements, Gaps, and Development/Requirements Timeline Impact",
+    "wiql": "select [System.Id], [System.Title], [System.State], [System.AssignedTo], [Microsoft.VSTS.Scheduling.DueDate], [Microsoft.VSTS.Common.Priority], [Custom.IdentifiedWhen], [Custom.FitGapAssessment], [Custom.GapClosure], [Custom.TimelineImpact], [Custom.TeeshirtSize], [Custom.ChangeOrderRequired], [Custom.ChangeOrderNumber] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Requirement' and [Custom.TimelineImpact] = True and not [System.State] in ('90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed')",
+    "aliasIds": []
+  },
+  {
+    "id": "6e21f053-6144-4278-89db-6edb9e8c0f76",
+    "name": "Requirements Change Order Required",
+    "path": "Shared Queries/Dashboard Queries/Requirements, Gaps, and Development/Requirements Change Order Required",
+    "wiql": "select [System.Id], [System.Title], [System.State], [System.AssignedTo], [Microsoft.VSTS.Scheduling.DueDate], [Microsoft.VSTS.Common.Priority], [Custom.IdentifiedWhen], [Custom.FitGapAssessment], [Custom.GapClosure], [Custom.TimelineImpact], [Custom.TeeshirtSize], [Custom.ChangeOrderRequired], [Custom.ChangeOrderNumber] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Requirement' and [Custom.ChangeOrderRequired] = True and not [System.State] in ('90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed')",
+    "aliasIds": []
+  },
+  {
+    "id": "0552b393-ab14-4433-9b00-02fe3c98c466",
+    "name": "Requirements Budget Impact",
+    "path": "Shared Queries/Dashboard Queries/Requirements, Gaps, and Development/Requirements Budget Impact",
+    "wiql": "select [System.Id], [System.Title], [System.State], [System.AssignedTo], [Microsoft.VSTS.Scheduling.DueDate], [Microsoft.VSTS.Common.Priority], [Custom.IdentifiedWhen], [Custom.FitGapAssessment], [Custom.GapClosure], [Custom.TimelineImpact], [Custom.TeeshirtSize], [Custom.ChangeOrderRequired], [Custom.ChangeOrderNumber] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Requirement' and [Custom.BudgetImpact] = True and not [System.State] in ('90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed')",
+    "aliasIds": []
+  },
+  {
+    "id": "6b3d4fc3-3642-418f-949f-5af15e1e472f",
+    "name": "Gaps Not in Development",
+    "path": "Shared Queries/Dashboard Queries/Requirements, Gaps, and Development/Gaps Not in Development",
+    "wiql": "select [System.Id], [System.Title], [System.State], [System.AssignedTo], [Custom.ClientSME], [Custom.HSOConsultant], [Microsoft.VSTS.Scheduling.DueDate], [Microsoft.VSTS.Common.Priority], [Custom.TeeshirtSize], [Custom.EstimatedHours], [Custom.ChangeOrderRequired], [Custom.ChangeOrderNumber] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'GAP' and [System.State] < '19 In Dev - Unassigned'",
+    "aliasIds": []
+  },
+  {
+    "id": "536e0056-e85f-4449-b88f-c9a2225beba6",
+    "name": "Due Next 2 Weeks - All Work Items",
+    "path": "Shared Queries/Dashboard Queries/Joint Status Meeting/Due Next 2 Weeks - All Work Items",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and not [System.WorkItemType] in ('Epic', 'feature', 'test plan', 'test suite', 'shared steps') and not [System.State] in ('Completed', 'Closed', 'Resolved', 'Removed', '13 Modeling Complete', '90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed', 'Pass', '44 ETL1 Complete', '45 ETL2 Complete', '46 ETL3 Complete', '47 ETL4 Complete', '48 ETLGo-Live Complete') and [Microsoft.VSTS.Scheduling.DueDate] > @startOfDay('-1d') and [Microsoft.VSTS.Scheduling.DueDate] < @startOfDay('+14d')",
+    "aliasIds": []
+  },
+  {
+    "id": "2d063dcc-9aeb-4b5f-bbb0-617b54e74c86",
+    "name": "Missing Client SME",
+    "path": "Shared Queries/Dashboard Queries/Joint Status Meeting/Missing Client SME",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [System.Tags] from WorkItems where [System.TeamProject] = 'AEC Model Combo Project' and not [System.WorkItemType] in ('Epic', 'Feature') and [Microsoft.VSTS.Scheduling.DueDate] <> '' and [Custom.ClientSME] = ''",
+    "aliasIds": []
+  },
+  {
+    "id": "df184d6d-8d62-43f3-8609-15189c55ddfa",
+    "name": "Past Due - All Work Items",
+    "path": "Shared Queries/Dashboard Queries/Joint Status Meeting/Past Due - All Work Items",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and not [System.WorkItemType] in ('Epic', 'feature', 'test plan', 'test suite', 'shared steps') and not [System.State] in ('Completed', 'Closed', 'Resolved', 'Removed', '13 Modeling Complete', '24 Unit Testing Passed', '90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed', 'Pass', '44 ETL1 Complete', '45 ETL2 Complete', '46 ETL3 Complete', '47 ETL4 Complete', '48 ETLGo-Live Complete') and [Microsoft.VSTS.Scheduling.DueDate] < @startOfDay and [Microsoft.VSTS.Scheduling.DueDate] <> ''",
+    "aliasIds": []
+  },
+  {
+    "id": "3b5a0e8a-a43b-46d7-8f34-afb09a72e1e5",
+    "name": "Missing HSO Consultant",
+    "path": "Shared Queries/Dashboard Queries/Joint Status Meeting/Missing HSO Consultant",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [System.Tags], [Microsoft.VSTS.Scheduling.DueDate], [Custom.HSOConsultant], [Custom.HSOCEConsultant], [Custom.HSOFOConsultant] from WorkItems where [System.TeamProject] = 'AEC Model Combo Project' and not [System.WorkItemType] in ('Epic', 'Feature') and [System.IterationPath] under 'AEC Model Combo Project\\2 Design_Build' and [Microsoft.VSTS.Scheduling.DueDate] <> '' and (([Custom.HSOConsultant] = '' and not [System.Title] contains 'DV' and not [System.Title] contains 'FO') or ([Custom.HSOCEConsultant] = '' and [System.Title] contains 'DV') or ([Custom.HSOFOConsultant] = '' and not [System.Title] contains 'FO'))",
+    "aliasIds": []
+  },
+  {
+    "id": "95e6c48b-ef36-4ea4-9657-ccae232d7ca5",
+    "name": "Missing Parent Link",
+    "path": "Shared Queries/Dashboard Queries/Joint Status Meeting/Missing Parent Link",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [System.Tags] from WorkItems where [System.TeamProject] = 'AEC Model Combo Project' and [System.WorkItemType] <> 'Epic' and [System.RelatedLinkCount] = 0",
+    "aliasIds": []
+  },
+  {
+    "id": "6578bd1d-4ad0-4a92-a009-3fb0586ad0c9",
+    "name": "Assigned with No Due Date",
+    "path": "Shared Queries/Dashboard Queries/Joint Status Meeting/Assigned with No Due Date",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.State], [System.AssignedTo], [Microsoft.VSTS.Scheduling.DueDate], [System.IterationPath], [System.AreaPath] from WorkItems where [System.TeamProject] = @project and (not [System.State] in ('Completed', 'Closed', 'Resolved', 'Removed', '13 Modeling Complete', '90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed', 'Pass', '44 ETL1 Complete', '45 ETL2 Complete', '46 ETL3 Complete', '47 ETL4 Complete', '48 ETLGo-Live Complete', 'Closed') and [System.AssignedTo] <> '' and [Microsoft.VSTS.Scheduling.DueDate] = '' and ([System.IterationPath] under 'AEC Model Combo Project\\1 Project Initiation\\1.1 Questionnaire' or [System.IterationPath] under 'AEC Model Combo Project\\2 Design_Build\\2.3 Data Migration\\ETL0 Setup_Mapping' or [System.IterationPath] under 'AEC Model Combo Project\\2 Design_Build\\2.1 CE\\2.1.1 CE Iteration 1' or [System.IterationPath] under 'AEC Model Combo Project\\2 Design_Build\\2.2 PO_FO\\2.2.1 PO_FO Iteration 1')) order by [System.Id]",
+    "aliasIds": []
+  },
+  {
+    "id": "c2390e7b-48e0-4775-b325-d84c26e6eba2",
+    "name": "Open Risk",
+    "path": "Shared Queries/Dashboard Queries/RAID/Open Risk",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Risk' and not [System.State] in ('Closed', '90 No Approved', '91 Cancelled', '92 Deferred', '99 Removed')",
+    "aliasIds": []
+  },
+  {
+    "id": "d6e6ea26-05de-4716-b960-cc2b1338f343",
+    "name": "Open Actions",
+    "path": "Shared Queries/Dashboard Queries/RAID/Open Actions",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Action' and not [System.State] in ('Closed', '90 No Approved', '91 Cancelled', '92 Deferred', '99 Removed')",
+    "aliasIds": []
+  },
+  {
+    "id": "103ec698-8bc8-4ece-b7b6-e88ad1d9975a",
+    "name": "Open Issue",
+    "path": "Shared Queries/Dashboard Queries/RAID/Open Issue",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and not [System.State] in ('Closed', '90 No Approved', '91 Cancelled', '92 Deferred', '99 Removed') and [Custom.RAIDItem] = True",
+    "aliasIds": []
+  },
+  {
+    "id": "d8c88812-afc9-463a-9e06-c48abbf7e59c",
+    "name": "Open Decisions",
+    "path": "Shared Queries/Dashboard Queries/RAID/Open Decisions",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Decision' and not [System.State] in ('Closed', '90 No Approved', '91 Cancelled', '92 Deferred', '99 Removed') and [Custom.RAIDItem] = True",
+    "aliasIds": []
+  },
+  {
+    "id": "7dedbc10-25d9-4240-895c-21d6bf3b975a",
+    "name": "RAID Closed",
+    "path": "Shared Queries/Dashboard Queries/RAID/RAID Closed",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Common.Risk], [System.Tags] from WorkItems where [System.TeamProject] = 'AEC Model Combo Project' and [System.WorkItemType] in ('Action', 'Risk') and [System.State] in ('Closed', '91 Cancelled') or ([System.WorkItemType] in ('Decision', 'Issue') and [Custom.RAIDIssue] = True and [System.TeamProject] = 'AEC Model Combo Project' and [System.State] in ('Closed', '91 Cancelled'))",
+    "aliasIds": []
+  },
+  {
+    "id": "e22641ae-35ba-478d-8d24-8cdb6491febd",
+    "name": "DM Issues - P1",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/DM Issues - P1",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and [System.State] <> 'Removed' and [System.State] <> 'Closed' and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [System.AreaPath] under 'AEC Model Combo Project\\DM' and [Microsoft.VSTS.Common.Priority] = 1",
+    "aliasIds": []
+  },
+  {
+    "id": "56887c86-af07-459d-a480-3bb90d280b0b",
+    "name": "Project Issues - All, Not Removed",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/Project Issues - All, Not Removed",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and [System.State] <> 'Removed' and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [System.AreaPath] = 'AEC Model Combo Project\\PO_FO\\01 Opportunity to Invoice'",
+    "aliasIds": []
+  },
+  {
+    "id": "8758706c-6277-4601-9805-f183f3462341",
+    "name": "Project Issues - Closed",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/Project Issues - Closed",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and [System.State] = 'Closed' and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [System.AreaPath] = 'AEC Model Combo Project\\PO_FO\\01 Opportunity to Invoice'",
+    "aliasIds": []
+  },
+  {
+    "id": "36c94a01-49e7-47fa-ba2d-20d7d2044b92",
+    "name": "Issues - Open, Assigned to Client",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/Issues - Open, Assigned to Client",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Common.Priority], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] in ('Issue', 'Bug') and not [System.State] in ('Removed', 'Closed') and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and not [System.AssignedTo] contains 'hso.com'",
+    "aliasIds": []
+  },
+  {
+    "id": "f31ad3e4-db9a-4782-80bc-bdcfa002725e",
+    "name": "Issues - All, Not Removed",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/Issues - All, Not Removed",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Common.Priority], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] in ('Issue', 'Bug') and not [System.State] in ('Removed') and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live'",
+    "aliasIds": []
+  },
+  {
+    "id": "148d9f76-6f73-474b-829c-6bc5661c17ed",
+    "name": "Finance Issues - P1",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/Finance Issues - P1",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and [System.State] <> 'Removed' and [System.State] <> 'Closed' and [System.IterationPath] = 'ProServ PMO Sandbox\\Go Live and Hypercare' and [System.AreaPath] under 'AEC Model Combo Project\\PO_FO\\04 Finance' and [Microsoft.VSTS.Common.Priority] = 1",
+    "aliasIds": []
+  },
+  {
+    "id": "dc7851bf-3c7b-4374-9c7d-2e8088788734",
+    "name": "Project Issues - P4",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/Project Issues - P4",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and [System.State] <> 'Removed' and [System.State] <> 'Closed' and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [System.AreaPath] = 'AEC Model Combo Project\\PO_FO\\01 Opportunity to Invoice' and [Microsoft.VSTS.Common.Priority] = 4",
+    "aliasIds": []
+  },
+  {
+    "id": "01dc758e-3db3-4d22-9ed2-32b27f958d6e",
+    "name": "CE Issues - P2",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/CE Issues - P2",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and [System.State] <> 'Removed' and [System.State] <> 'Closed' and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [System.AreaPath] under 'AEC Model Combo Project\\CE' and [Microsoft.VSTS.Common.Priority] = 2",
+    "aliasIds": []
+  },
+  {
+    "id": "fa83d14c-535c-4236-a4c4-6a27c771e8cd",
+    "name": "DM Issues - All, Not Removed",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/DM Issues - All, Not Removed",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and [System.State] <> 'Removed' and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [System.AreaPath] under 'AEC Model Combo Project\\DM'",
+    "aliasIds": []
+  },
+  {
+    "id": "aadff9d7-6f54-48c2-9618-61d2ef10b924",
+    "name": "Finance Issues - Closed",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/Finance Issues - Closed",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and [System.State] = 'Closed' and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [System.AreaPath] under 'AEC Model Combo Project\\PO_FO\\04 Finance'",
+    "aliasIds": []
+  },
+  {
+    "id": "16c8461a-9bc4-4c25-aee2-55ccc8838204",
+    "name": "CE Issues - All, Not Removed",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/CE Issues - All, Not Removed",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and [System.State] <> 'Removed' and [System.IterationPath] in ('AEC Model Combo Project\\4 Go-Live') and [System.AreaPath] under 'AEC Model Combo Project\\CE'",
+    "aliasIds": []
+  },
+  {
+    "id": "390d7632-e333-46e2-9200-8e52c9a3c419",
+    "name": "Finance Issues - P4",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/Finance Issues - P4",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and [System.State] <> 'Removed' and [System.State] <> 'Closed' and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [System.AreaPath] under 'AEC Model Combo Project\\PO_FO\\04 Finance' and [Microsoft.VSTS.Common.Priority] = 4",
+    "aliasIds": []
+  },
+  {
+    "id": "c5bad0d1-86fb-4940-8d1a-b9658073e0c1",
+    "name": "DM Issues - P2",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/DM Issues - P2",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and [System.State] <> 'Removed' and [System.State] <> 'Closed' and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [System.AreaPath] under 'AEC Model Combo Project\\DM' and [Microsoft.VSTS.Common.Priority] = 2",
+    "aliasIds": []
+  },
+  {
+    "id": "e5a2c5ed-b84e-40af-9ded-c869de71362b",
+    "name": "CE Issues - P1",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/CE Issues - P1",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and [System.State] <> 'Removed' and [System.State] <> 'Closed' and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [System.AreaPath] under 'AEC Model Combo Project\\CE' and [Microsoft.VSTS.Common.Priority] = 1",
+    "aliasIds": []
+  },
+  {
+    "id": "1b557c9e-0b25-4d8f-8826-ac31f960a627",
+    "name": "DM Issues - P3",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/DM Issues - P3",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and [System.State] <> 'Removed' and [System.State] <> 'Closed' and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [System.AreaPath] under 'AEC Model Combo Project\\DM' and [Microsoft.VSTS.Common.Priority] = 3",
+    "aliasIds": []
+  },
+  {
+    "id": "cd5d0eb2-f0b5-4a0b-aa75-d84b92bec4fa",
+    "name": "Issues - Closed since Last Report",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/Issues - Closed since Last Report",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Common.Priority], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] in ('Issue', 'Bug') and [System.State] = 'Closed' and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [Microsoft.VSTS.Common.ClosedDate] = @startOfDay('-1d')",
+    "aliasIds": []
+  },
+  {
+    "id": "a9c82f23-1754-42f8-b723-135f29a020c0",
+    "name": "Issues - Created since Last Report",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/Issues - Created since Last Report",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Common.Priority], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] in ('Issue', 'Bug') and not [System.State] in ('Removed') and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [System.CreatedDate] > @startOfDay('-1d')",
+    "aliasIds": []
+  },
+  {
+    "id": "cae14b39-1f13-4db4-8540-a2cf3083fdde",
+    "name": "Project Issues - P1",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/Project Issues - P1",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and [System.State] <> 'Removed' and [System.State] <> 'Closed' and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [System.AreaPath] = 'AEC Model Combo Project\\PO_FO\\01 Opportunity to Invoice' and [Microsoft.VSTS.Common.Priority] = 1",
+    "aliasIds": []
+  },
+  {
+    "id": "6be141f3-3acd-49cb-9599-225d913c31a8",
+    "name": "Finance Issues - All, Not Removed",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/Finance Issues - All, Not Removed",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and [System.State] <> 'Removed' and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [System.AreaPath] under 'AEC Model Combo Project\\PO_FO\\04 Finance'",
+    "aliasIds": []
+  },
+  {
+    "id": "a5d78715-912a-4da7-94af-5d8f9f8d6781",
+    "name": "Project Issues - P3",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/Project Issues - P3",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and [System.State] <> 'Removed' and [System.State] <> 'Closed' and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [System.AreaPath] = 'AEC Model Combo Project\\PO_FO\\01 Opportunity to Invoice' and [Microsoft.VSTS.Common.Priority] = 3",
+    "aliasIds": []
+  },
+  {
+    "id": "77dd40e0-7968-4972-a914-12bb7cab90cb",
+    "name": "DM Issues - Closed",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/DM Issues - Closed",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and [System.State] = 'Closed' and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [System.AreaPath] under 'AEC Model Combo Project\\DM'",
+    "aliasIds": []
+  },
+  {
+    "id": "ab6b2ff9-d80d-401e-a97b-d6a941e25cd5",
+    "name": "CE Issues - P4",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/CE Issues - P4",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and [System.State] <> 'Removed' and [System.State] <> 'Closed' and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [System.AreaPath] under 'AEC Model Combo Project\\CE' and [Microsoft.VSTS.Common.Priority] = 4",
+    "aliasIds": []
+  },
+  {
+    "id": "23f5b3fd-7c47-4f70-b672-b39a3e6688a4",
+    "name": "Finance Issues - P3",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/Finance Issues - P3",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and [System.State] <> 'Removed' and [System.State] <> 'Closed' and [System.IterationPath] = 'ProServ PMO Sandbox\\Go Live and Hypercare' and [System.AreaPath] under 'AEC Model Combo Project\\PO_FO\\04 Finance' and [Microsoft.VSTS.Common.Priority] = 3",
+    "aliasIds": []
+  },
+  {
+    "id": "c6c510d9-7ba7-42f6-97d6-1b4f9db0ec85",
+    "name": "Issues - Open, P3",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/Issues - Open, P3",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Common.Priority], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] in ('Issue', 'bug') and [System.State] <> 'Removed' and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [Microsoft.VSTS.Common.Priority] = 3 and [System.State] <> 'Closed'",
+    "aliasIds": []
+  },
+  {
+    "id": "ef234ac5-d61e-43e5-947b-68f547506a1c",
+    "name": "Issues - Closed",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/Issues - Closed",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [System.State] = 'Closed'",
+    "aliasIds": []
+  },
+  {
+    "id": "917f089b-7365-4ce5-bb77-7120a4a7189e",
+    "name": "CE Issues - P3",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/CE Issues - P3",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and [System.State] <> 'Removed' and [System.State] <> 'Closed' and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [System.AreaPath] under 'AEC Model Combo Project\\CE' and [Microsoft.VSTS.Common.Priority] = 3",
+    "aliasIds": []
+  },
+  {
+    "id": "44c02851-6e86-43ba-bd5a-c4607a955c13",
+    "name": "CE Issues - Closed",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/CE Issues - Closed",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and [System.State] = 'Closed' and [System.IterationPath] in ('AEC Model Combo Project\\4 Go-Live') and [System.AreaPath] under 'AEC Model Combo Project\\CE'",
+    "aliasIds": []
+  },
+  {
+    "id": "7572e65d-41ff-4c8f-a1e2-a412014ce229",
+    "name": "Issues - Open, Assigned to HSO",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/Issues - Open, Assigned to HSO",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Common.Priority], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] in ('Issue', 'Bug') and not [System.State] in ('Removed', 'Closed') and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [System.AssignedTo] contains 'hso.com'",
+    "aliasIds": []
+  },
+  {
+    "id": "17b635f2-8045-4fc4-b268-36c3166c5d3a",
+    "name": "DM Issues - P4",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/DM Issues - P4",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and [System.State] <> 'Removed' and [System.State] <> 'Closed' and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [System.AreaPath] under 'AEC Model Combo Project\\DM' and [Microsoft.VSTS.Common.Priority] = 4",
+    "aliasIds": []
+  },
+  {
+    "id": "4e55b9e2-cdb2-4d68-a084-6c1689dfda64",
+    "name": "Project Issues - P2",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/Project Issues - P2",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and [System.State] <> 'Removed' and [System.State] <> 'Closed' and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [System.AreaPath] = 'AEC Model Combo Project\\PO_FO\\01 Opportunity to Invoice' and [Microsoft.VSTS.Common.Priority] = 2",
+    "aliasIds": []
+  },
+  {
+    "id": "e895d01c-a0b3-4538-a78f-b72ea685ab9b",
+    "name": "Issues - Open, P2",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/Issues - Open, P2",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Common.Priority], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] in ('Issue', 'Bug') and [System.State] <> 'Removed' and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [Microsoft.VSTS.Common.Priority] = 2 and [System.State] <> 'Closed'",
+    "aliasIds": []
+  },
+  {
+    "id": "ea4c64ad-3167-40a9-9478-577dcfc9d276",
+    "name": "Issues - Open, P1",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/Issues - Open, P1",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Common.Priority], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] in ('Issue', 'Bug') and [System.State] <> 'Removed' and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [Microsoft.VSTS.Common.Priority] = 1 and [System.State] <> 'Closed'",
+    "aliasIds": []
+  },
+  {
+    "id": "50745ddb-6617-4028-83d8-7cbcedd05d71",
+    "name": "Finance Issues - P2",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/Finance Issues - P2",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Issue' and [System.State] <> 'Removed' and [System.State] <> 'Closed' and [System.IterationPath] = 'ProServ PMO Sandbox\\Go Live and Hypercare' and [System.AreaPath] under 'AEC Model Combo Project\\PO_FO\\04 Finance' and [Microsoft.VSTS.Common.Priority] = 2",
+    "aliasIds": []
+  },
+  {
+    "id": "f98da5a8-b443-4058-8b20-6c704d2008e7",
+    "name": "Issues - Open, P4",
+    "path": "Shared Queries/Dashboard Queries/Go-Live/Issues - Open, P4",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Common.Priority], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] in ('Issue', 'Bug') and [System.State] <> 'Removed' and [System.IterationPath] = 'AEC Model Combo Project\\4 Go-Live' and [Microsoft.VSTS.Common.Priority] = 4 and [System.State] <> 'Closed'",
+    "aliasIds": []
+  },
+  {
+    "id": "8856cd0c-b49a-4dda-b3be-ff5189c8836b",
+    "name": "DM Open Decisions",
+    "path": "Shared Queries/Dashboard Queries/Data Migration/DM Open Decisions",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and ([System.WorkItemType] = 'Decision' and not [System.State] in ('90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed', 'Closed') and ([System.IterationPath] under 'AEC Model Combo Project\\2 Design_Build\\2.3 Data Migration\\ETL0 Setup_Mapping' or [System.IterationPath] under 'AEC Model Combo Project\\2 Design_Build\\2.3 Data Migration\\ETL1 Master Data'))",
+    "aliasIds": []
+  },
+  {
+    "id": "76c000ca-b0ee-4c91-9a51-219ec2fd62ad",
+    "name": "DM Entity Schedule - Current ETL",
+    "path": "Shared Queries/Dashboard Queries/Data Migration/DM Entity Schedule - Current ETL",
+    "wiql": "select [System.Id], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [Custom.ExtractOwner], [Custom.ExtractDueDate], [Custom.PreValidationOwner], [Custom.PreValidationDate], [Custom.LoadOwner], [Custom.LoadDate], [Custom.ClientValidationOwner], [Custom.ClientValidationDate], [Custom.RecordCount] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Data Migration' and not [System.State] in ('90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed') and [System.IterationPath] = 'AEC Model Combo Project\\2 Design_Build\\2.3 Data Migration\\ETL1 Master Data'",
+    "aliasIds": []
+  },
+  {
+    "id": "270bdf7e-63bd-4bd1-acb5-eb7e49ae54e9",
+    "name": "DM Open Tasks",
+    "path": "Shared Queries/Dashboard Queries/Data Migration/DM Open Tasks",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and ([System.WorkItemType] = 'Task' and not [System.State] in ('90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed', 'Closed') and ([System.IterationPath] under 'AEC Model Combo Project\\2 Design_Build\\2.3 Data Migration\\ETL0 Setup_Mapping' or [System.IterationPath] under 'AEC Model Combo Project\\2 Design_Build\\2.3 Data Migration\\ETL1 Master Data'))",
+    "aliasIds": []
+  },
+  {
+    "id": "3789e780-922c-43a0-96cc-8af4fbcce098",
+    "name": "DM Open Deliverables",
+    "path": "Shared Queries/Dashboard Queries/Data Migration/DM Open Deliverables",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and ([System.WorkItemType] = 'Deliverable' and not [System.State] in ('90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed', 'Closed') and ([System.IterationPath] under 'AEC Model Combo Project\\2 Design_Build\\2.3 Data Migration\\ETL0 Setup_Mapping' or [System.IterationPath] under 'AEC Model Combo Project\\2 Design_Build\\2.3 Data Migration\\ETL1 Master Data'))",
+    "aliasIds": []
+  },
+  {
+    "id": "f5711dd6-7544-4f99-ba45-66c6f3e9895b",
+    "name": "DM Open Issues",
+    "path": "Shared Queries/Dashboard Queries/Data Migration/DM Open Issues",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and ([System.WorkItemType] = 'Issue' and not [System.State] in ('90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed', 'Closed') and ([System.IterationPath] under 'AEC Model Combo Project\\2 Design_Build\\2.3 Data Migration\\ETL0 Setup_Mapping' or [System.IterationPath] under 'AEC Model Combo Project\\2 Design_Build\\2.3 Data Migration\\ETL1 Master Data'))",
+    "aliasIds": []
+  },
+  {
+    "id": "011a6695-27fd-4f68-9b92-f34f52b6f62a",
+    "name": "DM Open Questions",
+    "path": "Shared Queries/Dashboard Queries/Data Migration/DM Open Questions",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and ([System.WorkItemType] = 'Question' and not [System.State] in ('90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed', 'Closed') and ([System.IterationPath] under 'AEC Model Combo Project\\2 Design_Build\\2.3 Data Migration\\ETL0 Setup_Mapping' or [System.IterationPath] under 'AEC Model Combo Project\\2 Design_Build\\2.3 Data Migration\\ETL1 Master Data'))",
+    "aliasIds": []
+  },
+  {
+    "id": "12f9611c-3129-4bf2-bca2-542cc59af1c4",
+    "name": "DM Past Due Work",
+    "path": "Shared Queries/Dashboard Queries/Data Migration/DM Past Due Work",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [Microsoft.VSTS.Scheduling.DueDate], [System.State], [System.Tags] from WorkItems where not [System.State] in ('90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed', 'Closed') and [System.IterationPath] under 'AEC Model Combo Project\\2 Design_Build\\2.3 Data Migration' and [Microsoft.VSTS.Scheduling.DueDate] <= @startOfDay('-1d') and [Microsoft.VSTS.Scheduling.DueDate] <> ''",
+    "aliasIds": []
+  },
+  {
+    "id": "6b8c7aae-1611-4f1b-a345-b77024eb57ba",
+    "name": "Bugs and Issues created during CRP",
+    "path": "Shared Queries/Dashboard Queries/CRP & UAT/CRP Dashboard/Bugs and Issues created during CRP",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [System.CreatedDate], [Microsoft.VSTS.Common.Priority] from WorkItems where [System.TeamProject] = 'AEC Model Combo Project' and [System.WorkItemType] in ('Bug', 'Issue') and not [System.State] in ('99 Removed') and [System.IterationPath] under 'AEC Model Combo Project\\3 Deploy\\3.1 CRP'",
+    "aliasIds": []
+  },
+  {
+    "id": "19f31f0c-7bad-4047-a838-307179579aac",
+    "name": "FO_PO_IT_1 All Work Items",
+    "path": "Shared Queries/Dashboard Queries/CE or FO_PO Iterations/FO_PO_IT_1 All Work Items",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] in ('Configuration', 'Decision', 'Deliverable', 'User Story', 'Test Case') and not [System.State] in ('90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed') and [System.IterationPath] under 'AEC Model Combo Project\\2 Design_Build\\2.2 PO_FO\\2.2.1 PO_FO Iteration 1'",
+    "aliasIds": []
+  },
+  {
+    "id": "e99bff96-70ef-405b-8a28-b35de25d05f8",
+    "name": "FO_PO_IT_1 Configurations All",
+    "path": "Shared Queries/Dashboard Queries/CE or FO_PO Iterations/FO_PO_IT_1 Configurations All",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Configuration' and not [System.State] in ('90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed') and [System.IterationPath] under 'AEC Model Combo Project\\2 Design_Build\\2.2 PO_FO\\2.2.1 PO_FO Iteration 1'",
+    "aliasIds": []
+  },
+  {
+    "id": "25cee049-4f83-419b-8cae-2dc8517cd404",
+    "name": "FO_PO_IT_1 Requirements identified during Iteration X",
+    "path": "Shared Queries/Dashboard Queries/CE or FO_PO Iterations/FO_PO_IT_1 Requirements identified during Iteration X",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Requirement' and not [System.State] in ('90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed') and [Custom.IdentifiedWhen] = '03FO - FO Iteration 1'",
+    "aliasIds": []
+  },
+  {
+    "id": "7ab18937-28ce-4c99-ae6d-c76e8cf06d3f",
+    "name": "FO_PO_IT_1 Decisions All",
+    "path": "Shared Queries/Dashboard Queries/CE or FO_PO Iterations/FO_PO_IT_1 Decisions All",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Decision' and not [System.State] in ('90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed') and [System.IterationPath] under 'AEC Model Combo Project\\2 Design_Build\\2.2 PO_FO\\2.2.1 PO_FO Iteration 1'",
+    "aliasIds": []
+  },
+  {
+    "id": "934e62ea-d95a-4bfe-aebe-101ee7f4ba1d",
+    "name": "FO_PO_IT_1 User Stories All",
+    "path": "Shared Queries/Dashboard Queries/CE or FO_PO Iterations/FO_PO_IT_1 User Stories All",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'User Story' and not [System.State] in ('90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed') and [System.IterationPath] under 'AEC Model Combo Project\\2 Design_Build\\2.2 PO_FO\\2.2.1 PO_FO Iteration 1'",
+    "aliasIds": []
+  },
+  {
+    "id": "23edb7b8-d07d-41e7-b351-75bd689f4c03",
+    "name": "FO_PO_IT_1 Deliverables All",
+    "path": "Shared Queries/Dashboard Queries/CE or FO_PO Iterations/FO_PO_IT_1 Deliverables All",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Deliverables' and not [System.State] in ('90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed') and [System.IterationPath] under 'AEC Model Combo Project\\2 Design_Build\\2.2 PO_FO\\2.2.1 PO_FO Iteration 1'",
+    "aliasIds": []
+  },
+  {
+    "id": "95d1401d-5eff-49ba-8ab1-340b0afdae2c",
+    "name": "FO_PO_IT_1 Test Cases All",
+    "path": "Shared Queries/Dashboard Queries/CE or FO_PO Iterations/FO_PO_IT_1 Test Cases All",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Test Case' and not [System.State] in ('90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed') and [System.IterationPath] under 'AEC Model Combo Project\\2 Design_Build\\2.2 PO_FO\\2.2.1 PO_FO Iteration 1'",
+    "aliasIds": []
+  },
+  {
+    "id": "40449c99-eb71-4d41-aed3-07a0a568471d",
+    "name": "FO_PO_IT_1 Past Due Work Items",
+    "path": "Shared Queries/Dashboard Queries/CE or FO_PO Iterations/FO_PO_IT_1 Past Due Work Items",
+    "wiql": "select [System.Id], [System.WorkItemType], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] in ('Configuration', 'Decision', 'Deliverable', 'User Story', 'Test Case') and not [System.State] in ('13 Modeling Complete', '24 Unit Testing Passed', '90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed') and [System.IterationPath] under 'AEC Model Combo Project\\2 Design_Build\\2.2 PO_FO\\2.2.1 PO_FO Iteration 1' and [Microsoft.VSTS.Scheduling.DueDate] < @startOfDay and [Microsoft.VSTS.Scheduling.DueDate] <> ''",
+    "aliasIds": []
+  },
+  {
+    "id": "ceaa56db-5afe-47f1-9417-69f132fb5232",
+    "name": "Questionnaire - All",
+    "path": "Shared Queries/Dashboard Queries/Questionnaire/Questionnaire - All",
+    "wiql": "select [System.Id], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [System.AreaPath], [System.IterationPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Question' and not [System.State] in ('90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed') and [System.IterationPath] under 'AEC Model Combo Project\\1 Project Initiation\\1.1 Questionnaire' order by [System.Id]",
+    "aliasIds": []
+  },
+  {
+    "id": "1c8f3044-5c9d-45d6-b223-beb669484632",
+    "name": "Questionnaire - Missing Due Date",
+    "path": "Shared Queries/Dashboard Queries/Questionnaire/Questionnaire - Missing Due Date",
+    "wiql": "select [System.Id], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [Custom.ClientSME], [Custom.HSOConsultant], [System.AreaPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Question' and not [System.State] in ('90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed') and [Microsoft.VSTS.Scheduling.DueDate] = '' and [System.IterationPath] under 'AEC Model Combo Project\\1 Project Initiation\\1.1 Questionnaire' order by [Microsoft.VSTS.Scheduling.DueDate], [System.AssignedTo]",
+    "aliasIds": []
+  },
+  {
+    "id": "300a5b1f-2f8d-445a-937c-d677d1fdd775",
+    "name": "Questionnaire - Past Due",
+    "path": "Shared Queries/Dashboard Queries/Questionnaire/Questionnaire - Past Due",
+    "wiql": "select [System.Id], [System.Title], [System.AssignedTo], [System.State], [Microsoft.VSTS.Scheduling.DueDate], [Custom.ClientSME], [Custom.HSOConsultant], [System.AreaPath], [System.Tags] from WorkItems where [System.TeamProject] = @project and [System.WorkItemType] = 'Question' and not [System.State] in ('90 Not Approved', '91 Cancelled', '92 Deferred', '99 Removed') and [Microsoft.VSTS.Scheduling.DueDate] < @startOfDay and [Microsoft.VSTS.Scheduling.DueDate] <> '' and [System.IterationPath] under 'AEC Model Combo Project\\1 Project Initiation\\1.1 Questionnaire' order by [Microsoft.VSTS.Scheduling.DueDate], [System.AssignedTo]",
+    "aliasIds": []
+  }
+]

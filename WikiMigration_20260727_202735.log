@@ -1,0 +1,47 @@
+[2026-07-27 20:27:35.807] [Info] === Azure DevOps Wiki Migration Started ===
+[2026-07-27 20:28:18.135] [Success] Connected to source and target projects.
+[2026-07-27 20:28:19.169] [Info] Reading source wiki 'ProServ-Model-Combo-Project.wiki'.
+[2026-07-27 20:28:21.038] [Info] Retrieved content for '/Dashboards & Purpose'.
+[2026-07-27 20:28:21.756] [Info] Retrieved content for '/Environment Definitions'.
+[2026-07-27 20:28:22.253] [Info] Retrieved content for '/Project Stages'.
+[2026-07-27 20:28:22.825] [Info] Retrieved content for '/Project Stages/Deployment'.
+[2026-07-27 20:28:23.435] [Info] Retrieved content for '/Project Stages/Deployment/CRP - Conference Room Pilot'.
+[2026-07-27 20:28:23.969] [Info] Retrieved content for '/Project Stages/Deployment/Cutover'.
+[2026-07-27 20:28:24.325] [Info] Retrieved content for '/Project Stages/Deployment/Mock Go Live'.
+[2026-07-27 20:28:24.864] [Info] Retrieved content for '/Project Stages/Deployment/Performance Testing'.
+[2026-07-27 20:28:25.235] [Info] Retrieved content for '/Project Stages/Deployment/UAT - User Acceptance Testing'.
+[2026-07-27 20:28:25.685] [Info] Retrieved content for '/Project Stages/Design and Build'.
+[2026-07-27 20:28:26.339] [Info] Retrieved content for '/Project Stages/Design and Build/Iterations'.
+[2026-07-27 20:28:26.692] [Info] Retrieved content for '/Project Stages/Design and Build/Iterations/Design and Build Tips for Success'.
+[2026-07-27 20:28:27.190] [Info] Retrieved content for '/Project Stages/Design and Build/Iterations/Workshops'.
+[2026-07-27 20:28:27.499] [Info] Retrieved content for '/Project Stages/Design and Build/Test Management'.
+[2026-07-27 20:28:27.958] [Info] Retrieved content for '/Project Stages/Go Live & Hypercare'.
+[2026-07-27 20:28:28.402] [Info] Retrieved content for '/Project Stages/Go Live & Hypercare/Hypercare'.
+[2026-07-27 20:28:28.765] [Info] Retrieved content for '/Project Stages/Project Initiation'.
+[2026-07-27 20:28:29.432] [Info] Retrieved content for '/Project Stages/Project Initiation/Questionnaire'.
+[2026-07-27 20:28:29.719] [Info] Retrieved content for '/Project Stages/Project Initiation/Solution Validation'.
+[2026-07-27 20:28:30.162] [Info] Retrieved content for '/Project Stages/Stabilization - Should this be Maintain - that is what is in the PMO intro deck'.
+[2026-07-27 20:28:30.942] [Info] Retrieved content for '/Project Stages/Stabilization - Should this be Maintain - that is what is in the PMO intro deck/Phase 2'.
+[2026-07-27 20:28:32.669] [Info] Retrieved content for '/Project Stages/Stabilization - Should this be Maintain - that is what is in the PMO intro deck/Transition to Managed Services'.
+[2026-07-27 20:28:33.089] [Info] Retrieved content for '/Project Summary'.
+[2026-07-27 20:28:33.617] [Info] Retrieved content for '/Project Timeline (High Level)'.
+[2026-07-27 20:28:33.856] [Info] Retrieved content for '/Requirement to Gap to Development Flow'.
+[2026-07-27 20:28:34.363] [Info] Retrieved content for '/Work Item Definitions'.
+[2026-07-27 20:28:34.852] [Info] Retrieved content for '/Work Item Definitions/Bug Work Item'.
+[2026-07-27 20:28:35.299] [Info] Retrieved content for '/Work Item Definitions/Configuration Work Item'.
+[2026-07-27 20:28:35.811] [Info] Retrieved content for '/Work Item Definitions/Data Migration Work Item'.
+[2026-07-27 20:28:36.142] [Info] Retrieved content for '/Work Item Definitions/Decision Work Item'.
+[2026-07-27 20:28:36.720] [Info] Retrieved content for '/Work Item Definitions/Deliverable Work Item'.
+[2026-07-27 20:28:36.934] [Info] Retrieved content for '/Work Item Definitions/GAP Work Item'.
+[2026-07-27 20:28:37.195] [Info] Retrieved content for '/Work Item Definitions/Issue Work Item'.
+[2026-07-27 20:28:37.526] [Info] Retrieved content for '/Work Item Definitions/Question Work Item'.
+[2026-07-27 20:28:37.823] [Info] Retrieved content for '/Work Item Definitions/Requirement Work Item'.
+[2026-07-27 20:28:38.455] [Info] Retrieved content for '/Work Item Definitions/Test Case Work Item'.
+[2026-07-27 20:28:38.753] [Info] Retrieved content for '/Work Item Definitions/User Story Work Item'.
+[2026-07-27 20:28:38.851] [Success] Retrieved content for 37 source page(s).
+[2026-07-27 20:28:39.347] [Info] Using existing target wiki 'Unity---HSO'.
+[2026-07-27 20:28:39.797] [Info] Preflighting 15 referenced wiki attachment(s).
+[2026-07-27 20:28:39.915] [Info] Source wiki 'ProServ-Model-Combo-Project.wiki': repositoryId '354a44d3-4fe0-4800-a32c-7a970962179a', mappedPath '/', attachment scopePath '/.attachments'.
+[2026-07-27 20:28:40.596] [Info] Source wiki attachment listing returned 21 item(s) under '/.attachments'.
+[2026-07-27 20:28:41.726] [Warning] Diagnostic: no path in the source attachment listing (21 total item(s)) resembles 'image-f15f7ac0-d911-4cad-a7af-ea5f93fc68fc.png'. Expected path was '/.attachments/image-f15f7ac0-d911-4cad-a7af-ea5f93fc68fc.png'.
+[2026-07-27 20:28:42.034] [Error] Migration failed: Attachment preflight failed; no target attachments were changed. '/.attachments/image-f15f7ac0-d911-4cad-a7af-ea5f93fc68fc.png' on '/Requirement to Gap to Development Flow' was not found at '/.attachments/image-f15f7ac0-d911-4cad-a7af-ea5f93fc68fc.png' or in its Git history.
