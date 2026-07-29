@@ -29,7 +29,10 @@ function Invoke-Ado {
         [object]$Body = $null,
         [int]$MaxRetries = 6   # for transient ADO errors (throttling / circuit breaker / 5xx)
     )
-    $args = @{ Uri = $Uri; Method = $Method; Headers = $Headers; ContentType = 'application/json' }
+    # Explicit charset: Windows PowerShell 5.1 and PowerShell < 7.4 encode a string
+    # -Body as ASCII/ISO-8859-1 unless Content-Type carries charset=utf-8, silently
+    # corrupting non-ASCII dashboard/query names, team names, or WIQL on POST.
+    $args = @{ Uri = $Uri; Method = $Method; Headers = $Headers; ContentType = 'application/json; charset=utf-8' }
     if ($null -ne $Body) { $args.Body = ($Body | ConvertTo-Json -Depth 50) }
     for ($attempt = 0; ; $attempt++) {
         try {
