@@ -42,7 +42,7 @@ Each folder has its own `README.md` with full parameter tables, examples, and tr
 | Migrate a custom work item type between processes | [ado-migrate-workitemtype](ado-migrate-workitemtype/README.md) | `ado-migrate-workitemtype.ps1` |
 | Load an Area Path hierarchy from CSV, or copy it between projects | [ado-import-area-paths](ado-import-area-paths/README.md) | `ado-import-area-paths.ps1` / `ado-migrate-area-paths.ps1` |
 | Load an Iteration (sprint) hierarchy from Excel, or copy it between projects | [ado-import-iterations](ado-import-iterations/README.md) | `ado-import-iterations.ps1` / `ado-migrate-iterations.ps1` |
-| Move dashboards and their queries between projects | [ado-dashboard-migration](ado-dashboard-migration/readme.md) | `01-export-dashboards.ps1` → `02-migrate-queries.ps1` → `03-import-dashboards.ps1` |
+| Move dashboards and their queries between projects | [ado-dashboard-migration](ado-dashboard-migration/README.md) | `01-export-dashboards.ps1` → `02-migrate-queries.ps1` → `03-import-dashboards.ps1` (see [playbook](#typical-migration-playbook) for prerequisites) |
 | Migrate wiki content between projects | [ado-migrate-wiki](ado-migrate-wiki/README.md) | `ado-migrate-wiki.ps1` (direct) or `ado-extract-wiki.ps1` + `ado-load-wiki.ps1` (via Markdown) |
 | List every field a process defines, exported to CSV | [ado-field-extraction](ado-field-extraction/README.md) | `ado-organization-ID-listing.ps1` then `ado-process-fields.ps1` |
 
@@ -79,13 +79,65 @@ Use least-privilege, short-lived PATs, and revoke migration-specific PATs once y
 
 ## Typical migration playbook
 
-For standing up a new project from an existing one:
+For standing up a new project from an existing one, run phases in order. Each phase has hard dependencies on the ones before it — skipping ahead causes query migration failures or dashboards that show empty results.
 
-1. Migrate any custom work item types the new project needs (`ado-migrate-workitemtype`).
-2. Load the Area Path and Iteration Path hierarchies (`ado-import-area-paths`, `ado-import-iterations`).
-3. Migrate dashboards and their queries (`ado-dashboard-migration`, steps 1–4).
-4. Migrate wiki content (`ado-migrate-wiki`).
-5. Review each step's generated report/log before moving to the next.
+### Phase 0 — Read-only discovery (optional)
+
+Run these in parallel when useful; neither writes to the target.
+
+- **Field audit** — [ado-field-extraction](ado-field-extraction/README.md): list process fields for documentation or to confirm what the target process still needs.
+- **Dashboard export** — [ado-dashboard-migration](ado-dashboard-migration/README.md) step 1: export source dashboards and review `inventory.md` before any target writes.
+
+### Phase 1 — Process foundation (required before dashboard queries)
+
+- Migrate each custom work item type the target process needs — [ado-migrate-workitemtype](ado-migrate-workitemtype/README.md).
+
+Step 2 of dashboard migration skips queries whose WIQL references fields, types, or states the target process does not define. Run WIT migration first so those queries can be recreated.
+
+### Phase 2 — Project structure (required before dashboard queries)
+
+Load the full Area Path and Iteration Path hierarchies **before** migrating dashboard queries:
+
+| Source | Area paths | Iteration paths (with sprint dates) |
+|---|---|---|
+| Another ADO project | `ado-migrate-area-paths.ps1` | `ado-migrate-iterations.ps1` |
+| CSV / Excel template | `ado-import-area-paths.ps1` | `ado-import-iterations.ps1` |
+
+Prefer the **migrate** scripts when copying from an existing project — they carry the complete tree and preserve iteration start/finish dates. Dashboard step 4 (`04-create-classification-nodes.ps1`) only creates paths referenced in exported query WIQL and does not set iteration dates; use it as a repair step, not a substitute for this phase.
+
+### Phase 3 — Dashboards and queries
+
+Run [ado-dashboard-migration](ado-dashboard-migration/README.md) in this order:
+
+```text
+01-export   (skip if already done in phase 0)
+    ↓
+02-migrate-queries
+    ↓
+04-create-classification-nodes   ← only if step 2 skipped queries for missing paths
+    ↓
+02-migrate-queries               ← re-run only if step 4 ran
+    ↓
+03-import-dashboards
+```
+
+Review `inventory.md`, `queries-skipped.txt`, and `import-flags.txt` before treating the migration as complete.
+
+### Phase 4 — Wiki content (last)
+
+- [ado-migrate-wiki](ado-migrate-wiki/README.md): direct migration, or extract-to-Markdown + load for an offline handoff.
+
+Wiki migration has no hard API dependency on the earlier phases, but running it last keeps the review workflow clear — structure and reporting first, page content last.
+
+### Dependencies at a glance
+
+| Before you run… | Target must already have… |
+|---|---|
+| Dashboard step 2 (migrate queries) | Custom fields/types/states (phase 1); area and iteration paths referenced in WIQL (phase 2) |
+| Dashboard step 3 (import dashboards) | Step 2 complete with a usable `querymap.json` |
+| Dashboard step 4 (classification nodes) | Only needed when step 2 skipped path-related queries; run **before** re-running step 2, not after step 3 |
+
+Review each phase's generated report or log before moving to the next.
 
 ## Outputs and artifacts
 
