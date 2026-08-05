@@ -130,7 +130,10 @@ try {
     function Add-ExistingNodes($Node) {
         $relative = Get-RelativeAreaPath -ApiPath $Node.path -ApiRootPath $apiRootPath
         [void]$existing.Add($(if ($null -eq $relative) { $tree.name } else { $relative }))
-        foreach ($child in @($Node.children)) { if ($null -ne $child) { Add-ExistingNodes $child } }
+        # ADO's classification-node API omits 'children' entirely on leaf nodes rather than
+        # returning an empty array; under Set-StrictMode, $Node.children would throw on those.
+        $children = if ($Node.PSObject.Properties.Name -contains 'children') { $Node.children } else { @() }
+        foreach ($child in @($children)) { if ($null -ne $child) { Add-ExistingNodes $child } }
     }
     Add-ExistingNodes $tree
 

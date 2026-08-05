@@ -84,7 +84,10 @@ function Write-Utf8Text {
         [Parameter(Mandatory)][string]$Path,
         [AllowEmptyString()][string]$Text
     )
-    $absolute = [System.IO.Path]::GetFullPath($Path)
+    # Resolve via PowerShell's own current location, not raw .NET GetFullPath: the
+    # two can silently diverge (ISE, "Run with PowerShell", detached invocations),
+    # which previously made this write to a directory New-Item never created.
+    $absolute = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
     # Emit a BOM so Windows PowerShell 5.1 and PowerShell 7 decode artifacts
     # consistently when query names, WIQL, or dashboard settings contain Unicode.
     $encoding = [System.Text.UTF8Encoding]::new($true)
