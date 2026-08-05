@@ -1,157 +1,197 @@
 # ADO Utils
 
-Standalone PowerShell scripts for common Azure DevOps setup and migration tasks: process/work item type migration, area path and iteration hierarchy loading, dashboard/query portability, wiki migration, and process field auditing.
+PowerShell utilities for auditing and migrating selected Azure DevOps data. The repository favors explicit inputs, additive operations, resumable state, per-run JSONL logs, and offline verification; it is not a complete Azure DevOps project-cloning product.
 
-Each folder is self-contained — there's no shared build, no package manager, and no cross-folder dependency (aside from `ado-dashboard-migration/_common.ps1`, which is dot-sourced only by scripts in that same folder). Clone the repo, `cd` into the folder you need, and run the script.
+## Repository workflows and exclusions
 
-## Why this repo exists
+The four root scripts are:
 
-Azure DevOps setup and migration work is repetitive and easy to get wrong by hand:
+| Script | Capability | Important exclusions |
+| --- | --- | --- |
+| `ado-copy-query-workitems.ps1` | Copies one saved query, its returned work items, supported fields, and query relationships to another project. | Does not clone every field, attachment, history entry, identity, or external relation. Classification paths are rewritten to the target root unless `-PreserveClassificationPaths` is used. |
+| `ado-delete-query-test-scripts.ps1` | Builds a review manifest for test artifacts returned by one saved query and, only with `-Apply` plus exact confirmation, deletes reviewed Test Management artifacts. | Does not delete arbitrary Work Item Tracking records. Relationship queries and title-based resolution are opt-in. |
+| `ado-extract-discussions.ps1` | Exports every work item's title, description, and paged comments to CSV. | Does not export revisions, attachments, relations, or restore data. |
+| `ado-migrate-query.ps1` | Copies a configurable query-ID set, rewrites project references, and records completed target IDs. | Does not overwrite differing target WIQL or migrate query permissions/favorites. Its checked-in defaults are environment-specific and must be reviewed. |
 
-- Migrating a custom work item type (fields, picklists, states, rules, form layout) between processes.
-- Loading area path or iteration hierarchies into a new project from CSV/Excel.
-- Carrying dashboards and their underlying queries from one project to another.
-- Migrating wiki content between projects, with or without a local backup step.
-- Auditing which fields a process actually defines, for documentation or governance.
+Folder workflows:
 
-These scripts favor:
+- [Dashboard migration](ado-dashboard-migration/readme.md)
+- [Process field extraction](ado-field-extraction/README.md)
+- [Area Path import and migration](ado-import-area-paths/README.md)
+- [Iteration Path import and migration](ado-import-iterations/README.md)
+- [Wiki extraction, load, and direct migration](ado-migrate-wiki/README.md)
+- [Inherited-process work item type migration](ado-migrate-workitemtype/README.md)
 
-- **Idempotent operations** — safe to re-run; existing items are detected and reused/patched, not duplicated.
-- **Preview-first where it matters** — the iteration importer defaults to preview and requires `-Apply` to write.
-- **Verification after writes** — area/iteration migrations re-read the target and fail loudly if anything's still missing; wiki migration reads pages back and compares content.
-- **No exotic dependencies** — plain PowerShell and the Azure DevOps REST API. No Azure CLI, no external modules, no Python.
-
-## Repository layout
-
-```text
-.
-|-- ado-dashboard-migration/     # Steps 1-4: export/migrate dashboards + their queries
-|-- ado-field-extraction/        # Audit all fields defined by a process, export to CSV
-|-- ado-import-area-paths/       # Load/migrate Area Path hierarchy
-|-- ado-import-iterations/       # Load/migrate Iteration Path hierarchy (with dates)
-|-- ado-migrate-wiki/            # Direct wiki migration, or extract-to-Markdown + load
-`-- ado-migrate-workitemtype/    # Migrate one custom work item type between processes
-```
-
-Each folder has its own `README.md` with full parameter tables, examples, and troubleshooting — this file is the index.
-
-## At a glance
-
-| Goal | Folder | Start with |
-|---|---|---|
-| Migrate a custom work item type between processes | [ado-migrate-workitemtype](ado-migrate-workitemtype/README.md) | `ado-migrate-workitemtype.ps1` |
-| Load an Area Path hierarchy from CSV, or copy it between projects | [ado-import-area-paths](ado-import-area-paths/README.md) | `ado-import-area-paths.ps1` / `ado-migrate-area-paths.ps1` |
-| Load an Iteration (sprint) hierarchy from Excel, or copy it between projects | [ado-import-iterations](ado-import-iterations/README.md) | `ado-import-iterations.ps1` / `ado-migrate-iterations.ps1` |
-| Move dashboards and their queries between projects | [ado-dashboard-migration](ado-dashboard-migration/README.md) | `01-export-dashboards.ps1` → `02-migrate-queries.ps1` → `03-import-dashboards.ps1` (see [playbook](#typical-migration-playbook) for prerequisites) |
-| Migrate wiki content between projects | [ado-migrate-wiki](ado-migrate-wiki/README.md) | `ado-migrate-wiki.ps1` (direct) or `ado-extract-wiki.ps1` + `ado-load-wiki.ps1` (via Markdown) |
-| List every field a process defines, exported to CSV | [ado-field-extraction](ado-field-extraction/README.md) | `ado-organization-ID-listing.ps1` then `ado-process-fields.ps1` |
+`AdoUtils.Common.psm1` is the shared runtime contract; `tests/run-offline-checks.ps1` is an offline verifier, not an Azure DevOps entry script. Generated output folders, CSVs, logs, ZIP files, and the separate `New folder` web application are not migration entry scripts.
 
 ## Prerequisites
 
-- PowerShell 7+ (Windows PowerShell 5.1 also works for most scripts — see each folder's README for specifics).
-- Azure DevOps Personal Access Token(s) with the scopes each script needs (documented per folder). Scripts prompt securely for a PAT when one isn't supplied, and none of them write a PAT to disk or logs.
-- `ado-import-iterations.ps1` reads `.xlsx` workbooks directly via .NET's built-in ZIP/XML support — no Excel installation or extra module required.
+- Windows PowerShell 5.1 or PowerShell 7+.
+- Network access to the intended Azure DevOps organizations for live runs.
+- Project/process permissions matching the operation.
+- PATs with the minimum scopes listed below; Azure DevOps permissions can still restrict an otherwise scoped PAT.
+- Review input files, target projects, and script defaults before any write or delete operation.
 
-No Node.js, no `npm install`, no Azure CLI is required by anything in this repo.
+## Authentication and minimum PAT scopes
 
-## Authentication notes
+PAT resolution is consistent: a supplied `SecureString` parameter wins, otherwise the role-specific environment variable is read, otherwise a hidden prompt is used. The variables are `ADO_PAT`, `ADO_SOURCE_PAT`, and `ADO_TARGET_PAT`. `ado-delete-query-test-scripts.ps1 -PromptForPat` intentionally ignores `-Pat` and the normal parameter path and forces the hidden prompt. `-NonInteractive` turns every missing interactive input into an error.
 
-All scripts use PAT-over-Basic auth against `https://dev.azure.com`. Most accept the organization as either a bare name (`contoso`) or a full URL (`https://dev.azure.com/contoso`, `https://contoso.visualstudio.com`) and normalize it automatically.
-
-Minimum PAT scopes generally needed, by task:
-
-| Task | Typical scopes |
-|---|---|
-| Read-only export/audit (field extraction, dashboard export, wiki extract) | Work Items (Read), Project and Team (Read), Dashboards (Read) as applicable |
-| Area/Iteration import or migration | Work Items (Read & Write) |
-| Dashboard/query import | Work Items (Read & Write), Team Dashboards (Manage) |
-| Wiki migration (target side) | Read/write on the target project and wiki |
-| Work item type migration (target side) | Work Items (Read & Write), Process (Read & Write); org-level field creation needs Project Collection Administrator or equivalent |
-
-Use least-privilege, short-lived PATs, and revoke migration-specific PATs once you've validated the result.
-
-## Safety and repeatability
-
-- Most write operations are **create-missing**, not destructive replace — re-running a script after a partial failure fills in what's still missing rather than duplicating or overwriting unrelated content.
-- Area/Iteration scripts verify against a fresh read of the target after writing and throw if anything requested is still absent.
-- Wiki migration reads every written page back and fails the run if the content doesn't match what was sent.
-- Even with idempotent design, run against a non-production project first when the target is unfamiliar or the operation is new to you.
-
-## Typical migration playbook
-
-For standing up a new project from an existing one, run phases in order. Each phase has hard dependencies on the ones before it — skipping ahead causes query migration failures or dashboards that show empty results.
-
-### Phase 0 — Read-only discovery (optional)
-
-Run these in parallel when useful; neither writes to the target.
-
-- **Field audit** — [ado-field-extraction](ado-field-extraction/README.md): list process fields for documentation or to confirm what the target process still needs.
-- **Dashboard export** — [ado-dashboard-migration](ado-dashboard-migration/README.md) step 1: export source dashboards and review `inventory.md` before any target writes.
-
-### Phase 1 — Process foundation (required before dashboard queries)
-
-- Migrate each custom work item type the target process needs — [ado-migrate-workitemtype](ado-migrate-workitemtype/README.md).
-
-Step 2 of dashboard migration skips queries whose WIQL references fields, types, or states the target process does not define. Run WIT migration first so those queries can be recreated.
-
-### Phase 2 — Project structure (required before dashboard queries)
-
-Load the full Area Path and Iteration Path hierarchies **before** migrating dashboard queries:
-
-| Source | Area paths | Iteration paths (with sprint dates) |
-|---|---|---|
-| Another ADO project | `ado-migrate-area-paths.ps1` | `ado-migrate-iterations.ps1` |
-| CSV / Excel template | `ado-import-area-paths.ps1` | `ado-import-iterations.ps1` |
-
-Prefer the **migrate** scripts when copying from an existing project — they carry the complete tree and preserve iteration start/finish dates. Dashboard step 4 (`04-create-classification-nodes.ps1`) only creates paths referenced in exported query WIQL and does not set iteration dates; use it as a repair step, not a substitute for this phase.
-
-### Phase 3 — Dashboards and queries
-
-Run [ado-dashboard-migration](ado-dashboard-migration/README.md) in this order:
+The exact shared prompts are:
 
 ```text
-01-export   (skip if already done in phase 0)
-    ↓
-02-migrate-queries
-    ↓
-04-create-classification-nodes   ← only if step 2 skipped queries for missing paths
-    ↓
-02-migrate-queries               ← re-run only if step 4 ran
-    ↓
-03-import-dashboards
+Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)
+Source Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)
+Target Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)
+Azure DevOps PAT (input hidden)
+Source Azure DevOps PAT (input hidden)
+Target Azure DevOps PAT (input hidden)
 ```
 
-Review `inventory.md`, `queries-skipped.txt`, and `import-flags.txt` before treating the migration as complete.
+Root URL inputs use the literal prompts `Source Query URL`, `Target Project URL`, and `Enter the Azure DevOps Project URL (e.g. https://dev.azure.com/contoso/ProjectName)` as applicable. PATs are converted to authorization headers in memory, registered for log redaction, and neither cached nor written back to environment variables. Do not put PATs in plain-text command arguments.
 
-### Phase 4 — Wiki content (last)
+| Workflow | Source/read PAT | Target/write PAT |
+| --- | --- | --- |
+| Copy query and work items | Work Items: Read | Work Items: Read & write |
+| Test-artifact cleanup | Work Items: Read; Test Management: Read | Test Management: Read & write |
+| Discussion export | Work Items: Read | None |
+| Query migration | Work Items: Read | Work Items: Read & write |
+| Dashboard migration | Work Items: Read; Team dashboards: Read | Work Items: Read & write; Team dashboards: Manage |
+| Field extraction | Process: Read; Work Items: Read | None |
+| Area/Iteration migration | Work Items: Read | Work Items: Read & write |
+| Wiki migration | Project/team metadata and Code/Wiki: Read | Project/team metadata and Code/Wiki: Read & write |
+| Work item type migration | Process and Work Items: Read | Process and Work Items: Read & write |
 
-- [ado-migrate-wiki](ado-migrate-wiki/README.md): direct migration, or extract-to-Markdown + load for an offline handoff.
+## Safety and rerun behavior
 
-Wiki migration has no hard API dependency on the earlier phases, but running it last keeps the review workflow clear — structure and reporting first, page content last.
+No script performs an implicit delete. The only delete workflow requires `ado-delete-query-test-scripts.ps1 -Apply`, an explicit reviewed manifest, a current result-set match, and an exact confirmation phrase; Test Plan/Suite deletion can cascade inside Azure DevOps.
 
-### Dependencies at a glance
+Most migration workflows create missing objects and reuse or skip matches. That does not make every rerun consequence-free: some workflows patch matching objects, the wiki tools update non-identical pages, query/work-item copy updates IDs recorded in its state file, and process migration applies best-effort patches. Conflicting target content is either refused, skipped, or reported according to the folder README. Keep state and manifests with the run they belong to.
 
-| Before you run… | Target must already have… |
-|---|---|
-| Dashboard step 2 (migrate queries) | Custom fields/types/states (phase 1); area and iteration paths referenced in WIQL (phase 2) |
-| Dashboard step 3 (import dashboards) | Step 2 complete with a usable `querymap.json` |
-| Dashboard step 4 (classification nodes) | Only needed when step 2 skipped path-related queries; run **before** re-running step 2, not after step 3 |
+`-WhatIf` is honored only by scripts using `SupportsShouldProcess`; iteration workbook import also requires `-Apply`, and dashboard classification repair uses `-WhatIfOnly`. Wiki `-NoExecute` loads functions for testing and is not a remote migration preview. Preview paths do not claim post-write verification when no writes occurred.
 
-Review each phase's generated report or log before moving to the next.
+## Quick start
 
-## Outputs and artifacts
+Use explicit non-secret inputs and a `SecureString` PAT. This example performs the read-only discussion export:
 
-Scripts that export data write it into the current directory or a folder you specify (never into this repo's tracked source unless you point them there): timestamped wiki migration logs, dashboard export folders (`dashboards/`, `queries.json`, `inventory.md`, etc.), and CSV field exports. Treat these as potentially sensitive project data — they can contain query text, project structure, and page content.
+```powershell
+$pat = Read-Host 'Azure DevOps PAT (input hidden)' -AsSecureString
+./ado-extract-discussions.ps1 `
+  -ProjectUrl 'https://dev.azure.com/contoso/Project' `
+  -Pat $pat `
+  -LogDirectory './run-logs' `
+  -NonInteractive
+```
 
-## Contributing
+Examples for the other root scripts:
 
-If you add a new script:
+```powershell
+./ado-copy-query-workitems.ps1 `
+  -SourceQueryUrl 'https://dev.azure.com/source/Project/_queries/query/00000000-0000-0000-0000-000000000000/' `
+  -TargetProjectUrl 'https://dev.azure.com/target/Project' `
+  -SourcePat $sourcePat -TargetPat $targetPat -NonInteractive
 
-- Include a `.SYNOPSIS`/`.DESCRIPTION` comment-based help block and at least one `.EXAMPLE`.
-- Document required PAT scopes and expected output.
-- Prefer idempotent, create-missing behavior over destructive replacement; verify writes where practical.
-- Add or update the relevant folder's `README.md`, and add a row to the **At a glance** table above if it's a new top-level workflow.
+# Manifest/review pass only; no deletion.
+./ado-delete-query-test-scripts.ps1 `
+  -QueryUrl 'https://dev.azure.com/contoso/Project/_queries/query/00000000-0000-0000-0000-000000000000/' `
+  -Pat $pat -ManifestPath './review.csv' -NonInteractive
 
-## Disclaimer
+./ado-migrate-query.ps1 `
+  -SourceOrg 'source' -SourceProject 'Source Project' `
+  -TargetOrg 'target' -TargetProject 'Target Project' `
+  -QueryIds @('00000000-0000-0000-0000-000000000000') `
+  -SourcePat $sourcePat -TargetPat $targetPat -NonInteractive
+```
 
-These scripts make live changes to Azure DevOps projects and processes. Review, test, and validate against non-production projects before running against production data.
+For a broader project migration, use this order: process/WIT foundation, Area and Iteration Paths, dashboard export/query/import, then wiki content. Run dashboard step 4 only as the documented path-repair branch.
+
+## Parameters and precedence
+
+All 18 entry scripts expose `-LogDirectory` and `-NonInteractive`; all PAT parameters are `SecureString`. Common values use parameter → environment → prompt precedence for PATs and parameter → prompt for required non-secret values.
+
+Root-specific parameters:
+
+| Script | Parameters |
+| --- | --- |
+| `ado-copy-query-workitems.ps1` | `SourceQueryUrl`, `TargetProjectUrl`, `QueryFolder` (default `Shared Queries`), `SourcePat`, `TargetPat`, `StatePath` (default `ado-copy-query-workitems.state.json`), `LogPath`, `PreserveClassificationPaths`, common logging switches. |
+| `ado-delete-query-test-scripts.ps1` | `QueryUrl`, `Pat`, `PromptForPat`, `DeleteWorkItemTypes`, `RequiredWorkItemType`, `ManifestPath`, `LogPath`, `ForceOverwriteManifest`, `AllowTitleResolution`, `AllowRelationshipResults`, `Apply`, `ConfirmationText`, `SkipNotifications`, common logging switches. |
+| `ado-extract-discussions.ps1` | `ProjectUrl`, `Pat`, common logging switches. Output CSV is fixed beside the script. |
+| `ado-migrate-query.ps1` | `SourceOrg`, `SourceProject`, `TargetOrg`, `TargetProject`, `QueryIds`, `TargetRootFolder`, `OutputDirectory`, `SourcePat`, `TargetPat`, common logging switches. |
+
+`LogPath` parameters control legacy human-readable script logs where present; they do not replace the shared JSONL logs controlled by `LogDirectory`.
+
+## Input formats
+
+- Query URLs must have `https://dev.azure.com/{org}/{project}/_queries/query/{guid}/`; the cleanup script additionally requires the `dev.azure.com` host and a GUID.
+- Project URLs must identify `https://dev.azure.com/{org}/{project}`.
+- `QueryIds` is a PowerShell string array of GUIDs.
+- Cleanup manifests are CSV files generated by the discovery pass; do not hand-substitute a stale manifest for a different query result.
+- Root scripts otherwise obtain data directly through Azure DevOps REST responses. Folder-specific CSV, XLSX, JSON, and Markdown schemas are documented in their READMEs.
+
+## Outputs and logs
+
+Every entry run immediately creates two unique UTF-8-without-BOM JSON Lines files under `-LogDirectory`, or under a `logs` directory beside the entry script when omitted:
+
+```text
+<script-base>-success log-<UTC timestamp>-<8 hex>.jsonl
+<script-base>-error log-<UTC timestamp>-<8 hex>.jsonl
+```
+
+Non-error records go to the success log; error records go to the error log. Each line is one JSON object with `timestampUtc`, `level`, `script`, `runId`, `operation`, `outcome`, `target`, `message`, `errorType`, and `statusCode`. Both files exist even when one remains empty. Registered PATs, authorization values, and common secret query parameters are redacted.
+
+Root auxiliary outputs are:
+
+- Query/work-item copy: state JSON, optional text log, a `*.failures.json` summary, and console summary JSON.
+- Cleanup: review manifest CSV, optional `*.unresolved.csv`, `*.delete-results.csv`, and a human-readable log.
+- Discussion export: `AdoWorkItemDiscussions.csv` beside the script, appended one completed work item at a time.
+- Query migration: `migration-state.json`, `source-queries.json`, `field-schema.json`, plus legacy `success.log` and `error.log` in `-OutputDirectory`.
+
+## Detailed workflow and behavior
+
+`ado-copy-query-workitems.ps1` validates both URLs, reads the saved query/WIQL, creates or reuses the target query path, executes the source query, copies supported work-item fields, saves each source→target ID immediately, then recreates supported query relations. An identical target query is skipped; a differing query may be patched by this workflow. A recorded target work item is reused and updated. Individual item/relation failures are summarized and cause a final terminating partial-failure error.
+
+`ado-delete-query-test-scripts.ps1` resolves the saved query, rejects ambiguous result shapes unless explicitly allowed, maps only permitted test types to Test Management identifiers, and writes a review manifest. Apply mode refuses an implicit or changed manifest, requires the exact displayed confirmation, records prior successful deletes, and targets only reviewed Test Management API objects. Partial failures are logged and fail the run.
+
+`ado-extract-discussions.ps1` pages work-item IDs below the WIQL result limit, pages each comments collection, and appends one CSV row per completed ID. On rerun it reads existing CSV IDs and skips them. This resume rule assumes the existing row is complete; it does not freshly compare remote comments.
+
+`ado-migrate-query.ps1` reads each configured query, optionally uses checked-in fallback WIQL for three known default IDs, rewrites source-project literals and unsupported custom Boolean predicates, creates missing folders/query, freshly reads a created query, and records its target ID. A state hit is verified by target ID. An existing identical query is recorded and skipped; differing WIQL is never overwritten.
+
+## Verification checklist
+
+Before a live run:
+
+- Confirm source/target organizations, projects, IDs, input files, PAT scopes, and output locations.
+- Run `pwsh -NoProfile -File ./tests/run-offline-checks.ps1` and, on Windows, `powershell.exe -NoProfile -File ./tests/run-offline-checks.ps1`.
+- Start with manifest, preview, `-WhatIf`, or `-WhatIfOnly` where the selected script actually supports it.
+
+After a live run:
+
+- Read the final outcome and both JSONL logs; empty error log plus a success message is necessary but not universal proof of semantic equivalence.
+- Review auxiliary failure/skip files and manually inspect representative target data.
+- Treat code read-back checks as scoped checks only: they verify selected paths/content/WIQL, not permissions, history, dashboards rendering, every field, or external references.
+
+The repository's offline checks use mocks/static assertions and make no live Azure DevOps calls. They prove local contracts and representative branches, not live service permissions or end-to-end correctness.
+
+## Troubleshooting
+
+- Missing input under `-NonInteractive`: supply the parameter or appropriate PAT environment variable.
+- `401`: verify PAT organization, expiry, and scope. `403`: verify both PAT scope and the identity's project/process permission.
+- Conflict/differing target: inspect the target and the relevant state/manifest; do not delete or overwrite merely to force a rerun.
+- Partial query/work-item copy: retain the state file, fix the reported item/relation issue, and rerun.
+- Locked discussion CSV: close the file; export retries file-sharing failures before terminating.
+- Dashboard, wiki, path, and process-specific errors: use the linked folder README.
+
+## Limitations
+
+These utilities do not provide transactional rollback, a universal dry run, automatic permission migration, or full-fidelity project cloning. API behavior, extensions, custom processes, identities, cross-project links, and concurrent edits can require manual follow-up. Offline verification never contacts Azure DevOps, and this documentation does not claim a live validation run.
+
+## Security
+
+Use short-lived least-privilege PATs. Prefer `SecureString` parameters or process-scoped environment variables, clear environment variables after use, never commit credentials, and protect logs/exports/state because they can contain project names, IDs, work-item text, WIQL, and wiki content even after PAT redaction. Redaction is defense in depth, not permission to log arbitrary secrets.
+
+## Related workflows
+
+- Field extraction can inform process planning before WIT migration.
+- WIT migration should precede queries that depend on custom types/fields.
+- Area and Iteration Paths should precede queries that filter on classification paths.
+- Dashboard step 1 can run early for inventory; steps 2–3 depend on target preparation.
+- Wiki migration is usually last because page links can refer to final project structures.

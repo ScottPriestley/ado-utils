@@ -29,11 +29,20 @@ param(
     [string]$SourcePath,
     [string]$Organization,
     [string]$Project,
-    [switch]$NoExecute
+    [switch]$NoExecute,
+    [SecureString]$TargetPat,
+    [string]$ApiBaseUri = 'https://dev.azure.com',
+    [string]$LogDirectory,
+    [switch]$NonInteractive
 )
 
 $ErrorActionPreference = 'Stop'
 $VerbosePreference = 'Continue'
+$commonModulePath = Join-Path (Split-Path -Parent $PSScriptRoot) 'AdoUtils.Common.psm1'
+Import-Module $commonModulePath -Force
+$adoRun = Initialize-AdoScriptRun -ScriptPath $PSCommandPath -LogDirectory $LogDirectory -NonInteractive:$NonInteractive
+$script:ApiBaseUri = $ApiBaseUri.TrimEnd('/')
+trap { Complete-AdoScriptRun -Outcome failed -ErrorRecord $_ -Operation 'load-wiki'; throw }
 
 function ConvertTo-UriSegment {
     param(
@@ -238,7 +247,7 @@ function Get-AzureDevOpsProject {
     )
 
     $organizationSegment = ConvertTo-UriSegment -Value $Organization
-    $uri = 'https://dev.azure.com/{0}/_apis/projects/{1}?api-version=7.1' -f `
+    $uri = "$script:ApiBaseUri/{0}/_apis/projects/{1}?api-version=7.1" -f `
         $organizationSegment, (ConvertTo-UriSegment -Value $Project)
     return Invoke-AzureDevOpsGet -Uri $uri -Headers $Headers
 }
@@ -254,7 +263,7 @@ function Get-AzureDevOpsWikis {
     )
 
     $organizationSegment = ConvertTo-UriSegment -Value $Organization
-    $uri = "https://dev.azure.com/$organizationSegment/$(ConvertTo-UriSegment -Value $Project)/_apis/wiki/wikis?api-version=7.1"
+    $uri = "$script:ApiBaseUri/$organizationSegment/$(ConvertTo-UriSegment -Value $Project)/_apis/wiki/wikis?api-version=7.1"
     $response = Invoke-AzureDevOpsGet -Uri $uri -Headers $Headers
     if ($null -ne $response.value) {
         return @($response.value)
@@ -289,7 +298,7 @@ function Get-OrCreateTargetWiki {
     }
 
     $organizationSegment = ConvertTo-UriSegment -Value $Organization
-    $uri = "https://dev.azure.com/$organizationSegment/$(ConvertTo-UriSegment -Value $projectId)/_apis/wiki/wikis?api-version=7.1-preview.2"
+    $uri = "$script:ApiBaseUri/$organizationSegment/$(ConvertTo-UriSegment -Value $projectId)/_apis/wiki/wikis?api-version=7.1-preview.2"
     $body = @{
         name      = $projectName
         type      = 'projectWiki'
@@ -318,7 +327,7 @@ function Get-AzureDevOpsWikiPageState {
     $organizationSegment = ConvertTo-UriSegment -Value $Organization
     $wikiSegment = ConvertTo-UriSegment -Value $WikiIdentifier
     $encodedPath = [Uri]::EscapeDataString($PagePath)
-    $uri = "https://dev.azure.com/$organizationSegment/$(ConvertTo-UriSegment -Value $Project)/_apis/wiki/wikis/$wikiSegment/pages?path=$encodedPath&includeContent=true&api-version=7.1"
+    $uri = "$script:ApiBaseUri/$organizationSegment/$(ConvertTo-UriSegment -Value $Project)/_apis/wiki/wikis/$wikiSegment/pages?path=$encodedPath&includeContent=true&api-version=7.1"
 
     try {
         $response = Invoke-WebRequest -Uri $uri -Headers $Headers -Method Get -ErrorAction Stop
@@ -359,6 +368,7 @@ function Set-AzureDevOpsWikiPage {
     $requestHeaders = $Headers.Clone()
 
     if ($state.Exists) {
+        if ($state.Content -cne $null -and $state.Content -ceq $Content) { return 'Skipped' }
         if ([string]::IsNullOrWhiteSpace($state.ETag)) {
             throw "Azure DevOps did not return an ETag for existing page '$PagePath'."
         }
@@ -368,7 +378,7 @@ function Set-AzureDevOpsWikiPage {
     $organizationSegment = ConvertTo-UriSegment -Value $Organization
     $wikiSegment = ConvertTo-UriSegment -Value $WikiIdentifier
     $encodedPath = [Uri]::EscapeDataString($PagePath)
-    $uri = "https://dev.azure.com/$organizationSegment/$(ConvertTo-UriSegment -Value $Project)/_apis/wiki/wikis/$wikiSegment/pages?path=$encodedPath&api-version=7.1"
+    $uri = "$script:ApiBaseUri/$organizationSegment/$(ConvertTo-UriSegment -Value $Project)/_apis/wiki/wikis/$wikiSegment/pages?path=$encodedPath&api-version=7.1"
     $body = @{ content = $Content } | ConvertTo-Json
     $null = Invoke-RestMethod -Uri $uri -Headers $requestHeaders -Method Put -Body $body -ErrorAction Stop
 
@@ -428,15 +438,13 @@ function Import-AzureDevOpsWiki {
 
     $created = 0
     $updated = 0
+    $skipped = 0
     foreach ($page in $pages) {
         $operation = Set-AzureDevOpsWikiPage -Organization $Organization -Project $projectId `
             -WikiIdentifier $wikiIdentifier -PagePath $page.WikiPath -Content $page.Content -Headers $Headers
-        if ($operation -eq 'Created') {
-            $created++
-        }
-        else {
-            $updated++
-        }
+        if ($operation -eq 'Created') { $created++ }
+        elseif ($operation -eq 'Updated') { $updated++ }
+        else { $skipped++ }
         Write-Host "  $operation $($page.WikiPath)"
     }
 
@@ -450,6 +458,7 @@ function Import-AzureDevOpsWiki {
         Total   = $pages.Count
         Created = $created
         Updated = $updated
+        Skipped = $skipped
     }
 }
 
@@ -457,17 +466,17 @@ function Invoke-WikiLoad {
     try {
         $resolvedSourcePath = $SourcePath
         if ([string]::IsNullOrWhiteSpace($resolvedSourcePath)) {
-            $resolvedSourcePath = Read-Host 'Path to source wiki files folder'
+            $resolvedSourcePath = Read-AdoInput 'Path to source wiki files folder'
         }
 
         $resolvedOrganization = $Organization
         if ([string]::IsNullOrWhiteSpace($resolvedOrganization)) {
-            $resolvedOrganization = Read-Host -Prompt 'Target Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)'
+            $resolvedOrganization = Read-AdoInput -Prompt (Get-AdoPrompt TargetOrganization)
         }
 
         $resolvedProject = $Project
         if ([string]::IsNullOrWhiteSpace($resolvedProject)) {
-            $resolvedProject = Read-Host 'Target project name or ID'
+            $resolvedProject = Read-AdoInput 'Target project name or ID'
         }
 
         if ([string]::IsNullOrWhiteSpace($resolvedSourcePath) -or
@@ -482,7 +491,7 @@ function Invoke-WikiLoad {
         $wikiExport = Resolve-WikiExport -Path $resolvedSourcePath
         Write-Host "Validated $($wikiExport.Pages.Count) source page(s) from '$($wikiExport.Manifest.wikiName)'." -ForegroundColor Green
 
-        $personalAccessToken = Read-Host 'Target PAT token' -AsSecureString
+        $personalAccessToken = Resolve-AdoPat -Pat $TargetPat -Role Target
         $headers = Get-AzureDevOpsHeaders -PersonalAccessToken $personalAccessToken
         $projectDetails = Get-AzureDevOpsProject -Organization $resolvedOrganization `
             -Project $resolvedProject -Headers $headers
@@ -493,15 +502,16 @@ function Invoke-WikiLoad {
         $result = Import-AzureDevOpsWiki -WikiExport $wikiExport -Organization $resolvedOrganization `
             -ProjectDetails $projectDetails -Wiki $targetWiki -Headers $headers
 
-        Write-Host "`nWiki load complete. Total: $($result.Total), Created: $($result.Created), Updated: $($result.Updated)." -ForegroundColor Green
+        Write-Host "`nWiki load complete. Total: $($result.Total), Created: $($result.Created), Updated: $($result.Updated), Skipped: $($result.Skipped)." -ForegroundColor Green
         Write-Host 'All target page content passed read-back validation.' -ForegroundColor Green
     }
     catch {
         Write-Error "Wiki load failed: $($_.Exception.Message)"
-        exit 1
+        throw
     }
 }
 
 if (-not $NoExecute) {
     Invoke-WikiLoad
 }
+Complete-AdoScriptRun -Outcome $(if ($NoExecute) { 'preview' } else { 'succeeded' }) -Operation 'load-wiki'

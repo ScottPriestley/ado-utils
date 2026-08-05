@@ -28,12 +28,20 @@ param(
     # not block page reloads. Use StrictAttachmentValidation to fail before target writes.
     [switch]$AllowMissingAttachments,
     [switch]$StrictAttachmentValidation,
-    [switch]$NoExecute
+    [switch]$NoExecute,
+    [SecureString]$SourcePat,
+    [SecureString]$TargetPat,
+    [string]$LogDirectory,
+    [switch]$NonInteractive
 )
 
 $ErrorActionPreference = 'Stop'
 $VerbosePreference = 'Continue'
 $script:ApiBaseUri = $ApiBaseUri.TrimEnd('/')
+$commonModulePath = Join-Path (Split-Path -Parent $PSScriptRoot) 'AdoUtils.Common.psm1'
+Import-Module $commonModulePath -Force
+$adoRun = Initialize-AdoScriptRun -ScriptPath $PSCommandPath -LogDirectory $LogDirectory -NonInteractive:$NonInteractive
+trap { Complete-AdoScriptRun -Outcome failed -ErrorRecord $_ -Operation 'migrate-wiki'; throw }
 $script:LogPath = Join-Path (Get-Location) "WikiMigration_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
 
 function Write-MigrationLog {
@@ -1056,6 +1064,7 @@ function Copy-AzureDevOpsWikiAttachments {
 
     $uploaded = 0
     $repaired = 0
+    $identicalAttachments = 0
     foreach ($resolved in $resolvedAttachments) {
         $attachment = $resolved.Attachment
         if ($resolved.Historical) {
@@ -1071,6 +1080,15 @@ function Copy-AzureDevOpsWikiAttachments {
 
         $targetGitPath = ConvertTo-AzureDevOpsWikiRepositoryPath -Wiki $TargetWiki -WikiPath $attachment.SourceGitPath
         $changeType = if ($targetExistingPaths.Contains($targetGitPath)) { 'edit' } else { 'add' }
+        if ($changeType -eq 'edit') {
+            $existingContent = Get-AzureDevOpsWikiAttachmentContent -Organization $TargetOrganization -Project $TargetProject `
+                -Wiki $TargetWiki -GitPath $targetGitPath -Headers $TargetHeaders
+            if ($existingContent.Count -eq $content.Count -and (Get-ByteArraySha256 $existingContent) -ceq (Get-ByteArraySha256 $content)) {
+                $identicalAttachments++
+                Write-MigrationLog -Message "Skipped identical attachment '$($attachment.Name)'."
+                continue
+            }
+        }
         $targetBranchTip = Set-AzureDevOpsGitItemContent -Organization $TargetOrganization -Project $TargetProject `
             -RepositoryId $targetRepositoryId -BranchRefName $targetBranchRefName -OldObjectId $targetBranchTip `
             -GitPath $targetGitPath -Content $content -ChangeType $changeType -Headers $TargetHeaders
@@ -1099,7 +1117,7 @@ function Copy-AzureDevOpsWikiAttachments {
         Write-MigrationLog -Message "Skipped $($skippedAttachments.Count) unresolved attachment(s); affected pages keep their existing broken link(s): $($skippedAttachments -join '; ')." -Level Warning
     }
 
-    return [pscustomobject]@{ Total = $attachments.Count; Uploaded = $uploaded; Repaired = $repaired; Skipped = $skippedAttachments.Count }
+    return [pscustomobject]@{ Total = $attachments.Count; Uploaded = $uploaded; Repaired = $repaired; Skipped = ($skippedAttachments.Count + $identicalAttachments) }
 }
 
 function Get-AzureDevOpsWikiPageState {
@@ -1158,6 +1176,7 @@ function Set-AzureDevOpsWikiPage {
         -WikiIdentifier $WikiIdentifier -PagePath $PagePath -Headers $Headers
     $requestHeaders = $Headers.Clone()
     if ($state.Exists) {
+        if ($state.Content -cne $null -and $state.Content -ceq $Content) { return 'Skipped' }
         if ([string]::IsNullOrWhiteSpace($state.ETag)) {
             throw "Azure DevOps did not return an ETag for existing page '$PagePath'."
         }
@@ -1176,12 +1195,12 @@ function Set-AzureDevOpsWikiPage {
 function Invoke-WikiMigration {
     try {
         Write-MigrationLog -Message '=== Azure DevOps Wiki Migration Started ==='
-        $sourceOrg = if ([string]::IsNullOrWhiteSpace($SourceOrganization)) { Read-Host -Prompt 'Source Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)' } else { $SourceOrganization }
-        $sourceProjectName = if ([string]::IsNullOrWhiteSpace($SourceProject)) { Read-Host 'Source project name or ID' } else { $SourceProject }
-        $sourcePat = Read-Host 'Source PAT token' -AsSecureString
-        $targetOrg = if ([string]::IsNullOrWhiteSpace($TargetOrganization)) { Read-Host -Prompt 'Target Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)' } else { $TargetOrganization }
-        $targetProjectName = if ([string]::IsNullOrWhiteSpace($TargetProject)) { Read-Host 'Target project name or ID' } else { $TargetProject }
-        $targetPat = Read-Host 'Target PAT token' -AsSecureString
+        $sourceOrg = if ([string]::IsNullOrWhiteSpace($SourceOrganization)) { Read-AdoInput -Prompt (Get-AdoPrompt SourceOrganization) } else { $SourceOrganization }
+        $sourceProjectName = if ([string]::IsNullOrWhiteSpace($SourceProject)) { Read-AdoInput 'Source project name or ID' } else { $SourceProject }
+        $sourcePat = Resolve-AdoPat -Pat $SourcePat -Role Source
+        $targetOrg = if ([string]::IsNullOrWhiteSpace($TargetOrganization)) { Read-AdoInput -Prompt (Get-AdoPrompt TargetOrganization) } else { $TargetOrganization }
+        $targetProjectName = if ([string]::IsNullOrWhiteSpace($TargetProject)) { Read-AdoInput 'Target project name or ID' } else { $TargetProject }
+        $targetPat = Resolve-AdoPat -Pat $TargetPat -Role Target
 
         Test-RequiredInput -Name 'Source organization' -Value $sourceOrg
         Test-RequiredInput -Name 'Source project' -Value $sourceProjectName
@@ -1242,10 +1261,11 @@ function Invoke-WikiMigration {
 
         $created = 0
         $updated = 0
+        $skipped = 0
         foreach ($page in $orderedPages) {
             $operation = Set-AzureDevOpsWikiPage -Organization $targetOrg -Project ([string]$targetProjectDetails.id) `
                 -WikiIdentifier $targetWikiIdentifier -PagePath $page.Path -Content $page.Content -Headers $targetHeaders
-            if ($operation -eq 'Created') { $created++ } else { $updated++ }
+            if ($operation -eq 'Created') { $created++ } elseif ($operation -eq 'Updated') { $updated++ } else { $skipped++ }
             Write-MigrationLog -Message "$operation '$($page.Path)'."
         }
 
@@ -1258,7 +1278,7 @@ function Invoke-WikiMigration {
             }
         }
 
-        Write-MigrationLog -Message "Migration complete. Total: $($orderedPages.Count), Created: $created, Updated: $updated." -Level Success
+        Write-MigrationLog -Message "Migration complete. Total: $($orderedPages.Count), Created: $created, Updated: $updated, Skipped: $skipped." -Level Success
         Write-Host "Log: $script:LogPath" -ForegroundColor Green
     }
     catch {
@@ -1270,3 +1290,4 @@ function Invoke-WikiMigration {
 if (-not $NoExecute) {
     Invoke-WikiMigration
 }
+Complete-AdoScriptRun -Outcome $(if ($NoExecute) { 'preview' } else { 'succeeded' }) -Operation 'migrate-wiki'

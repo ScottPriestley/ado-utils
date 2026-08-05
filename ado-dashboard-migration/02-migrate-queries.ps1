@@ -14,10 +14,17 @@ param(
     [Parameter(Mandatory)][string]$TargetProject,
     [string]$ExportDir = "export",
     [string]$QueryFolderName = "",    # optional wrapper folder under Shared Queries; empty = preserve the source folder structure as-is (e.g. Shared Queries/Dashboard Queries/...)
-    [string]$SourceProjectName = ""   # if set, occurrences in WIQL are rewritten to TargetProject
+    [string]$SourceProjectName = "",   # if set, occurrences in WIQL are rewritten to TargetProject
+    [SecureString]$TargetPat,
+    [string]$LogDirectory,
+    [switch]$NonInteractive
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_common.ps1')
+$commonModulePath = Join-Path (Split-Path -Parent $PSScriptRoot) 'AdoUtils.Common.psm1'
+Import-Module $commonModulePath -Force
+$adoRun = Initialize-AdoScriptRun -ScriptPath $PSCommandPath -LogDirectory $LogDirectory -NonInteractive:$NonInteractive
+trap { Complete-AdoScriptRun -Outcome failed -ErrorRecord $_ -Operation 'migrate-dashboard-queries'; throw }
 
 if (-not [System.IO.Path]::IsPathRooted($ExportDir)) {
     $ExportDir = Join-Path $PSScriptRoot $ExportDir
@@ -45,7 +52,7 @@ if (-not $SourceProjectName) {
     if (-not $SourceProjectName) { throw "Could not detect source project name from mapping.json - pass -SourceProjectName explicitly." }
 }
 
-$headers = Get-AdoAuthHeader -EnvVarName 'ADO_TARGET_PAT' -Purpose "TARGET org '$TargetOrg'"
+$headers = Get-AdoAuthHeader -EnvVarName 'ADO_TARGET_PAT' -Purpose "TARGET org '$TargetOrg'" -Pat $TargetPat
 $base    = "https://dev.azure.com/$(UrlEnc $TargetOrg)"
 $projSeg = UrlEnc $TargetProject
 
@@ -196,3 +203,5 @@ if (@($failedOther).Count) {
     @($failedOther) | Where-Object { $_ } | Sort-Object -Unique | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red }
 }
 Write-Utf8Text -Path (Join-Path $ExportDir 'queries-skipped.txt') -Text ((@($skippedProc) | Where-Object { $_ } | Sort-Object -Unique) -join "`r`n")
+if (@($failedOther).Count -or @($skippedProc).Count) { throw 'One or more dashboard query migrations failed or were blocked; review the summary and rerun.' }
+Complete-AdoScriptRun -Outcome succeeded -Operation 'migrate-dashboard-queries'

@@ -19,13 +19,20 @@ param(
     [Parameter(Mandatory)][string]$TargetProject,
     [string]$ExportDir = "./export",
     [string]$SourceProjectName = "",   # default: from mapping.json
-    [switch]$WhatIfOnly                 # list what would be created, create nothing
+    [switch]$WhatIfOnly,                 # list what would be created, create nothing
+    [SecureString]$TargetPat,
+    [string]$LogDirectory,
+    [switch]$NonInteractive
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_common.ps1')
+$commonModulePath = Join-Path (Split-Path -Parent $PSScriptRoot) 'AdoUtils.Common.psm1'
+Import-Module $commonModulePath -Force
+$adoRun = Initialize-AdoScriptRun -ScriptPath $PSCommandPath -LogDirectory $LogDirectory -NonInteractive:$NonInteractive
+trap { Complete-AdoScriptRun -Outcome failed -ErrorRecord $_ -Operation 'create-classification-nodes'; throw }
 
 $TargetOrg = Get-OrgName $TargetOrg
-$headers   = Get-AdoAuthHeader -EnvVarName 'ADO_TARGET_PAT' -Purpose "TARGET org '$TargetOrg'"
+$headers   = Get-AdoAuthHeader -EnvVarName 'ADO_TARGET_PAT' -Purpose "TARGET org '$TargetOrg'" -Pat $TargetPat
 $base      = "https://dev.azure.com/$(UrlEnc $TargetOrg)"
 $projSeg   = UrlEnc $TargetProject
 $queries   = Read-Utf8Text (Join-Path $ExportDir 'queries.json') | ConvertFrom-Json
@@ -83,9 +90,18 @@ function Ensure-Node {
     $uri = "$base/$projSeg/_apis/wit/classificationnodes/$Structure"
     if ($parentRel) { $uri += '/' + (($parentRel -split '\\' | ForEach-Object { UrlEnc $_ }) -join '/') }
     $uri += "?api-version=7.1"
+    $nodeUri = "$base/$projSeg/_apis/wit/classificationnodes/$Structure/$(($segs | ForEach-Object { UrlEnc $_ }) -join '/')?api-version=7.1"
+    try {
+        Invoke-Ado -Headers $headers -Method GET -Uri $nodeUri | Out-Null
+        Write-Host "  exists  $Structure`: $RelPath"
+        return $true
+    } catch {
+        if ((Get-AdoMsg $_) -notmatch '(?i)404|not found|does not exist') { throw }
+    }
     if ($WhatIfOnly) { Write-Host "  would create $Structure`: $RelPath" -ForegroundColor Cyan; return $true }
     try {
         Invoke-Ado -Headers $headers -Method POST -Uri $uri -Body @{ name = $name } | Out-Null
+        Invoke-Ado -Headers $headers -Method GET -Uri $nodeUri | Out-Null
         Write-Host "  created $Structure`: $RelPath" -ForegroundColor Green
         return $true
     } catch {
@@ -116,3 +132,5 @@ if (-not $WhatIfOnly) {
     Write-Host "`nNext: re-run step 2 to create the queries that were blocked on missing paths:" -ForegroundColor Green
     Write-Host "  pwsh `"$(Join-Path $PSScriptRoot '02-migrate-queries.ps1')`" -TargetOrg $TargetOrg -TargetProject `"$TargetProject`""
 }
+if ($fail) { throw "$fail classification node operation(s) failed." }
+Complete-AdoScriptRun -Outcome $(if ($WhatIfOnly) { 'preview' } else { 'succeeded' }) -Operation 'create-classification-nodes'

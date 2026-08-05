@@ -2,15 +2,20 @@ param(
     [string]$SourceQueryUrl,
     [string]$TargetProjectUrl,
     [string]$QueryFolder = 'Shared Queries',
-    [string]$SourcePat,
-    [string]$TargetPat,
+    [SecureString]$SourcePat,
+    [SecureString]$TargetPat,
     [string]$StatePath,
     [string]$LogPath,
-    [switch]$PreserveClassificationPaths
+    [switch]$PreserveClassificationPaths,
+    [string]$LogDirectory,
+    [switch]$NonInteractive
 )
 
 Set-StrictMode -Version 3.0
 $ErrorActionPreference = 'Stop'
+$commonModulePath = Join-Path $PSScriptRoot 'AdoUtils.Common.psm1'
+Import-Module $commonModulePath -Force
+$adoRun = Initialize-AdoScriptRun -ScriptPath $PSCommandPath -LogDirectory $LogDirectory -NonInteractive:$NonInteractive
 
 function UrlEnc([string]$Value) { [uri]::EscapeDataString($Value) }
 
@@ -39,7 +44,8 @@ function Write-Warn([string]$Message) {
 trap {
     $message = if ($_.Exception) { $_.Exception.Message } else { [string]$_ }
     Write-RunLog -Level 'ERROR' -Message $message
-    break
+    Complete-AdoScriptRun -Outcome failed -ErrorRecord $_ -Operation 'copy-query-workitems'
+    throw
 }
 
 function ConvertTo-AdoOrganizationName([string]$Value) {
@@ -54,24 +60,9 @@ function ConvertFrom-SecureStringToPlainText([securestring]$SecureString) {
     finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
 }
 
-function Get-AuthHeader([string]$Prompt, [string]$PatValue, [string]$EnvVarName = '') {
-    $pat = $PatValue
-    if ([string]::IsNullOrWhiteSpace($pat) -and -not [string]::IsNullOrWhiteSpace($EnvVarName)) {
-        $envPat = [Environment]::GetEnvironmentVariable($EnvVarName)
-        if (-not [string]::IsNullOrWhiteSpace($envPat)) { $pat = $envPat }
-    }
-
-    if ([string]::IsNullOrWhiteSpace($pat)) {
-        $securePat = Read-Host -Prompt $Prompt -AsSecureString
-        $pat = ConvertFrom-SecureStringToPlainText -SecureString $securePat
-    }
-
-    if ([string]::IsNullOrWhiteSpace($pat)) { throw 'A non-empty Azure DevOps PAT is required.' }
-    $bytes = [Text.Encoding]::ASCII.GetBytes(":$pat")
-    return @{
-        Authorization = "Basic $([Convert]::ToBase64String($bytes))"
-        Accept = 'application/json'
-    }
+function Get-AuthHeader([ValidateSet('Source','Target')][string]$Role, [SecureString]$PatValue) {
+    $resolvedPat = Resolve-AdoPat -Pat $PatValue -Role $Role
+    return New-AdoAuthorizationHeaders -Pat $resolvedPat
 }
 
 function ConvertFrom-AdoQueryUrl([string]$Url) {
@@ -213,6 +204,9 @@ function Set-Query {
 
     $existing = Invoke-Ado -Method GET -Uri $getUri -Headers $Headers -AllowNotFound
     if ($null -ne $existing) {
+        if ([string]$existing.name -ceq $queryName -and [string]$existing.wiql -ceq $Wiql) {
+            return $existing
+        }
         $patchUri = "$Base/$(UrlEnc $Project)/_apis/wit/queries/$($existing.id)?api-version=7.1-preview.2"
         return Invoke-Ado -Method PATCH -Uri $patchUri -Headers $Headers -Body $body
     }
@@ -454,7 +448,7 @@ Write-RunLog -Level 'INFO' -Message '=== ADO query/work item copy started ==='
 Write-RunLog -Level 'INFO' -Message ('LogPath: {0}' -f $LogPath)
 
 if ([string]::IsNullOrWhiteSpace($SourceQueryUrl)) {
-    $SourceQueryUrl = Read-Host -Prompt 'Source Query URL'
+    $SourceQueryUrl = Read-AdoInput -Prompt 'Source Query URL'
 }
 $source = ConvertFrom-AdoQueryUrl -Url $SourceQueryUrl
 
@@ -466,10 +460,10 @@ $sourceOrgName = ConvertTo-AdoOrganizationName $SourceOrg
 $sourceBase = "https://dev.azure.com/$(UrlEnc $sourceOrgName)"
 
 Write-Info "Source: $SourceOrg / $SourceProject / query $SourceQueryId"
-$sourceHeaders = Get-AuthHeader -Prompt 'Source Project PAT' -PatValue $SourcePat -EnvVarName 'ADO_SOURCE_PAT'
+$sourceHeaders = Get-AuthHeader -Role Source -PatValue $SourcePat
 
 if ([string]::IsNullOrWhiteSpace($TargetProjectUrl)) {
-    $TargetProjectUrl = Read-Host -Prompt 'Target Project URL'
+    $TargetProjectUrl = Read-AdoInput -Prompt 'Target Project URL'
 }
 $target = ConvertFrom-AdoProjectUrl -Url $TargetProjectUrl
 
@@ -486,7 +480,7 @@ Write-RunLog -Level 'INFO' -Message ('StatePath: {0}' -f $StatePath)
 $migrationState = Read-MigrationState -Path $StatePath
 
 Write-Info "Target: $TargetOrg / $TargetProject"
-$targetHeaders = Get-AuthHeader -Prompt 'Target Project PAT' -PatValue $TargetPat -EnvVarName 'ADO_TARGET_PAT'
+$targetHeaders = Get-AuthHeader -Role Target -PatValue $TargetPat
 
 Write-Info 'Loading source query...'
 $queryUri = "$sourceBase/$(UrlEnc $SourceProject)/_apis/wit/queries/${SourceQueryId}?`$expand=wiql&api-version=7.1-preview.2"
@@ -630,6 +624,10 @@ Write-RunLog -Level 'INFO' -Message ('Summary: createdWorkItems={0}, reusedWorkI
 Write-RunLog -Level 'INFO' -Message '=== ADO query/work item copy finished ==='
 Write-Info "Log written to: $LogPath"
 Write-Info "Failure details written to: $failureLogPath"
+if ($failed.Count -gt 0 -or $failedRelations.Count -gt 0) {
+    throw "Material partial failure: $($failed.Count) work item operation(s) and $($failedRelations.Count) relation operation(s) failed."
+}
+Complete-AdoScriptRun -Outcome succeeded -Operation 'copy-query-workitems' -Message 'Query and work item copy completed.'
 
 
 

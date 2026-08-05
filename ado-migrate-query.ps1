@@ -12,9 +12,8 @@
 	pass -SourcePat/-TargetPat, or enter each PAT at the hidden prompt.
 
 .EXAMPLE
-	$env:ADO_SOURCE_PAT = '<source-pat>'
-	$env:ADO_TARGET_PAT = '<target-pat>'
 	.\ado-migrate-query.ps1
+	# Uses secure hidden prompts when SecureString parameters and PAT environment variables are absent.
 
 .EXAMPLE
 	.\ado-migrate-query.ps1 -OutputDirectory C:\Temp\ado-query-copy
@@ -41,12 +40,18 @@ param(
 	),
 	[string]$TargetRootFolder = 'Shared Queries',
 	[string]$OutputDirectory = (Join-Path $PSScriptRoot 'ado-query-migration-output'),
-	[string]$SourcePat = $env:ADO_SOURCE_PAT,
-	[string]$TargetPat = $env:ADO_TARGET_PAT
+	[SecureString]$SourcePat,
+	[SecureString]$TargetPat,
+	[string]$LogDirectory,
+	[switch]$NonInteractive
 )
 
 Set-StrictMode -Version 3.0
 $ErrorActionPreference = 'Stop'
+$commonModulePath = Join-Path $PSScriptRoot 'AdoUtils.Common.psm1'
+Import-Module $commonModulePath -Force
+$adoRun = Initialize-AdoScriptRun -ScriptPath $PSCommandPath -LogDirectory $LogDirectory -NonInteractive:$NonInteractive
+trap { Complete-AdoScriptRun -Outcome failed -ErrorRecord $_ -Operation 'migrate-query'; throw }
 
 $restCommand = Get-Command Invoke-RestMethod -ErrorAction Stop
 if ($restCommand.CommandType -ne 'Cmdlet' -or $restCommand.Source -ne 'Microsoft.PowerShell.Utility') {
@@ -71,21 +76,11 @@ function ConvertFrom-SecurePat {
 
 function Get-AdoHeaders {
 	param(
-		[string]$Pat,
-		[Parameter(Mandatory)][string]$Prompt,
-		[Parameter(Mandatory)][string]$EnvVarName
+		[SecureString]$Pat,
+		[Parameter(Mandatory)][ValidateSet('Source','Target')][string]$Role
 	)
-
-	if ([string]::IsNullOrWhiteSpace($Pat)) {
-		$Pat = ConvertFrom-SecurePat (Read-Host -Prompt $Prompt -AsSecureString)
-	}
-	if ([string]::IsNullOrWhiteSpace($Pat)) {
-		throw 'A non-empty Azure DevOps PAT is required.'
-	}
-	[Environment]::SetEnvironmentVariable($EnvVarName, $Pat, 'Process')
-
-	$encodedPat = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$Pat"))
-	return @{ Authorization = "Basic $encodedPat"; Accept = 'application/json' }
+	$resolvedPat = Resolve-AdoPat -Pat $Pat -Role $Role
+	return New-AdoAuthorizationHeaders -Pat $resolvedPat
 }
 
 function Get-HttpStatusCode {
@@ -310,10 +305,8 @@ foreach ($logPath in @($script:SuccessLogPath, $script:ErrorLogPath)) {
 }
 $state = Read-MigrationState -Path $statePath
 
-$sourceHeaders = Get-AdoHeaders -Pat $SourcePat -Prompt "Enter the source PAT for '$SourceOrg'" `
-	-EnvVarName 'ADO_SOURCE_PAT'
-$targetHeaders = Get-AdoHeaders -Pat $TargetPat -Prompt "Enter the target PAT for '$TargetOrg'" `
-	-EnvVarName 'ADO_TARGET_PAT'
+$sourceHeaders = Get-AdoHeaders -Pat $SourcePat -Role Source
+$targetHeaders = Get-AdoHeaders -Pat $TargetPat -Role Target
 $sourceBaseUrl = "https://dev.azure.com/$(ConvertTo-UrlSegment $SourceOrg)"
 $targetBaseUrl = "https://dev.azure.com/$(ConvertTo-UrlSegment $TargetOrg)"
 $targetFields = Get-ProjectFields -BaseUrl $targetBaseUrl -Project $TargetProject -Headers $targetHeaders
@@ -379,6 +372,8 @@ foreach ($queryIdValue in $QueryIds) {
 		})
 
 		$targetQueryPath = Get-TargetQueryPath -SourceQuery $sourceQuery -RootFolder $TargetRootFolder
+		$targetWiql = Convert-WiqlForTarget -Wiql ([string]$sourceQuery.wiql) `
+			-SourceProjectName $SourceProject -TargetProjectName $TargetProject -TargetFields $targetFields
 		$existingTargetQuery = Get-QueryByPath -BaseUrl $targetBaseUrl -Project $TargetProject `
 			-Path $targetQueryPath -Headers $targetHeaders
 		if ($null -ne $existingTargetQuery) {
@@ -386,6 +381,9 @@ foreach ($queryIdValue in $QueryIds) {
 				[bool]$existingTargetQuery.isFolder
 			if ($isFolder) {
 				throw "Target path '$targetQueryPath' exists as a folder, not a query."
+			}
+			if ([string]$existingTargetQuery.wiql -cne $targetWiql) {
+				throw "Target query '$targetQueryPath' already exists but its WIQL differs. This tool will not overwrite it implicitly."
 			}
 			$state[$queryId] = [string]$existingTargetQuery.id
 			Write-MigrationState -State $state -Path $statePath
@@ -404,14 +402,16 @@ foreach ($queryIdValue in $QueryIds) {
 		$projectSegment = ConvertTo-UrlSegment $TargetProject
 		$parentSegment = ConvertTo-QueryPath $parentPath
 		$createUri = "$targetBaseUrl/$projectSegment/_apis/wit/queries/$parentSegment`?api-version=7.1"
-		$targetWiql = Convert-WiqlForTarget -Wiql ([string]$sourceQuery.wiql) `
-			-SourceProjectName $SourceProject -TargetProjectName $TargetProject -TargetFields $targetFields
 		$createdQuery = Invoke-AdoRequest -Method POST -Uri $createUri -Headers $targetHeaders -Body @{
 			name = [string]$sourceQuery.name
 			wiql = $targetWiql
 		}
 		if ($null -eq $createdQuery -or [string]::IsNullOrWhiteSpace([string]$createdQuery.id)) {
 			throw 'Azure DevOps did not return an ID for the newly created query.'
+		}
+		$verifiedQuery = Get-QueryByPath -BaseUrl $targetBaseUrl -Project $TargetProject -Path $targetQueryPath -Headers $targetHeaders
+		if ($null -eq $verifiedQuery -or [string]$verifiedQuery.wiql -cne $targetWiql) {
+			throw "Fresh read-back verification failed for target query '$targetQueryPath'."
 		}
 
 		$state[$queryId] = [string]$createdQuery.id
@@ -450,3 +450,4 @@ Write-Host "State file:  $statePath"
 if ($failedCount -gt 0) {
 	throw "$failedCount query migration(s) failed. Correct the logged errors and rerun this script; completed queries will be skipped."
 }
+Complete-AdoScriptRun -Outcome succeeded -Operation 'migrate-query'

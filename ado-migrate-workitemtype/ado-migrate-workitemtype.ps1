@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
-    Migrates an Azure DevOps inherited-process Work Item Type — including its
-    custom fields, picklists, states, rules, and form layout placement — from
+    Migrates an Azure DevOps inherited-process Work Item Type -- including its
+    custom fields, picklists, states, rules, and form layout placement -- from
     one process to another, within the same organization or across two.
 
 .DESCRIPTION
@@ -16,7 +16,7 @@
       4. Field membership on the WIT (required / default / allow-groups /
          read-only settings; existing fields are patched to match).
       5. Custom states, and hiding of inherited states hidden in the source.
-      6. Custom rules (best-effort — a rule referencing something that does
+      6. Custom rules (best-effort -- a rule referencing something that does
          not exist in the target is logged and skipped).
       7. Form layout: pages, groups, and controls for the migrated fields,
          so the fields actually appear on the work item form.
@@ -27,7 +27,7 @@
     the target requires Project Collection Administrator (or "Create process"
     / field-create permission).
 
-    The script is idempotent — already-existing items are detected and
+    The script is idempotent -- already-existing items are detected and
     skipped or updated, so it is safe to re-run after fixing a failure.
 
 .EXAMPLE
@@ -48,10 +48,16 @@ param(
     [SecureString]$SourcePat,
     [string]$TargetOrganization,
     [string]$TargetProcess,
-    [SecureString]$TargetPat
+    [SecureString]$TargetPat,
+    [string]$LogDirectory,
+    [switch]$NonInteractive
 )
 
 $ErrorActionPreference = 'Stop'
+$commonModulePath = Join-Path (Split-Path -Parent $PSScriptRoot) 'AdoUtils.Common.psm1'
+Import-Module $commonModulePath -Force
+$adoRun = Initialize-AdoScriptRun -ScriptPath $PSCommandPath -LogDirectory $LogDirectory -NonInteractive:$NonInteractive
+trap { Complete-AdoScriptRun -Outcome failed -ErrorRecord $_ -Operation 'migrate-workitem-type'; throw }
 
 # ---------------------------------------------------------------- helpers ---
 
@@ -137,20 +143,13 @@ $vFields = 'api-version=7.1'             # org-level wit/fields (GA)
 
 # ----------------------------------------------------------------- prompts ---
 
-if (-not $WorkItemTypeName)   { $WorkItemTypeName   = Read-Host 'Work Item Type name (as shown in the process, e.g. "Business Process")' }
-if (-not $SourceOrganization) { $SourceOrganization = Read-Host -Prompt 'Source Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)' }
-if (-not $SourceProcess)      { $SourceProcess      = Read-Host 'SOURCE process name' }
-if (-not $SourcePat)          { $SourcePat          = Read-Host 'SOURCE PAT (Work Items + Process read/write)' -AsSecureString }
-if (-not $TargetOrganization) { $TargetOrganization = Read-Host -Prompt 'Target Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)' }
-if (-not $TargetProcess)      { $TargetProcess      = Read-Host 'TARGET process name' }
-if (-not $TargetPat) {
-    $sameOrg = (Resolve-OrgUrl $SourceOrganization) -eq (Resolve-OrgUrl $TargetOrganization)
-    if ($sameOrg) {
-        $reuse = Read-Host 'TARGET PAT — press Enter to reuse the source PAT (same org), or type N to enter a different one'
-        if ($reuse -match '^[nN]') { $TargetPat = Read-Host 'TARGET PAT' -AsSecureString } else { $TargetPat = $SourcePat }
-    }
-    else { $TargetPat = Read-Host 'TARGET PAT (Work Items + Process read/write)' -AsSecureString }
-}
+if (-not $WorkItemTypeName)   { $WorkItemTypeName   = Read-AdoInput 'Work Item Type name (as shown in the process, e.g. "Business Process")' }
+if (-not $SourceOrganization) { $SourceOrganization = Read-AdoInput -Prompt (Get-AdoPrompt SourceOrganization) }
+if (-not $SourceProcess)      { $SourceProcess      = Read-AdoInput 'SOURCE process name' }
+$SourcePat = Resolve-AdoPat -Pat $SourcePat -Role Source
+if (-not $TargetOrganization) { $TargetOrganization = Read-AdoInput -Prompt (Get-AdoPrompt TargetOrganization) }
+if (-not $TargetProcess)      { $TargetProcess      = Read-AdoInput 'TARGET process name' }
+$TargetPat = Resolve-AdoPat -Pat $TargetPat -Role Target
 
 $srcBase = Resolve-OrgUrl $SourceOrganization
 $tgtBase = Resolve-OrgUrl $TargetOrganization
@@ -193,7 +192,7 @@ if (-not $srcWit) { throw "Work item type '$WorkItemTypeName' not found in sourc
 $srcCustomization = Get-Prop $srcWit 'customization'
 Write-Ok "Source WIT: $($srcWit.referenceName) (customization: $srcCustomization)"
 if ($srcCustomization -ieq 'system') {
-    Add-Warn "Source WIT is an unmodified system type — there is no custom content to migrate. Continuing anyway."
+    Add-Warn "Source WIT is an unmodified system type -- there is no custom content to migrate. Continuing anyway."
 }
 
 $tgtWits = (Invoke-Ado -Uri "$tgtProcUri/workitemtypes?$vProc" -Headers $tgtH).value
@@ -212,7 +211,7 @@ if (-not $tgtWit) {
         Write-Ok "Created custom WIT '$($tgtWit.name)' -> $($tgtWit.referenceName)"
     }
     else {
-        # Source is a derived system type; target process lacks the base — unusual, but try deriving from the same parent.
+        # Source is a derived system type; target process lacks the base -- unusual, but try deriving from the same parent.
         $body = @{
             inheritsFrom = Get-Prop $srcWit 'inherits'
             color        = Get-Prop $srcWit 'color'
@@ -224,7 +223,7 @@ if (-not $tgtWit) {
     }
 }
 elseif ((Get-Prop $tgtWit 'customization') -ieq 'system') {
-    # A same-named system type exists in target — derive it so it can be customized.
+    # A same-named system type exists in target -- derive it so it can be customized.
     $body = @{
         inheritsFrom = $tgtWit.referenceName
         color        = Get-Prop $srcWit 'color'
@@ -274,8 +273,8 @@ foreach ($f in $fieldsToMigrate) {
             if ($existingList) {
                 $picklistId = $existingList.id
                 $diff = Compare-Object @(Get-Prop $srcList 'items' @()) @(Get-Prop $existingList 'items' @())
-                if ($diff) { Add-Warn "Picklist '$listName' already exists in target with DIFFERENT items — reusing it as-is (shared lists affect other fields; reconcile manually if needed)." }
-                else { Write-Skip "Picklist '$listName' already exists in target — reusing." }
+                if ($diff) { Add-Warn "Picklist '$listName' already exists in target with DIFFERENT items -- reusing it as-is (shared lists affect other fields; reconcile manually if needed)." }
+                else { Write-Skip "Picklist '$listName' already exists in target -- reusing." }
             }
             else {
                 $newList = Invoke-Ado -Method POST -Uri "$tgtBase/_apis/work/processes/lists?$vLists" -Headers $tgtH -Body @{
@@ -309,7 +308,7 @@ foreach ($f in $fieldsToMigrate) {
     else {
         $srcOrgField = Invoke-Ado -Uri "$srcBase/_apis/wit/fields/$ref`?$vFields" -Headers $srcH
         if ($tgtOrgField.type -ine $srcOrgField.type) {
-            Add-Warn "Field $ref exists in target org with type '$($tgtOrgField.type)' but source is '$($srcOrgField.type)' — cannot reconcile; adding it to the WIT with the target's type."
+            Add-Warn "Field $ref exists in target org with type '$($tgtOrgField.type)' but source is '$($srcOrgField.type)' -- cannot reconcile; adding it to the WIT with the target's type."
         }
         else { Write-Skip "Org-level field $ref already exists in target." }
     }
@@ -393,7 +392,7 @@ foreach ($s in $srcStates) {
 # Warn about target states the source does not have (cannot delete inherited ones safely here)
 foreach ($t in $tgtStates) {
     if (-not ($srcStates | Where-Object { $_.name -ieq $t.name }) -and -not [bool](Get-Prop $t 'hidden' $false)) {
-        Add-Warn "Target has state '$($t.name)' that the source WIT does not — review manually (not auto-deleted)."
+        Add-Warn "Target has state '$($t.name)' that the source WIT does not -- review manually (not auto-deleted)."
     }
 }
 
@@ -457,7 +456,7 @@ foreach ($srcPage in @(Get-Prop $srcLayout 'pages' @())) {
                 $cid = Get-Prop $c 'id'
                 if (-not $cid) { continue }
                 if ([bool](Get-Prop $c 'isContribution' $false)) {
-                    Add-Warn "Control '$(Get-Prop $c 'label')' on page '$($srcPage.label)' is an extension contribution — not migrated."
+                    Add-Warn "Control '$(Get-Prop $c 'label')' on page '$($srcPage.label)' is an extension contribution -- not migrated."
                     continue
                 }
                 if ($migratedFieldRefs.Contains($cid) -and -not $tgtControlIds.Contains($cid)) { $wanted += $c }
@@ -482,7 +481,7 @@ foreach ($srcPage in @(Get-Prop $srcLayout 'pages' @())) {
             }
 
             $tgtSection = @(Get-Prop $tgtPage 'sections' @()) | Where-Object { $_.id -ieq $srcSection.id } | Select-Object -First 1
-            if (-not $tgtSection) { Add-Warn "Section '$($srcSection.id)' not found on target page '$($tgtPage.label)' — skipping its controls."; continue }
+            if (-not $tgtSection) { Add-Warn "Section '$($srcSection.id)' not found on target page '$($tgtPage.label)' -- skipping its controls."; continue }
 
             # HTML (multi-line) fields live in their own group: create group with the control embedded
             $isHtmlGroup = ($wanted.Count -eq 1) -and ((Get-Prop $wanted[0] 'controlType') -ieq 'HtmlFieldControl') -and
@@ -556,3 +555,5 @@ if ($summary.Warnings -gt 0) {
     Write-Host ("   Warnings:               {0}  (review [WARN] lines above)" -f $summary.Warnings) -ForegroundColor Yellow
 }
 Write-Host "`nNot migrated automatically: backlog/behavior assignment (Boards > Process > Backlog levels) and extension controls." -ForegroundColor DarkGray
+if ($summary.Warnings -gt 0) { throw "$($summary.Warnings) material migration warning(s) occurred; review the warning output and rerun after correction." }
+Complete-AdoScriptRun -Outcome succeeded -Operation 'migrate-workitem-type'

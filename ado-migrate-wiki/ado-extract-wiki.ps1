@@ -31,11 +31,18 @@ param(
     [string]$Project,
     [string]$WikiName,
     [string]$OutputPath,
-    [switch]$NoExecute
+    [switch]$NoExecute,
+    [SecureString]$SourcePat,
+    [string]$LogDirectory,
+    [switch]$NonInteractive
 )
 
 $ErrorActionPreference = 'Stop'
 $VerbosePreference = 'Continue'
+$commonModulePath = Join-Path (Split-Path -Parent $PSScriptRoot) 'AdoUtils.Common.psm1'
+Import-Module $commonModulePath -Force
+$adoRun = Initialize-AdoScriptRun -ScriptPath $PSCommandPath -LogDirectory $LogDirectory -NonInteractive:$NonInteractive
+trap { Complete-AdoScriptRun -Outcome failed -ErrorRecord $_ -Operation 'extract-wiki'; throw }
 
 function ConvertTo-UriSegment {
     param(
@@ -430,12 +437,12 @@ function Invoke-WikiExtraction {
     try {
         $resolvedOrganization = $Organization
         if ([string]::IsNullOrWhiteSpace($resolvedOrganization)) {
-            $resolvedOrganization = Read-Host -Prompt 'Source Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)'
+            $resolvedOrganization = Read-AdoInput -Prompt (Get-AdoPrompt SourceOrganization)
         }
 
         $resolvedProject = $Project
         if ([string]::IsNullOrWhiteSpace($resolvedProject)) {
-            $resolvedProject = Read-Host 'Source project name'
+            $resolvedProject = Read-AdoInput 'Source project name'
         }
 
         if ([string]::IsNullOrWhiteSpace($resolvedOrganization) -or [string]::IsNullOrWhiteSpace($resolvedProject)) {
@@ -444,7 +451,7 @@ function Invoke-WikiExtraction {
 
         $resolvedOrganization = ConvertTo-AdoOrganizationName -OrganizationInput $resolvedOrganization
 
-        $personalAccessToken = Read-Host 'Source PAT token' -AsSecureString
+        $personalAccessToken = Resolve-AdoPat -Pat $SourcePat -Role Source
         $headers = Get-AzureDevOpsHeaders -PersonalAccessToken $personalAccessToken
 
         $projectUri = "https://dev.azure.com/$(ConvertTo-UriSegment -Value $resolvedOrganization)/_apis/projects/$(ConvertTo-UriSegment -Value $resolvedProject)?api-version=7.1"
@@ -486,10 +493,11 @@ function Invoke-WikiExtraction {
     }
     catch {
         Write-Error "Wiki extraction failed: $($_.Exception.Message)"
-        exit 1
+        throw
     }
 }
 
 if (-not $NoExecute) {
     Invoke-WikiExtraction
 }
+Complete-AdoScriptRun -Outcome $(if ($NoExecute) { 'preview' } else { 'succeeded' }) -Operation 'extract-wiki'

@@ -20,7 +20,7 @@
       Ledger,Finance\\Ledger,Finance,2
 
 .EXAMPLE
-    .\Import-AzureDevOpsAreaPaths.ps1 `
+    .\ado-import-area-paths.ps1 `
       -Organization 'https://dev.azure.com/contoso' `
       -Project 'My Project' `
       -CsvFile 'C:\Temp\AreaPaths.csv'
@@ -37,11 +37,17 @@ param(
     [ValidateScript({ Test-Path -LiteralPath $_ -PathType Leaf })]
     [string]$CsvFile,
 
-    [SecureString]$Pat
+    [SecureString]$Pat,
+    [string]$LogDirectory,
+    [switch]$NonInteractive
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$commonModulePath = Join-Path (Split-Path -Parent $PSScriptRoot) 'AdoUtils.Common.psm1'
+Import-Module $commonModulePath -Force
+$adoRun = Initialize-AdoScriptRun -ScriptPath $PSCommandPath -LogDirectory $LogDirectory -NonInteractive:$NonInteractive
+trap { Complete-AdoScriptRun -Outcome failed -ErrorRecord $_ -Operation 'import-area-paths'; throw }
 
 function Get-PlainText([SecureString]$SecureValue) {
     $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecureValue)
@@ -78,8 +84,8 @@ function Get-RelativeAreaPath([string]$ApiPath, [string]$ApiRootPath) {
 }
 
 $Organization = Resolve-OrganizationUrl -InputValue $Organization
-if (-not $Pat) { $Pat = Read-Host 'Azure DevOps PAT (Work Items Read & Write)' -AsSecureString }
-$plainPat = Get-PlainText $Pat
+$Pat = Resolve-AdoPat -Pat $Pat -Role Default
+$plainPat = ConvertFrom-AdoSecureString $Pat
 try {
     $headers = @{
         Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":" + $plainPat))
@@ -156,6 +162,11 @@ try {
         }
     }
 
+    if ($WhatIfPreference) {
+        Write-Host "Previewed $($requested.Count) CSV Area Paths. Planned $($created.Count) node(s); verification skipped because no writes occurred."
+        Complete-AdoScriptRun -Outcome preview -Operation 'import-area-paths'
+        return
+    }
     # Final verification from a fresh live tree.
     $finalTree = (Invoke-WebRequest -Method Get -Uri "${baseUri}?`$depth=20&api-version=7.1" -Headers $headers -TimeoutSec 30 -UseBasicParsing).Content | ConvertFrom-Json
     $existing.Clear(); $apiRootPath = $finalTree.path; $tree = $finalTree
@@ -165,6 +176,7 @@ try {
 
     Write-Host "Verified $($requested.Count) CSV Area Paths. Created $($created.Count) node(s)."
     $created
+    Complete-AdoScriptRun -Outcome succeeded -Operation 'import-area-paths'
 }
 finally {
     if ($plainPat) { $plainPat = $null }

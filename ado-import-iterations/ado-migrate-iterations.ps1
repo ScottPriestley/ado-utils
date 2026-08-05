@@ -13,10 +13,23 @@
     Requires PATs with Work Items Read & Write scope.
 #>
 [CmdletBinding(SupportsShouldProcess)]
-param()
+param(
+    [string]$SourceOrganization,
+    [string]$SourceProject,
+    [SecureString]$SourcePat,
+    [string]$TargetOrganization,
+    [string]$TargetProject,
+    [SecureString]$TargetPat,
+    [string]$LogDirectory,
+    [switch]$NonInteractive
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$commonModulePath = Join-Path (Split-Path -Parent $PSScriptRoot) 'AdoUtils.Common.psm1'
+Import-Module $commonModulePath -Force
+$adoRun = Initialize-AdoScriptRun -ScriptPath $PSCommandPath -LogDirectory $LogDirectory -NonInteractive:$NonInteractive
+trap { Complete-AdoScriptRun -Outcome failed -ErrorRecord $_ -Operation 'migrate-iterations'; throw }
 
 function Get-PlainText([SecureString]$SecureValue) {
     $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecureValue)
@@ -124,23 +137,23 @@ function Get-IsoDateOrNull($Value) {
     }
 }
 
-$sourceOrganizationInput = Read-Host -Prompt 'Source Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)'
+$sourceOrganizationInput = if ($SourceOrganization) { $SourceOrganization } else { Read-AdoInput -Prompt (Get-AdoPrompt SourceOrganization) }
 $sourceOrganization = Resolve-OrganizationUrl -InputValue $sourceOrganizationInput -Label 'Source organization'
 
-$sourceProject = Read-Host 'Source project name'
+$sourceProject = if ($SourceProject) { $SourceProject } else { Read-AdoInput 'Source project name' }
 if ([string]::IsNullOrWhiteSpace($sourceProject)) { throw 'Source project name is required.' }
 
-$sourcePatSecure = Read-Host 'Source Azure DevOps PAT (Work Items Read & Write)' -AsSecureString
-$sourcePlainPat = Get-PlainText -SecureValue $sourcePatSecure
+$sourcePatSecure = Resolve-AdoPat -Pat $SourcePat -Role Source
+$sourcePlainPat = ConvertFrom-AdoSecureString $sourcePatSecure
 
-$targetOrganizationInput = Read-Host -Prompt 'Target Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)'
+$targetOrganizationInput = if ($TargetOrganization) { $TargetOrganization } else { Read-AdoInput -Prompt (Get-AdoPrompt TargetOrganization) }
 $targetOrganization = Resolve-OrganizationUrl -InputValue $targetOrganizationInput -Label 'Target organization'
 
-$targetProject = Read-Host 'Target project name'
+$targetProject = if ($TargetProject) { $TargetProject } else { Read-AdoInput 'Target project name' }
 if ([string]::IsNullOrWhiteSpace($targetProject)) { throw 'Target project name is required.' }
 
-$targetPatSecure = Read-Host 'Target Azure DevOps PAT (Work Items Read & Write)' -AsSecureString
-$targetPlainPat = Get-PlainText -SecureValue $targetPatSecure
+$targetPatSecure = Resolve-AdoPat -Pat $TargetPat -Role Target
+$targetPlainPat = ConvertFrom-AdoSecureString $targetPatSecure
 
 try {
     $sourceHeaders = New-AdoHeaders -PlainPat $sourcePlainPat
@@ -204,6 +217,11 @@ try {
         }
     }
 
+    if ($WhatIfPreference) {
+        Write-Host "Preview complete. Planned $($created.Count) Iteration Path node(s); verification skipped because no writes occurred."
+        Complete-AdoScriptRun -Outcome preview -Operation 'migrate-iterations'
+        return
+    }
     Write-Host 'Verifying target Iteration Paths...'
     $targetFinal = Get-IterationTree -Organization $targetOrganization -Project $targetProject -Headers $targetHeaders
     $targetFinalSet = Get-IterationPathSet -Tree $targetFinal.Tree
@@ -219,6 +237,7 @@ try {
 
     Write-Host "Migration complete. Created $($created.Count) Iteration Path node(s) in '$targetProject'."
     $created
+    Complete-AdoScriptRun -Outcome succeeded -Operation 'migrate-iterations'
 }
 finally {
     if ($sourcePlainPat) { $sourcePlainPat = $null }

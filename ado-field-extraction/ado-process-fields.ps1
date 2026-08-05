@@ -1,9 +1,19 @@
 # ================================
 # CONFIGURATION
 # ================================
-$org = "PASTE-ORG-HERE"
-$pat = "PASTE-PAT-HERE"
-$processId = "PASTE-PROCESS-ID-HERE"
+[CmdletBinding()]
+param(
+    [string]$Organization,
+    [SecureString]$Pat,
+    [string]$ProcessId,
+    [string]$OutputPath = (Join-Path $PSScriptRoot 'ADO_Process_Fields.csv'),
+    [string]$LogDirectory,
+    [switch]$NonInteractive
+)
+$commonModulePath = Join-Path (Split-Path -Parent $PSScriptRoot) 'AdoUtils.Common.psm1'
+Import-Module $commonModulePath -Force
+$adoRun = Initialize-AdoScriptRun -ScriptPath $PSCommandPath -LogDirectory $LogDirectory -NonInteractive:$NonInteractive
+trap { Complete-AdoScriptRun -Outcome failed -ErrorRecord $_ -Operation 'process-fields'; throw }
 
 function Get-RequiredValue {
     param(
@@ -18,7 +28,7 @@ function Get-RequiredValue {
     }
 
     if ($Secure) {
-        $secureValue = Read-Host -Prompt $Prompt -AsSecureString
+        $secureValue = Read-AdoInput -Prompt $Prompt -AsSecureString
         $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureValue)
 
         try {
@@ -31,7 +41,7 @@ function Get-RequiredValue {
         }
     }
 
-    return Read-Host -Prompt $Prompt
+    return Read-AdoInput -Prompt $Prompt
 }
 
 function Normalize-AdoOrganization {
@@ -54,9 +64,10 @@ function Normalize-AdoOrganization {
     throw 'Azure DevOps organization must be an organization name or URL (for example, contoso or https://dev.azure.com/contoso).'
 }
 
-$org = Get-RequiredValue -Value $org -Prompt 'Source Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)' -Placeholder "PASTE-ORG-HERE"
-$pat = Get-RequiredValue -Value $pat -Prompt "Enter the source Azure DevOps PAT" -Placeholder "PASTE-PAT-HERE" -Secure
-$processId = Get-RequiredValue -Value $processId -Prompt "Enter the source Azure DevOps process ID" -Placeholder "PASTE-PROCESS-ID-HERE"
+$org = Get-RequiredValue -Value $Organization -Prompt (Get-AdoPrompt SourceOrganization) -Placeholder ''
+$Pat = Resolve-AdoPat -Pat $Pat -Role Source
+$pat = ConvertFrom-AdoSecureString $Pat
+$processId = Get-RequiredValue -Value $ProcessId -Prompt 'Enter the source Azure DevOps process ID' -Placeholder ''
 $org = Normalize-AdoOrganization -OrganizationInput $org
 
 # ================================
@@ -102,6 +113,7 @@ $allFields | Sort-Object ReferenceName | Format-Table -AutoSize
 # ================================
 # EXPORT TO CSV
 # ================================
-$csvPath = ".\ADO_Process_Fields.csv"
+$csvPath = $OutputPath
 $allFields | Sort-Object ReferenceName | Export-Csv -Path $csvPath -NoTypeInformation
 Write-Host "CSV export complete: $csvPath"
+Complete-AdoScriptRun -Outcome succeeded -Operation 'process-fields' -Target $csvPath

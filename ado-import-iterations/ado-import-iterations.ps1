@@ -11,13 +11,13 @@
     Organization accepts an organization name or URL.
 
 .EXAMPLE
-    .\Import-AzureDevOpsIterations.ps1 `
+    .\ado-import-iterations.ps1 `
       -Organization 'https://dev.azure.com/contoso' `
       -Project 'New Project' `
       -ExcelFile '.\ADO_Iteration_Load_Template.xlsx'
 
 .EXAMPLE
-    .\Import-AzureDevOpsIterations.ps1 `
+    .\ado-import-iterations.ps1 `
       -Organization 'https://dev.azure.com/contoso' `
       -Project 'New Project' `
       -ExcelFile '.\ADO_Iteration_Load_Template.xlsx' -Apply
@@ -36,12 +36,18 @@ param(
 
     [switch]$Apply,
     [switch]$UpdateExisting,
-    [SecureString]$Pat
+    [SecureString]$Pat,
+    [string]$LogDirectory,
+    [switch]$NonInteractive
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
+$commonModulePath = Join-Path (Split-Path -Parent $PSScriptRoot) 'AdoUtils.Common.psm1'
+Import-Module $commonModulePath -Force
+$adoRun = Initialize-AdoScriptRun -ScriptPath $PSCommandPath -LogDirectory $LogDirectory -NonInteractive:$NonInteractive
+trap { Complete-AdoScriptRun -Outcome failed -ErrorRecord $_ -Operation 'import-iterations'; throw }
 
 function Get-PlainText([SecureString]$SecureValue) {
     $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecureValue)
@@ -137,10 +143,12 @@ function Get-RelativeIterationPath([string]$ApiPath, [string]$ApiRootPath) {
     return $ApiPath.Substring($prefix.Length)
 }
 
-if ($UpdateExisting -and -not $Apply) { throw '-UpdateExisting requires -Apply.' }
+if ($UpdateExisting) {
+    throw '-UpdateExisting is not supported safely by this tool because the workbook reader does not retain target node identifiers. Rerun without -UpdateExisting; no iterations were changed.'
+}
 $Organization = Resolve-OrganizationUrl -InputValue $Organization
-if (-not $Pat) { $Pat = Read-Host 'Azure DevOps PAT (Work Items Read & Write)' -AsSecureString }
-$plainPat = Get-PlainText $Pat
+$Pat = Resolve-AdoPat -Pat $Pat -Role Default
+$plainPat = ConvertFrom-AdoSecureString $Pat
 try {
     $headers = @{ Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":" + $plainPat)); Accept = 'application/json'; 'Content-Type' = 'application/json' }
     $rows = @(Get-XlsxIterationRows $ExcelFile)
@@ -189,8 +197,9 @@ try {
     }
     foreach ($row in $rows | Where-Object { $existing.Contains((@($_.ParentPath, $_.Name) | Where-Object { $_ }) -join '\') }) {
         $path = (@($row.ParentPath, $row.Name) | Where-Object { $_ }) -join '\'
-        if (-not $UpdateExisting) { Write-Host "SKIP existing: $path" }
+        Write-Host "SKIP existing: $path"
     }
     Write-Host "$(if ($Apply) { 'Applied' } else { 'Previewed' }) $($needed.Count) iteration path(s). Created $($created.Count) node(s)."
+    Complete-AdoScriptRun -Outcome $(if ($Apply -and -not $WhatIfPreference) { 'succeeded' } else { 'preview' }) -Operation 'import-iterations'
 }
 finally { if ($plainPat) { $plainPat = $null } }

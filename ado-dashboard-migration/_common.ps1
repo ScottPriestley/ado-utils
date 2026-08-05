@@ -3,22 +3,12 @@
 function Get-AdoAuthHeader {
     param(
         [Parameter(Mandatory)][string]$EnvVarName,
-        [string]$Purpose = ""   # e.g. "source org 360sg" - shown in the prompt
+        [string]$Purpose = "",
+        [SecureString]$Pat
     )
-    $pat = [Environment]::GetEnvironmentVariable($EnvVarName)
-    if ([string]::IsNullOrWhiteSpace($pat)) {
-        $label = if ($Purpose) { "$EnvVarName ($Purpose)" } else { $EnvVarName }
-        Write-Host "Environment variable `$env:$EnvVarName is not set." -ForegroundColor Yellow
-        $secure = Read-Host -Prompt "Enter the Azure DevOps PAT for $label (input hidden)" -AsSecureString
-        $pat = [System.Net.NetworkCredential]::new('', $secure).Password
-        if ([string]::IsNullOrWhiteSpace($pat)) {
-            throw "No PAT provided. Set it first:  `$env:$EnvVarName = '<pat>'  - or enter it when prompted."
-        }
-        # Cache for the rest of this session so later steps don't re-prompt.
-        Set-Item -Path "Env:$EnvVarName" -Value $pat | Out-Null
-    }
-    $b64 = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$pat"))
-    return @{ Authorization = "Basic $b64" }
+    $role = if ($EnvVarName -eq 'ADO_SOURCE_PAT') { 'Source' } elseif ($EnvVarName -eq 'ADO_TARGET_PAT') { 'Target' } else { 'Default' }
+    $resolvedPat = Resolve-AdoPat -Pat $Pat -Role $role
+    return New-AdoAuthorizationHeaders -Pat $resolvedPat
 }
 
 function Invoke-Ado {

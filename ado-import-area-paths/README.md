@@ -1,73 +1,108 @@
-# Azure DevOps Area Path Import/Migration
+# Azure DevOps Area Path Import and Migration
 
-Two standalone PowerShell scripts for getting an Area Path hierarchy into an Azure DevOps project — either from a CSV file, or copied directly from another project.
+Two additive PowerShell scripts create missing Area Path nodes from a validated CSV or from another project's live tree.
 
-| Script | Purpose | Best used when |
+## Scripts, capabilities, and exclusions
+
+| Script | Capability | Exclusions |
 | --- | --- | --- |
-| `ado-import-area-paths.ps1` | Imports Area Paths from a CSV file into one project | You're building a project's hierarchy from a spreadsheet/template |
-| `ado-migrate-area-paths.ps1` | Copies the Area Path tree directly from a source project to a target project | Both source and target projects are available during the migration |
-
-Both scripts are idempotent: only missing nodes are created, existing nodes are left untouched, and a final read-back verifies every requested path exists before the script reports success.
+| `ado-import-area-paths.ps1` | Validates a CSV hierarchy and creates missing nodes parent-first. | Does not update, move, rename, delete, or assign teams to existing nodes. |
+| `ado-migrate-area-paths.ps1` | Reads a source tree and creates its missing relative paths in a target project. | Does not migrate team assignments, security, work items, or target-only nodes. |
 
 ## Prerequisites
 
-- PowerShell 7+ (or Windows PowerShell 5.1).
-- A PAT with **Work Items (Read & Write)** on the relevant project(s). PATs are requested as secure input and are not written to disk.
+- Windows PowerShell 5.1 or PowerShell 7+.
+- Import: Work Items Read & write on the target project.
+- Migration: Work Items Read on source and Read & write on target.
+- A valid CSV for import; no workbook is required.
 
-## Import from CSV — `ado-import-area-paths.ps1`
+## Authentication and minimum PAT scopes
+
+Import uses `Pat` → `ADO_PAT` → `Azure DevOps PAT (input hidden)`. Migration uses `SourcePat` → `ADO_SOURCE_PAT` → `Source Azure DevOps PAT (input hidden)` and the equivalent target chain/prompt. Organization parameters accept a name or full URL; migration uses the exact shared source/target organization prompts when omitted. Project prompts are `Source project name` and `Target project name`. `-NonInteractive` fails on every missing interactive value. PATs are `SecureString`, registered for redaction, and never cached.
+
+## Safety and rerun behavior
+
+Both scripts GET the current tree, create only absent relative paths, leave matching/target-only nodes unchanged, and never call DELETE. Reruns normally skip already-created paths; they do not prove existing nodes have equivalent permissions or team assignments. Concurrent changes can still conflict.
+
+Both support `-WhatIf`/`-Confirm`. Under `-WhatIf`, proposed writes are reported and post-write verification is explicitly skipped because no writes occurred. A preview is not a live target-equivalence check.
+
+## Quick start
 
 ```powershell
-.\ado-import-area-paths.ps1 `
-    -Organization 'https://dev.azure.com/contoso' `
-    -Project 'My Project' `
-    -CsvFile 'C:\Temp\AreaPaths.csv'
+./ado-import-area-paths.ps1 `
+  -Organization 'contoso' -Project 'Target Project' `
+  -CsvFile './AreaPaths.csv' -WhatIf
+
+./ado-import-area-paths.ps1 `
+  -Organization 'contoso' -Project 'Target Project' `
+  -CsvFile './AreaPaths.csv'
+
+./ado-migrate-area-paths.ps1 `
+  -SourceOrganization 'source' -SourceProject 'Source Project' `
+  -TargetOrganization 'target' -TargetProject 'Target Project' `
+  -SourcePat $sourcePat -TargetPat $targetPat -NonInteractive
 ```
 
-### CSV format
+## Parameters and precedence
 
-Required columns: `Name`, `AreaPath`, `ParentPath`, `Level`. `AreaPath` is relative to the project's Area root, and the CSV must include exactly one `Level 0` root row whose `Name` and `AreaPath` match the project's Area root (normally the project name):
+| Script | Parameters |
+| --- | --- |
+| Import | Mandatory `Organization`, `Project`, `CsvFile`; optional `Pat`, `LogDirectory`, `NonInteractive`; common `WhatIf`/`Confirm`. |
+| Migration | `SourceOrganization`, `SourceProject`, `SourcePat`, `TargetOrganization`, `TargetProject`, `TargetPat`, `LogDirectory`, `NonInteractive`; common `WhatIf`/`Confirm`. Missing non-secret values prompt. |
+
+Explicit parameters win. PAT precedence is SecureString → role environment variable → hidden prompt. `LogDirectory` defaults to `logs` beside the script.
+
+## Input formats
+
+CSV requires headers `Name,AreaPath,ParentPath,Level` and exactly one level-0 row matching the live project root with blank `ParentPath`:
 
 ```csv
 Name,AreaPath,ParentPath,Level
-My Project,My Project,,0
-Finance,Finance,My Project,1
+Target Project,Target Project,,0
+Finance,Finance,Target Project,1
 Ledger,Finance\Ledger,Finance,2
 ```
 
-### Parameters
+Paths are relative to the project root. The importer rejects empty data, missing headers, duplicates, malformed levels/segments, and parent/name inconsistencies before writes. Implied missing parents are created.
 
-| Parameter | Description |
-| --- | --- |
-| `Organization` | Organization URL, e.g. `https://dev.azure.com/contoso`. Required. |
-| `Project` | Project name or ID. Required. |
-| `CsvFile` | Path to the Area Path CSV. Required. |
-| `Pat` | PAT as a `SecureString`. Prompts securely when omitted. |
+## Outputs and logs
 
-Supports `-WhatIf` / `-Confirm` (`SupportsShouldProcess`) to preview which nodes would be created.
+The scripts print create/skip/preview progress and a final outcome; they do not generate a transformed hierarchy file. Each run creates UTF-8-without-BOM JSONL files named `<script-base>-success log-<run-id>.jsonl` and `<script-base>-error log-<run-id>.jsonl` under `LogDirectory` or local `logs`.
 
-### Behavior
+Each JSONL record contains `timestampUtc`, `level`, `script`, `runId`, `operation`, `outcome`, `target`, `message`, `errorType`, and `statusCode`. Both files are created even if one stays empty; secret/authorization values are redacted.
 
-- Validates the CSV structure (required columns, exactly one root row, no duplicate or malformed area paths, parent/name consistency) before making any API calls.
-- Reads the project's live Area Path tree, computes any parent nodes implied but not explicitly listed in the CSV, and creates only what's missing, parent-first.
-- Re-reads the tree after writing and throws if any requested path is still missing.
+## Detailed workflow and behavior
 
-## Migrate between projects — `ado-migrate-area-paths.ps1`
+Import validates its local file, reads the live root/tree, validates the declared root against it, expands requested parents, sorts by depth, checks each relative path, and POSTs only missing nodes approved by `ShouldProcess`. Migration flattens both live trees, maps source-relative paths under the target root, and applies missing nodes parent-first.
 
-```powershell
-.\ado-migrate-area-paths.ps1
-```
+After actual writes, each script freshly reads the target tree and throws if any requested/source relative path is absent. This check verifies path presence only—not security, team mappings, or other metadata.
 
-Run with no parameters — it prompts interactively for the source organization, source project, source PAT, target organization, target project, and target PAT (organization can be entered as a bare name like `contoso` or a full URL).
+## Verification checklist
 
-### Behavior
+- Run both repository offline commands.
+- Preview and review every proposed path.
+- Confirm the CSV root equals the actual target project root.
+- After apply, inspect both JSONL logs and representative nested paths in Azure DevOps.
+- Verify team Area Path settings/security separately.
 
-- Reads the full Area Path tree from both the source and target projects.
-- Creates every Area Path present in the source but missing in the target, parent-first. Existing target nodes (including target-only paths not present in the source) are left unchanged.
-- Re-reads the target tree after writing and throws if any source path is still missing.
+Offline tests make no live calls; they verify preview/read-back code paths and local contracts, not service permissions or a real hierarchy.
 
-Supports `-WhatIf` / `-Confirm` to preview without writing.
+## Troubleshooting
 
-## Notes
+- Root mismatch: change the CSV level-0 row to the live project root.
+- Parent/name error: use relative `AreaPath` values and a parent path consistent with the path segments.
+- `401`/`403`: verify PAT scope plus project classification-node permission.
+- Preview shows nothing: nodes may already exist; existing metadata is not compared.
+- Read-back failure: inspect the error log and live tree, correct the permission/concurrency issue, then rerun.
 
-- Neither script deletes Area Paths — both are additive only.
-- Re-running either script after a partial failure is safe: existing nodes are detected and skipped.
+## Limitations
+
+Only node paths are migrated. Existing nodes are not reconciled, and team assignments, permissions, default area settings, work-item classification values, and deletes are out of scope. The read-back is scoped to presence, and no live validation is claimed.
+
+## Security
+
+Use least-privilege short-lived PATs and protect CSV/log data. Never embed PATs in CSV, commands, scripts, or source control.
+
+## Related workflows
+
+Run after [work item type migration](../ado-migrate-workitemtype/README.md) and before [dashboard query migration](../ado-dashboard-migration/readme.md). Pair with [Iteration Path migration](../ado-import-iterations/README.md); the dashboard repair step is narrower than this full-tree workflow.

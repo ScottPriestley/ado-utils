@@ -16,10 +16,17 @@ param(
     [Parameter(Mandatory)][string]$TargetProject,
     [Parameter(Mandatory)][string]$TargetTeam,   # default team for dashboards with no teamMap entry
     [string]$ExportDir = "./export",
-    [string]$NameSuffix = ""
+    [string]$NameSuffix = "",
+    [SecureString]$TargetPat,
+    [string]$LogDirectory,
+    [switch]$NonInteractive
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_common.ps1')
+$commonModulePath = Join-Path (Split-Path -Parent $PSScriptRoot) 'AdoUtils.Common.psm1'
+Import-Module $commonModulePath -Force
+$adoRun = Initialize-AdoScriptRun -ScriptPath $PSCommandPath -LogDirectory $LogDirectory -NonInteractive:$NonInteractive
+trap { Complete-AdoScriptRun -Outcome failed -ErrorRecord $_ -Operation 'import-dashboards'; throw }
 
 if (-not [System.IO.Path]::IsPathRooted($ExportDir)) {
     $ExportDir = Join-Path $PSScriptRoot $ExportDir
@@ -34,13 +41,14 @@ foreach ($requiredPath in @($mappingPath, $queryMapPath, $dashboardsDir)) {
         throw "Required import artifact not found: $requiredPath - run steps 1 and 2 first, or pass the correct -ExportDir."
     }
 }
-$dashboardFiles = @(Get-ChildItem -LiteralPath $dashboardsDir -Filter *.json -File)
+$dashboardManifestPath = Join-Path $ExportDir 'dashboard-files.json'
+$dashboardFiles = if (Test-Path -LiteralPath $dashboardManifestPath) { @((Read-Utf8Text $dashboardManifestPath | ConvertFrom-Json) | ForEach-Object { Get-Item -LiteralPath (Join-Path $dashboardsDir $_) }) } else { @(Get-ChildItem -LiteralPath $dashboardsDir -Filter *.json -File) }
 if (-not $dashboardFiles.Count) {
     throw "No dashboard JSON files found in $dashboardsDir - run step 1 first or check -ExportDir."
 }
 
 $TargetOrg = Get-OrgName $TargetOrg   # accept bare name or full URL
-$headers  = Get-AdoAuthHeader -EnvVarName 'ADO_TARGET_PAT' -Purpose "TARGET org '$TargetOrg'"
+$headers  = Get-AdoAuthHeader -EnvVarName 'ADO_TARGET_PAT' -Purpose "TARGET org '$TargetOrg'" -Pat $TargetPat
 $base     = "https://dev.azure.com/$(UrlEnc $TargetOrg)"
 $projSeg  = UrlEnc $TargetProject
 $mapping  = Read-Utf8Text $mappingPath | ConvertFrom-Json
@@ -188,5 +196,7 @@ if ($flags) {
     Write-Utf8Text -Path (Join-Path $ExportDir 'import-flags.txt') -Text (($flags | Sort-Object -Unique) -join "`r`n")
     Write-Host "(also written to $(Join-Path $ExportDir 'import-flags.txt'))"
 } else {
+    Write-Utf8Text -Path (Join-Path $ExportDir 'import-flags.txt') -Text ''
     Write-Host "`nNo unmapped references detected. Validate each imported dashboard and widget in Azure DevOps." -ForegroundColor Green
 }
+Complete-AdoScriptRun -Outcome succeeded -Operation 'import-dashboards'

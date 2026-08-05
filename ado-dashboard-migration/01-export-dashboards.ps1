@@ -13,13 +13,20 @@
 param(
     [Parameter(Mandatory)][string]$Org,
     [Parameter(Mandatory)][string]$Project,
-    [string]$OutDir = "./export"
+    [string]$OutDir = "./export",
+    [SecureString]$SourcePat,
+    [string]$LogDirectory,
+    [switch]$NonInteractive
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_common.ps1')
+$commonModulePath = Join-Path (Split-Path -Parent $PSScriptRoot) 'AdoUtils.Common.psm1'
+Import-Module $commonModulePath -Force
+$adoRun = Initialize-AdoScriptRun -ScriptPath $PSCommandPath -LogDirectory $LogDirectory -NonInteractive:$NonInteractive
+trap { Complete-AdoScriptRun -Outcome failed -ErrorRecord $_ -Operation 'export-dashboards'; throw }
 
 $Org = Get-OrgName $Org   # accept bare name or full URL
-$headers = Get-AdoAuthHeader -EnvVarName 'ADO_SOURCE_PAT' -Purpose "SOURCE org '$Org'"
+$headers = Get-AdoAuthHeader -EnvVarName 'ADO_SOURCE_PAT' -Purpose "SOURCE org '$Org'" -Pat $SourcePat
 $base    = "https://dev.azure.com/$(UrlEnc $Org)"
 $projSeg = UrlEnc $Project
 
@@ -102,6 +109,7 @@ $testGuids  = [System.Collections.Generic.HashSet[string]]::new()   # belong to 
 $guidNames  = @{}   # query GUID -> embedded name hint (for drift recovery)
 $widgetRows = @()
 $dashCount  = 0
+$currentDashboardFiles = [Collections.Generic.List[string]]::new()
 
 foreach ($team in $teams) {
     $teamSeg = UrlEnc $team.name
@@ -116,6 +124,7 @@ foreach ($team in $teams) {
             dashboard      = $dash
         }
         Write-Utf8Text -Path (Join-Path $OutDir "dashboards/$safe.json") -Text ($record | ConvertTo-Json -Depth 50)
+        [void]$currentDashboardFiles.Add("$safe.json")
 
         foreach ($w in @($dash.widgets | Where-Object { $_ })) {
             $guids = Get-GuidsInText -Text ("$($w.settings) $($w.artifactId)")
@@ -194,6 +203,7 @@ foreach ($g in $failed) {
 
 $queries = @($qById.Values)
 Write-Utf8Text -Path (Join-Path $OutDir 'queries.json') -Text ($queries | ConvertTo-Json -Depth 10)
+Write-Utf8Text -Path (Join-Path $OutDir 'dashboard-files.json') -Text ($currentDashboardFiles.ToArray() | ConvertTo-Json)
 
 # --- Mapping template for step 3 ----------------------------------------------
 [pscustomobject]@{
@@ -269,3 +279,4 @@ if (@($recovered).Count) { Write-Host "Recovered $(@($recovered).Count) drifted 
 if (@($unresolved).Count) { Write-Host "$(@($unresolved).Count) GUID(s) still unresolved - see inventory.md." -ForegroundColor Yellow }
 
 Write-Host "`nDone. REVIEW $(Join-Path $OutDir 'inventory.md') before running step 2." -ForegroundColor Green
+Complete-AdoScriptRun -Outcome succeeded -Operation 'export-dashboards' -Target $OutDir

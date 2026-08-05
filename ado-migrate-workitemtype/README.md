@@ -1,66 +1,105 @@
-# Migrate a Work Item Type
+# Azure DevOps Work Item Type Migration
 
-`ado-migrate-workitemtype.ps1` migrates one Azure DevOps inherited-process work item type (WIT) — including its custom fields, picklists, states, rules, and form layout placement — from a source process to a target process, within the same organization or across two organizations.
+`ado-migrate-workitemtype.ps1` migrates one inherited-process work item type (WIT), selected supporting metadata, and form placement between processes in the same or different organizations.
 
-## What it migrates
+## Scripts, capabilities, and exclusions
 
-1. The work item type itself (creates a custom WIT, or derives a system WIT so it can be customized).
-2. Picklists backing any custom picklist fields (reused by name if a picklist with that name already exists in the target organization).
-3. Org-level custom field definitions (created only if missing in the target org).
-4. Field membership on the WIT — required / read-only / default value / allowed groups. Existing fields are patched to match the source.
-5. Custom states, plus hiding of inherited states that are hidden in the source.
-6. Custom rules, best-effort. A rule referencing something that does not exist in the target (identity, field, state) is logged as a warning and skipped.
-7. Form layout: pages, groups, and controls for the migrated fields, so they actually appear on the work item form.
+The script creates or derives the WIT, reuses/creates picklists and organization fields, attaches/patches WIT field settings, creates custom states, hides inherited states hidden at source, creates best-effort rules, and creates missing layout pages/groups/controls.
 
-### Not migrated
-
-- Backlog-level / behavior assignments (Boards > Process > Backlog levels).
-- Extension (contribution) controls on the form.
-- General system-process content.
-
-The script is idempotent — items that already exist in the target are detected and skipped or patched, so it's safe to re-run after fixing a failure.
+It does not migrate backlog behavior assignments, extension-contribution controls, general system-process content, process permissions, projects, work items, or deletions. Rules whose identities/fields/states cannot be reconciled are warned/skipped.
 
 ## Prerequisites
 
-- PowerShell 7+ (or Windows PowerShell 5.1).
-- A source PAT with **Work Items (Read)** and **Process (Read)**.
-- A target PAT with **Work Items (Read & Write)** and **Process (Read & Write)**. Creating org-level fields in the target requires Project Collection Administrator, or an equivalent "Create process" / field-create permission.
-- The target process must be an **inherited** process (not a system process) so it can be customized.
+- Windows PowerShell 5.1 or PowerShell 7+.
+- Source: Process Read and Work Items Read.
+- Target: Process Read & write and Work Items Read & write.
+- Target must be an inherited process; modifying organization fields can require collection-administrator/equivalent process permissions.
 
-## Usage
+## Authentication and minimum PAT scopes
 
-Run with no arguments to be prompted for all seven inputs:
+`SourcePat` resolves from SecureString → `ADO_SOURCE_PAT` → `Source Azure DevOps PAT (input hidden)`. Target uses its equivalent chain and prompt. Organization prompts are the exact shared source/target organization strings. Other exact prompts are `Work Item Type name (as shown in the process, e.g. "Business Process")`, `SOURCE process name`, and `TARGET process name`. `-NonInteractive` fails rather than prompting. PATs are not cached or written to disk.
+
+## Safety and rerun behavior
+
+The script issues GET/POST/PATCH/PUT operations and no DELETE. It reuses many name/reference matches, patches field settings, and warns about target-only states rather than removing them. Reruns are intended to converge on supported metadata, but not every object is deeply compared and rule/layout reconciliation is best-effort; review warnings and target content after every run.
+
+There is no `-WhatIf`, preview, rollback, or transaction. Use a nonproduction inherited process first.
+
+## Quick start
 
 ```powershell
-.\ado-migrate-workitemtype.ps1
+./ado-migrate-workitemtype.ps1 `
+  -WorkItemTypeName 'Business Process' `
+  -SourceOrganization 'source-org' -SourceProcess 'Source Inherited Process' `
+  -TargetOrganization 'target-org' -TargetProcess 'Target Inherited Process'
 ```
 
-Or pass the non-secret values and be prompted only for the PATs:
+Unattended:
 
 ```powershell
-.\ado-migrate-workitemtype.ps1 -WorkItemTypeName 'Business Process' `
-    -SourceOrganization 'hsouscloud' -SourceProcess 'HSO-Navigate-CMMI' `
-    -TargetOrganization 'hsouscloud' -TargetProcess 'HSO-Navigate-Agile-2026-07'
+./ado-migrate-workitemtype.ps1 `
+  -WorkItemTypeName 'Business Process' `
+  -SourceOrganization 'source-org' -SourceProcess 'Source Inherited Process' -SourcePat $sourcePat `
+  -TargetOrganization 'target-org' -TargetProcess 'Target Inherited Process' -TargetPat $targetPat `
+  -LogDirectory './run-logs' -NonInteractive
 ```
 
-When source and target organizations are the same, the script offers to reuse the source PAT for the target instead of prompting a second time.
-
-## Parameters
+## Parameters and precedence
 
 | Parameter | Description |
 | --- | --- |
-| `WorkItemTypeName` | Name of the work item type as shown in the source process (e.g. `Business Process`). Prompts when omitted. |
-| `SourceOrganization` | Source organization name or URL (`contoso` or `https://dev.azure.com/contoso`). Prompts when omitted. |
-| `SourceProcess` | Source inherited process name. Prompts when omitted. |
-| `SourcePat` | Source PAT (Work Items + Process read). Prompts securely when omitted. |
-| `TargetOrganization` | Target organization name or URL. Prompts when omitted. |
-| `TargetProcess` | Target inherited process name. Must not be a system process. Prompts when omitted. |
-| `TargetPat` | Target PAT (Work Items + Process read/write). Prompts securely when omitted; offers to reuse the source PAT for a same-org migration. |
+| `WorkItemTypeName` | Source display name; prompts when blank. |
+| `SourceOrganization` / `TargetOrganization` | Bare organization name or supported Azure DevOps URL. |
+| `SourceProcess` / `TargetProcess` | Exact process display names. Target must be inherited. |
+| `SourcePat` / `TargetPat` | Role-specific `SecureString` PATs. |
+| `LogDirectory` | Shared JSONL directory; defaults to `logs` beside the script. |
+| `NonInteractive` | Rejects all missing interactive input. |
 
-## Output
+Explicit non-secret parameters precede prompts. PAT precedence is SecureString → environment → prompt. No same-organization PAT-reuse question exists in the current code; supply the same SecureString explicitly to both parameters if appropriate.
 
-The script prints progress per stage (`[OK]`, `[SKIP]`, `[WARN]`) and ends with a summary count of picklists, org fields, WIT fields, states, rules, and form controls created or updated, plus a warning count. Review `[WARN]` lines — they flag rules or content that could not be reconciled automatically and may need manual follow-up in the target process.
+## Input formats
 
-## Safety
+Names are plain PowerShell strings and are matched against live organization/process/WIT metadata. Organization accepts `contoso`, `https://dev.azure.com/contoso`, or legacy organization URL form. The script has no input CSV/JSON workbook; source process APIs are authoritative.
 
-Run against a non-production process first when possible. The script only creates or patches; it does not delete states, fields, or rules from the target. Target-only states not present in the source are flagged with a warning rather than removed.
+## Outputs and logs
+
+Console output reports `[OK]`, `[SKIP]`, `[WARN]`, and stage totals for picklists, fields, states, rules, and layout controls. No migration package or rollback file is produced.
+
+Each run creates UTF-8-without-BOM JSONL files named `<script-base>-success log-<run-id>.jsonl` and `<script-base>-error log-<run-id>.jsonl` under `LogDirectory` or local `logs` (the script base is `ado-migrate-workitemtype`). Records contain `timestampUtc`, `level`, `script`, `runId`, `operation`, `outcome`, `target`, `message`, `errorType`, and `statusCode`; PAT/authorization values are redacted.
+
+## Detailed workflow and behavior
+
+The script resolves source/target processes and source WIT, verifies the target process is customizable, and creates/derives or reuses the target WIT. It enumerates source fields, recreates/reuses picklists and organization fields, then attaches or patches WIT field attributes. It reconciles custom/hidden states, translates and creates rules where dependencies exist, and creates missing layout containers/controls for migrated fields.
+
+Warnings are expected for unsupported extension controls, target-only content, or rule dependencies that cannot be translated. A final success means the implemented calls completed; it is not a full semantic comparison of process behavior.
+
+## Verification checklist
+
+- Run both offline repository verification commands.
+- Confirm source and target process/WIT names and target inheritance before execution.
+- Review every warning and summary count.
+- In the target UI, inspect fields/picklists, required/read-only/default settings, state visibility, rules, and every form page/group/control.
+- Create representative test work items and exercise rule/state behavior manually.
+- Verify backlog behavior assignments separately.
+
+Offline checks make no live calls and cannot prove process permissions, UI rendering, or rule semantics.
+
+## Troubleshooting
+
+- Target system process: create/select an inherited process.
+- Field/picklist creation forbidden: verify target PAT scope and collection-level process permissions.
+- Rule skipped: create/map the referenced identity, field, state, or group and rerun, then inspect duplicates.
+- Layout warning: extension controls are unsupported; configure them manually.
+- `401`/`403`: verify PAT organization/expiry/scope and the user's process administration permission.
+
+## Limitations
+
+This is a selective best-effort WIT migration, not a process clone. It lacks rollback/dry run, does not migrate behaviors or extension controls, and does not prove semantic equivalence. Concurrent changes and target customizations can require manual resolution. No live validation is claimed.
+
+## Security
+
+Use short-lived least-privilege PATs. Process definitions can expose internal business rules, field names, identities, and groups; protect logs and console captures. Never put PATs in source control or plain-text parameters.
+
+## Related workflows
+
+Use [field extraction](../ado-field-extraction/README.md) for planning. Migrate WITs before [Area/Iteration structure](../ado-import-area-paths/README.md) and [dashboard queries](../ado-dashboard-migration/readme.md); see the [root workflow](../README.md).
