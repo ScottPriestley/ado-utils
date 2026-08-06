@@ -3,8 +3,8 @@
 	Copies a fixed set of Azure DevOps queries to another project exactly once.
 
 .DESCRIPTION
-	Reads five queries from 360sg/AEC Model Combo Project and recreates them in
-	hubinternational/RPW Accounting Modernization under Shared Queries. Existing
+	Reads five queries from Source Project and recreates them in
+	Target Project under Shared Queries. Existing
 	target queries are reused, successful copies are recorded in a state file,
 	and reruns skip completed work without updating or overwriting target queries.
 
