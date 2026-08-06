@@ -109,4 +109,4 @@ Use least-privilege short-lived PATs. Workbooks and logs can disclose release ca
 
 ## Related workflows
 
-Pair with [Area Path migration](../ado-import-area-paths/README.md), run after [work item type migration](../ado-migrate-workitemtype/README.md), and before [dashboard query migration](../ado-dashboard-migration/readme.md).
+Pair with [Area Path migration](../ado-import-area-paths/README.md), run after [work item type migration](../ado-migrate-workitemtype/README.md), and before [dashboard query migration](../ado-dashboard-migration/README.md).

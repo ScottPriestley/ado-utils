@@ -12,9 +12,9 @@
               import alongside instead.
 #>
 param(
-    [Parameter(Mandatory)][string]$TargetOrg,
-    [Parameter(Mandatory)][string]$TargetProject,
-    [Parameter(Mandatory)][string]$TargetTeam,   # default team for dashboards with no teamMap entry
+    [string]$TargetOrg,
+    [string]$TargetProject,
+    [string]$TargetTeam,   # default team for dashboards with no teamMap entry
     [string]$ExportDir = "./export",
     [string]$NameSuffix = "",
     [SecureString]$TargetPat,
@@ -28,6 +28,9 @@ Import-Module $commonModulePath -Force
 $adoRun = Initialize-AdoScriptRun -ScriptPath $PSCommandPath -LogDirectory $LogDirectory -NonInteractive:$NonInteractive
 trap { Complete-AdoScriptRun -Outcome failed -ErrorRecord $_ -Operation 'import-dashboards'; throw }
 
+$TargetOrg = Resolve-AdoRequiredInput -Value $TargetOrg -Name 'TargetOrg' -Prompt (Get-AdoPrompt -Name TargetOrganization)
+$TargetProject = Resolve-AdoRequiredInput -Value $TargetProject -Name 'TargetProject' -Prompt 'Target project name'
+$TargetTeam = Resolve-AdoRequiredInput -Value $TargetTeam -Name 'TargetTeam' -Prompt 'Target team name'
 if (-not [System.IO.Path]::IsPathRooted($ExportDir)) {
     $ExportDir = Join-Path $PSScriptRoot $ExportDir
 }

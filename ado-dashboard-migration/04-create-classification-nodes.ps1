@@ -15,8 +15,8 @@
     not created. Does not add work items or set dates - it only makes the query WIQL valid.
 #>
 param(
-    [Parameter(Mandatory)][string]$TargetOrg,
-    [Parameter(Mandatory)][string]$TargetProject,
+    [string]$TargetOrg,
+    [string]$TargetProject,
     [string]$ExportDir = "./export",
     [string]$SourceProjectName = "",   # default: from mapping.json
     [switch]$WhatIfOnly,                 # list what would be created, create nothing
@@ -31,6 +31,8 @@ Import-Module $commonModulePath -Force
 $adoRun = Initialize-AdoScriptRun -ScriptPath $PSCommandPath -LogDirectory $LogDirectory -NonInteractive:$NonInteractive
 trap { Complete-AdoScriptRun -Outcome failed -ErrorRecord $_ -Operation 'create-classification-nodes'; throw }
 
+$TargetOrg = Resolve-AdoRequiredInput -Value $TargetOrg -Name 'TargetOrg' -Prompt (Get-AdoPrompt -Name TargetOrganization)
+$TargetProject = Resolve-AdoRequiredInput -Value $TargetProject -Name 'TargetProject' -Prompt 'Target project name'
 $TargetOrg = Get-OrgName $TargetOrg
 $headers   = Get-AdoAuthHeader -EnvVarName 'ADO_TARGET_PAT' -Purpose "TARGET org '$TargetOrg'" -Pat $TargetPat
 $base      = "https://dev.azure.com/$(UrlEnc $TargetOrg)"

@@ -112,4 +112,4 @@ Use short-lived least-privilege PATs. Treat Markdown, manifests, attachments, lo
 
 ## Related workflows
 
-Run after target process/structure and [dashboard migration](../ado-dashboard-migration/readme.md) so copied links can be reviewed against final destinations. See the [root workflow](../README.md) for ordering.
+Run after target process/structure and [dashboard migration](../ado-dashboard-migration/README.md) so copied links can be reviewed against final destinations. See the [root workflow](../README.md) for ordering.

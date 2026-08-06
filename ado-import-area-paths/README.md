@@ -105,4 +105,4 @@ Use least-privilege short-lived PATs and protect CSV/log data. Never embed PATs 
 
 ## Related workflows
 
-Run after [work item type migration](../ado-migrate-workitemtype/README.md) and before [dashboard query migration](../ado-dashboard-migration/readme.md). Pair with [Iteration Path migration](../ado-import-iterations/README.md); the dashboard repair step is narrower than this full-tree workflow.
+Run after [work item type migration](../ado-migrate-workitemtype/README.md) and before [dashboard query migration](../ado-dashboard-migration/README.md). Pair with [Iteration Path migration](../ado-import-iterations/README.md); the dashboard repair step is narrower than this full-tree workflow.

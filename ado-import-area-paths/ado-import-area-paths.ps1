@@ -27,13 +27,10 @@
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(
-    [Parameter(Mandatory)]
     [string]$Organization,
 
-    [Parameter(Mandatory)]
     [string]$Project,
 
-    [Parameter(Mandatory)]
     [ValidateScript({ Test-Path -LiteralPath $_ -PathType Leaf })]
     [string]$CsvFile,
 
@@ -82,6 +79,11 @@ function Get-RelativeAreaPath([string]$ApiPath, [string]$ApiRootPath) {
     }
     return $ApiPath.Substring($prefix.Length)
 }
+
+$Organization = Resolve-AdoRequiredInput -Value $Organization -Name 'Organization' -Prompt (Get-AdoPrompt -Name Organization)
+$Project = Resolve-AdoRequiredInput -Value $Project -Name 'Project' -Prompt 'Azure DevOps project name'
+$CsvFile = Resolve-AdoRequiredInput -Value $CsvFile -Name 'CsvFile' -Prompt 'CSV file path'
+if (-not (Test-Path -LiteralPath $CsvFile -PathType Leaf)) { throw "CSV file not found: $CsvFile" }
 
 $Organization = Resolve-OrganizationUrl -InputValue $Organization
 $Pat = Resolve-AdoPat -Pat $Pat -Role Default

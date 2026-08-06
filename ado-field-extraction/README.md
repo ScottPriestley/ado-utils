@@ -84,4 +84,4 @@ Use a short-lived read-only PAT. Protect the CSV and logs because process names,
 
 ## Related workflows
 
-Use this inventory to plan [work item type migration](../ado-migrate-workitemtype/README.md), then prepare [Area Paths](../ado-import-area-paths/README.md), [Iteration Paths](../ado-import-iterations/README.md), and [dashboard queries](../ado-dashboard-migration/readme.md).
+Use this inventory to plan [work item type migration](../ado-migrate-workitemtype/README.md), then prepare [Area Paths](../ado-import-area-paths/README.md), [Iteration Paths](../ado-import-iterations/README.md), and [dashboard queries](../ado-dashboard-migration/README.md).

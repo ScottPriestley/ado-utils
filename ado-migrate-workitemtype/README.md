@@ -102,4 +102,4 @@ Use short-lived least-privilege PATs. Process definitions can expose internal bu
 
 ## Related workflows
 
-Use [field extraction](../ado-field-extraction/README.md) for planning. Migrate WITs before [Area/Iteration structure](../ado-import-area-paths/README.md) and [dashboard queries](../ado-dashboard-migration/readme.md); see the [root workflow](../README.md).
+Use [field extraction](../ado-field-extraction/README.md) for planning. Migrate WITs before [Area/Iteration structure](../ado-import-area-paths/README.md) and [dashboard queries](../ado-dashboard-migration/README.md); see the [root workflow](../README.md).

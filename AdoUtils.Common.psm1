@@ -7,6 +7,8 @@ $script:AdoPrompts = @{
     Organization       = 'Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)'
     SourceOrganization = 'Source Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)'
     TargetOrganization = 'Target Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)'
+    SourceProjectUrl   = 'Source URL'
+    TargetProjectUrl   = 'Target URL'
     Pat                = 'Azure DevOps PAT (input hidden)'
     SourcePat          = 'Source Azure DevOps PAT (input hidden)'
     TargetPat          = 'Target Azure DevOps PAT (input hidden)'
@@ -14,8 +16,68 @@ $script:AdoPrompts = @{
 
 function Get-AdoPrompt {
     [CmdletBinding()]
-    param([Parameter(Mandatory)][ValidateSet('Organization', 'SourceOrganization', 'TargetOrganization', 'Pat', 'SourcePat', 'TargetPat')][string]$Name)
+    param([Parameter(Mandatory)][ValidateSet('Organization', 'SourceOrganization', 'TargetOrganization', 'SourceProjectUrl', 'TargetProjectUrl', 'Pat', 'SourcePat', 'TargetPat')][string]$Name)
     $script:AdoPrompts[$Name]
+}
+
+function ConvertTo-AdoOrganizationName {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Value)
+    if ($Value -match '^https://dev\.azure\.com/([^/]+)/?') { return $Matches[1] }
+    if ($Value -match '^https://([^.]+)\.visualstudio\.com/?') { return $Matches[1] }
+    return $Value.Trim('/')
+}
+
+function ConvertFrom-AdoProjectUrl {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Url,
+        [Parameter(Mandatory)][ValidateSet('Default', 'Source', 'Target')][string]$Role
+    )
+    $label = if ($Role -eq 'Default') { 'Project URL' } else { "$Role Project URL" }
+    if ([string]::IsNullOrWhiteSpace($Url) -or $Url -notmatch '^https?://') {
+        throw "$label must be an absolute Azure DevOps project URL."
+    }
+
+    $uri = [uri]$Url
+    if ($uri.Host -eq 'dev.azure.com') {
+        $segments = @($uri.AbsolutePath.Trim('/') -split '/' | Where-Object { $_ })
+        if ($segments.Count -lt 2) { throw "$label must look like https://dev.azure.com/{org}/{project}" }
+        return [pscustomobject]@{
+            Org     = [uri]::UnescapeDataString($segments[0])
+            Project = [uri]::UnescapeDataString($segments[1])
+        }
+    }
+    if ($uri.Host -match '^([^.]+)\.visualstudio\.com$') {
+        $segments = @($uri.AbsolutePath.Trim('/') -split '/' | Where-Object { $_ })
+        if ($segments.Count -lt 1) { throw "$label must include a project path." }
+        return [pscustomobject]@{
+            Org     = [uri]::UnescapeDataString($Matches[1])
+            Project = [uri]::UnescapeDataString($segments[0])
+        }
+    }
+    throw "$label must use dev.azure.com or visualstudio.com."
+}
+
+function Resolve-AdoProjectEndpoint {
+    [CmdletBinding()]
+    param(
+        [string]$ProjectUrl,
+        [string]$Organization,
+        [string]$Project,
+        [Parameter(Mandatory)][ValidateSet('Source', 'Target')][string]$Role
+    )
+    if (-not [string]::IsNullOrWhiteSpace($ProjectUrl)) {
+        return ConvertFrom-AdoProjectUrl -Url $ProjectUrl -Role $Role
+    }
+    if (-not [string]::IsNullOrWhiteSpace($Organization) -and -not [string]::IsNullOrWhiteSpace($Project)) {
+        return [pscustomobject]@{
+            Org     = ConvertTo-AdoOrganizationName -Value $Organization
+            Project = $Project
+        }
+    }
+    $promptName = if ($Role -eq 'Source') { 'SourceProjectUrl' } else { 'TargetProjectUrl' }
+    return ConvertFrom-AdoProjectUrl -Url (Read-AdoInput -Prompt (Get-AdoPrompt -Name $promptName)) -Role $Role
 }
 
 function Get-AdoUtf8NoBomEncoding {
@@ -161,6 +223,23 @@ function Read-AdoInput {
     Microsoft.PowerShell.Utility\Read-Host -Prompt $Prompt
 }
 
+function Resolve-AdoRequiredInput {
+    [CmdletBinding()]
+    param(
+        [AllowEmptyString()][string]$Value,
+        [Parameter(Mandatory)][string]$Name,
+        [Parameter(Mandatory)][string]$Prompt
+    )
+    if (-not [string]::IsNullOrWhiteSpace($Value)) {
+        return $Value
+    }
+    $resolved = Read-AdoInput -Prompt $Prompt
+    if ([string]::IsNullOrWhiteSpace($resolved)) {
+        throw "$Name is required."
+    }
+    $resolved
+}
+
 function ConvertFrom-AdoSecureString {
     [CmdletBinding()]
     param([Parameter(Mandatory)][SecureString]$SecureString)
@@ -208,4 +287,4 @@ function New-AdoAuthorizationHeaders {
     } finally { $plainText = $null }
 }
 
-Export-ModuleMember -Function Get-AdoPrompt, Initialize-AdoScriptRun, Add-AdoSensitiveValue, Protect-AdoLogValue, Write-AdoRunLog, Complete-AdoScriptRun, Read-AdoInput, ConvertFrom-AdoSecureString, Resolve-AdoPat, New-AdoAuthorizationHeaders
+Export-ModuleMember -Function Get-AdoPrompt, ConvertTo-AdoOrganizationName, ConvertFrom-AdoProjectUrl, Resolve-AdoProjectEndpoint, Initialize-AdoScriptRun, Add-AdoSensitiveValue, Protect-AdoLogValue, Write-AdoRunLog, Complete-AdoScriptRun, Read-AdoInput, Resolve-AdoRequiredInput, ConvertFrom-AdoSecureString, Resolve-AdoPat, New-AdoAuthorizationHeaders

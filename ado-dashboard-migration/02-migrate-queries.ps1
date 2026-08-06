@@ -10,8 +10,8 @@
     Idempotent: if a query already exists at the target path, its existing id is reused.
 #>
 param(
-    [Parameter(Mandatory)][string]$TargetOrg,
-    [Parameter(Mandatory)][string]$TargetProject,
+    [string]$TargetOrg,
+    [string]$TargetProject,
     [string]$ExportDir = "export",
     [string]$QueryFolderName = "",    # optional wrapper folder under Shared Queries; empty = preserve the source folder structure as-is (e.g. Shared Queries/Dashboard Queries/...)
     [string]$SourceProjectName = "",   # if set, occurrences in WIQL are rewritten to TargetProject
@@ -26,6 +26,8 @@ Import-Module $commonModulePath -Force
 $adoRun = Initialize-AdoScriptRun -ScriptPath $PSCommandPath -LogDirectory $LogDirectory -NonInteractive:$NonInteractive
 trap { Complete-AdoScriptRun -Outcome failed -ErrorRecord $_ -Operation 'migrate-dashboard-queries'; throw }
 
+$TargetOrg = Resolve-AdoRequiredInput -Value $TargetOrg -Name 'TargetOrg' -Prompt (Get-AdoPrompt -Name TargetOrganization)
+$TargetProject = Resolve-AdoRequiredInput -Value $TargetProject -Name 'TargetProject' -Prompt 'Target project name'
 if (-not [System.IO.Path]::IsPathRooted($ExportDir)) {
     $ExportDir = Join-Path $PSScriptRoot $ExportDir
 }

@@ -24,13 +24,10 @@
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(
-    [Parameter(Mandatory)]
     [string]$Organization,
 
-    [Parameter(Mandatory)]
     [string]$Project,
 
-    [Parameter(Mandatory)]
     [ValidateScript({ Test-Path -LiteralPath $_ -PathType Leaf })]
     [string]$ExcelFile,
 
@@ -146,6 +143,11 @@ function Get-RelativeIterationPath([string]$ApiPath, [string]$ApiRootPath) {
 if ($UpdateExisting) {
     throw '-UpdateExisting is not supported safely by this tool because the workbook reader does not retain target node identifiers. Rerun without -UpdateExisting; no iterations were changed.'
 }
+$Organization = Resolve-AdoRequiredInput -Value $Organization -Name 'Organization' -Prompt (Get-AdoPrompt -Name Organization)
+$Project = Resolve-AdoRequiredInput -Value $Project -Name 'Project' -Prompt 'Azure DevOps project name'
+$ExcelFile = Resolve-AdoRequiredInput -Value $ExcelFile -Name 'ExcelFile' -Prompt 'Excel file path'
+if (-not (Test-Path -LiteralPath $ExcelFile -PathType Leaf)) { throw "Excel file not found: $ExcelFile" }
+
 $Organization = Resolve-OrganizationUrl -InputValue $Organization
 $Pat = Resolve-AdoPat -Pat $Pat -Role Default
 $plainPat = ConvertFrom-AdoSecureString $Pat

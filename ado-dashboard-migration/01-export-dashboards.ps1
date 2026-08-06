@@ -11,8 +11,8 @@
               <OutDir>/inventory.md        human review report - read before proceeding
 #>
 param(
-    [Parameter(Mandatory)][string]$Org,
-    [Parameter(Mandatory)][string]$Project,
+    [string]$Org,
+    [string]$Project,
     [string]$OutDir = "./export",
     [SecureString]$SourcePat,
     [string]$LogDirectory,
@@ -25,6 +25,8 @@ Import-Module $commonModulePath -Force
 $adoRun = Initialize-AdoScriptRun -ScriptPath $PSCommandPath -LogDirectory $LogDirectory -NonInteractive:$NonInteractive
 trap { Complete-AdoScriptRun -Outcome failed -ErrorRecord $_ -Operation 'export-dashboards'; throw }
 
+$Org = Resolve-AdoRequiredInput -Value $Org -Name 'Org' -Prompt (Get-AdoPrompt -Name SourceOrganization)
+$Project = Resolve-AdoRequiredInput -Value $Project -Name 'Project' -Prompt 'Source project name'
 $Org = Get-OrgName $Org   # accept bare name or full URL
 $headers = Get-AdoAuthHeader -EnvVarName 'ADO_SOURCE_PAT' -Purpose "SOURCE org '$Org'" -Pat $SourcePat
 $base    = "https://dev.azure.com/$(UrlEnc $Org)"
