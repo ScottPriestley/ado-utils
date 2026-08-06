@@ -1,0 +1,1 @@
+{"timestampUtc":"2026-08-06T23:06:30.4077674Z","level":"error","script":"ado-set-default-area","runId":"20260806T2306237063038Z-82afecb3","operation":"set-default-area","outcome":"failed","target":"","message":"A parameter cannot be found that matches parameter name 'eq'.","errorType":"System.Management.Automation.ParameterBindingException","statusCode":null}

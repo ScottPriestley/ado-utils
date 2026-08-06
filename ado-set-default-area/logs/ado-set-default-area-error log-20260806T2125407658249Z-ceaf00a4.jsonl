@@ -1,0 +1,1 @@
+{"timestampUtc":"2026-08-06T21:25:59.2516242Z","level":"error","script":"ado-set-default-area","runId":"20260806T2125407658249Z-ceaf00a4","operation":"set-default-area","outcome":"failed","target":"","message":"Response status code does not indicate success: 404 (Not Found).","errorType":"System.Management.Automation.RuntimeException","statusCode":null}

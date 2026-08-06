@@ -1,0 +1,1 @@
+{"timestampUtc":"2026-08-06T21:04:08.3579860Z","level":"error","script":"ado-set-default-area","runId":"20260806T2103505994503Z-961c0d47","operation":"set-default-area","outcome":"failed","target":"","message":"Response status code does not indicate success: 404 (Not Found).","errorType":"Microsoft.PowerShell.Commands.HttpResponseException","statusCode":404}

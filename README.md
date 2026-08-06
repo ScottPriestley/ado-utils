@@ -19,6 +19,7 @@ Other folder workflows:
 - [Dashboard migration](ado-dashboard-migration/README.md)
 - [Process field extraction](ado-field-extraction/README.md)
 - [Area Path import and migration](ado-import-area-paths/README.md)
+- [Default area configuration](ado-set-default-area/README.md)
 - [Iteration Path import and migration](ado-import-iterations/README.md)
 - [Wiki extraction, load, and direct migration](ado-migrate-wiki/README.md)
 - [Inherited-process work item type migration](ado-migrate-workitemtype/README.md)

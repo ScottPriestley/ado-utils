@@ -1,0 +1,1 @@
+{"timestampUtc":"2026-08-06T20:25:32.2023281Z","level":"error","script":"ado-set-default-area","runId":"20260806T2025270362788Z-7770e44a","operation":"set-default-area","outcome":"failed","target":"","message":"Response status code does not indicate success: 401 (Unauthorized).","errorType":"Microsoft.PowerShell.Commands.HttpResponseException","statusCode":401}

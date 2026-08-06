@@ -67,7 +67,7 @@ $entryScripts = @(
         Sort-Object FullName
 )
 
-Assert-Condition ($entryScripts.Count -eq 19) "Expected 19 runnable PowerShell entry scripts in this worktree, found $($entryScripts.Count)."
+Assert-Condition ($entryScripts.Count -eq 20) "Expected 20 runnable PowerShell entry scripts in this worktree, found $($entryScripts.Count)."
 
 foreach ($scriptFile in $entryScripts) {
     $tokens = $null
@@ -87,6 +87,20 @@ foreach ($scriptFile in $entryScripts) {
 }
 
 $commonText = [IO.File]::ReadAllText($commonModulePath)
+$setDefaultAreaScriptPath = Join-Path $repoRoot 'ado-set-default-area/ado-set-default-area.ps1'
+$setDefaultAreaScriptText = [IO.File]::ReadAllText($setDefaultAreaScriptPath)
+Assert-Condition ($setDefaultAreaScriptText -match 'Get-AdoPrompt -Name TargetProjectUrl') 'ado-set-default-area.ps1 is not using the shared TargetProjectUrl prompt.'
+Assert-Condition ($setDefaultAreaScriptText -match '\[string\]\$ProjectUrl') 'ado-set-default-area.ps1 does not accept a ProjectUrl input.'
+Assert-Condition ($setDefaultAreaScriptText -match '_apis/work/teamsettings/teamfieldvalues') 'ado-set-default-area.ps1 does not use the documented teamfieldvalues endpoint.'
+Assert-Condition ($setDefaultAreaScriptText -match '\$teamUri/_apis/work/teamsettings/teamfieldvalues') 'ado-set-default-area.ps1 does not include the team segment in the teamfieldvalues endpoint.'
+Assert-Condition ($setDefaultAreaScriptText -match 'Resolve-DefaultTeamName') 'ado-set-default-area.ps1 does not resolve the default team name explicitly.'
+Assert-Condition ($setDefaultAreaScriptText -match '\$\(\$ProjectName\.Trim\(\)\) Team') 'ado-set-default-area.ps1 does not default the team to project name plus Team.'
+Assert-Condition ($setDefaultAreaScriptText -match 'ConvertTo-TeamFieldAreaValue') 'ado-set-default-area.ps1 does not normalize UI area paths before calling the teamfieldvalues API.'
+Assert-Condition ($setDefaultAreaScriptText -match 'Get-TeamFieldAreaCandidates') 'ado-set-default-area.ps1 does not compare normalized team field area values.'
+Assert-Condition ($setDefaultAreaScriptText -match 'Work Items read/write|team/project administrator') 'ado-set-default-area.ps1 does not surface PAT permission guidance for team settings updates.'
+Assert-Condition ($setDefaultAreaScriptText -match 'trap \{ Complete-AdoScriptRun[\s\S]+throw \$_ \}') 'ado-set-default-area.ps1 does not preserve the original error message from its trap.'
+Assert-Condition ($setDefaultAreaScriptText -notmatch '-UseBasicParsing') 'ado-set-default-area.ps1 should not use -UseBasicParsing in pwsh-compatible code.'
+
 $expectedPrompts = @(
     'Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)',
     'Source Azure DevOps organization name or URL (for example, contoso or https://dev.azure.com/contoso)',

@@ -1,0 +1,2 @@
+{"timestampUtc":"2026-08-06T23:08:53.2301079Z","level":"info","script":"ado-set-default-area","runId":"20260806T2308532243642Z-aa57bf93","operation":"initialize","outcome":"started","target":"ado-set-default-area","message":"Run initialized.","errorType":"","statusCode":null}
+{"timestampUtc":"2026-08-06T23:09:09.5249823Z","level":"info","script":"ado-set-default-area","runId":"20260806T2308532243642Z-aa57bf93","operation":"set-default-area","outcome":"succeeded","target":"","message":"","errorType":"","statusCode":null}

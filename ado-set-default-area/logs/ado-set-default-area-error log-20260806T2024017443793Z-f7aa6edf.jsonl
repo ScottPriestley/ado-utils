@@ -1,0 +1,1 @@
+{"timestampUtc":"2026-08-06T20:24:02.2857907Z","level":"error","script":"ado-set-default-area","runId":"20260806T2024017443793Z-f7aa6edf","operation":"set-default-area","outcome":"failed","target":"","message":"The variable '$teamUrl?api' cannot be retrieved because it has not been set.","errorType":"System.Management.Automation.RuntimeException","statusCode":null}
