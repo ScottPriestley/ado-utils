@@ -154,7 +154,10 @@ function Invoke-AdoJson {
     )
     $request = @{ Method = $Method; Uri = $Uri; Headers = $Headers; ErrorAction = 'Stop' }
     if ($PSBoundParameters.ContainsKey('Body')) {
-        $request.ContentType = 'application/json'
+        # charset=utf-8 or Windows PowerShell 5.1 encodes the body as ASCII/ISO-8859-1
+        # and silently degrades non-ASCII characters. Query names and WIQL routinely
+        # contain them.
+        $request.ContentType = 'application/json; charset=utf-8'
         $request.Body = $Body | ConvertTo-Json -Depth 100
     }
     try { Invoke-RestMethod @request }
@@ -280,12 +283,20 @@ function Copy-SharedQueries {
     # handles individual item failures.
     $failures = [Collections.Generic.List[string]]::new()
 
+    # Queries blocked by a target process that lacks a field, type, or classification
+    # path. Reported, but not treated as a failure: see the catch block below.
+    $processSkips = [Collections.Generic.List[string]]::new()
+
     function Get-QueryFailureHint {
         param([Parameter(Mandatory)][string]$Message)
         if ($Message -match 'TF51011') {
             return 'references a classification path that does not exist in the target project'
         }
-        if ($Message -match 'TF51005|does not exist|could not be found') {
+        # TF212023 reads as a query-authoring mistake ("cannot compare fields with
+        # different data types") but in a migration it means the custom field is
+        # absent from the target, so the comparison is against nothing. Same
+        # prerequisite gap as TF51005, so classify it the same way.
+        if ($Message -match 'TF51005|TF212023|does not exist|could not be found') {
             return 'references a field, type, or path that does not exist in the target project'
         }
         if ($Message -match '\(403\)|permission') { return 'the target PAT lacks permission to create it' }
@@ -359,25 +370,40 @@ function Copy-SharedQueries {
                 $message = [string]$_.Exception.Message
                 $hint = Get-QueryFailureHint -Message $message
                 $stats.skipped++
-                $failures.Add("$targetPath - $hint")
                 Write-TextLog -Path $LogPath -Message "SKIPPED query '$targetPath': $hint."
                 Write-TextLog -Path $LogPath -Message "  $($message -replace '\s+', ' ')"
+
+                # A query naming a field, type, or classification path the target does
+                # not have cannot be recreated, and no rerun changes that. Recording it
+                # as a failure would stop the sequence and prevent the dashboard and
+                # wiki steps from running at all. Anything else is a real failure.
+                if ($hint -match 'classification path|field, type, or path') {
+                    $processSkips.Add("$targetPath - $hint")
+                } else {
+                    $failures.Add("$targetPath - $hint")
+                }
             }
         }
     }
 
     Copy-Node -Node $root -ParentPath 'Shared Queries'
-    Write-TextLog -Path $LogPath -Message "Shared Queries complete. Folders created: $($stats.folders); queries created: $($stats.created); queries updated: $($stats.updated); queries reused: $($stats.reused); queries skipped: $($stats.skipped)."
+    Write-TextLog -Path $LogPath -Message "Shared Queries complete. Folders created: $($stats.folders); queries created: $($stats.created); queries updated: $($stats.updated); queries already present: $($stats.reused); queries skipped: $($stats.skipped)."
+
+    if ($processSkips.Count -gt 0) {
+        Write-TextLog -Path $LogPath -Message ''
+        Write-TextLog -Path $LogPath -Message "$($processSkips.Count) query/queries could not be recreated because the target is missing something they reference:"
+        foreach ($skip in $processSkips) { Write-TextLog -Path $LogPath -Message "  $skip" }
+        Write-TextLog -Path $LogPath -Message ''
+        Write-TextLog -Path $LogPath -Message 'These need the target process migrated, or the query rewritten by hand. A query filtering on another project''s Area or Iteration Paths cannot be repointed automatically: only the source project name is rewritten to the target, because silently redirecting a different project''s paths would change what the query means.'
+    }
 
     if ($failures.Count -gt 0) {
         Write-TextLog -Path $LogPath -Message ''
-        Write-TextLog -Path $LogPath -Message "$($failures.Count) query/queries could not be copied:"
+        Write-TextLog -Path $LogPath -Message "$($failures.Count) query/queries failed for a reason a rerun may fix:"
         foreach ($failure in $failures) { Write-TextLog -Path $LogPath -Message "  $failure" }
-        Write-TextLog -Path $LogPath -Message ''
-        Write-TextLog -Path $LogPath -Message 'A query that filters on another project''s Area or Iteration Paths cannot be recreated here: only the source project name is rewritten to the target, because silently repointing a different project''s paths would change what the query means. Recreate these by hand, or migrate the paths they depend on first.'
 
-        throw ("$($stats.created) query/queries copied, $($failures.Count) could not be. First: " +
-               "$($failures[0]). See $LogPath for the full list.")
+        throw ("$($stats.created) created and $($stats.reused) already present; $($failures.Count) failed. " +
+               "First: $($failures[0]). See $LogPath for the full list.")
     }
 }
 

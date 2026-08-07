@@ -137,7 +137,7 @@ function Invoke-Ado {
         [Parameter(Mandatory = $true)][string]$Uri,
         [Parameter(Mandatory = $true)][hashtable]$Headers,
         [object]$Body = $null,
-        [string]$ContentType = 'application/json',
+        [string]$ContentType = 'application/json; charset=utf-8',
         [switch]$AllowNotFound
     )
 
@@ -406,7 +406,7 @@ function New-TargetWorkItem {
     $uri = "$Base/$(UrlEnc $TargetProject)/_apis/wit/workitems/`$$(UrlEnc $type)?api-version=7.1"
     $patch = Get-CreatePatch -WorkItem $WorkItem -TargetFieldRefs $TargetFieldRefs -SourceProject $SourceProject -TargetProject $TargetProject -PreserveClassificationPaths $PreserveClassificationPaths
     try {
-        return Invoke-Ado -Method POST -Uri $uri -Headers $Headers -Body (ConvertTo-JsonPatchBody -Operations $patch) -ContentType 'application/json-patch+json'
+        return Invoke-Ado -Method POST -Uri $uri -Headers $Headers -Body (ConvertTo-JsonPatchBody -Operations $patch) -ContentType 'application/json-patch+json; charset=utf-8'
     }
     catch {
         $fullCopyError = $_.Exception.Message
@@ -416,7 +416,7 @@ function New-TargetWorkItem {
         if ($sourceLink) {
             $minimal.Add((New-PatchOp -Path '/relations/-' -Value @{ rel = 'Hyperlink'; url = $sourceLink; attributes = @{ comment = "Copied from source work item $($WorkItem.id); full field copy failed." } }))
         }
-        $result = Invoke-Ado -Method POST -Uri $uri -Headers $Headers -Body (ConvertTo-JsonPatchBody -Operations ($minimal.ToArray())) -ContentType 'application/json-patch+json'
+        $result = Invoke-Ado -Method POST -Uri $uri -Headers $Headers -Body (ConvertTo-JsonPatchBody -Operations ($minimal.ToArray())) -ContentType 'application/json-patch+json; charset=utf-8'
         $result | Add-Member -NotePropertyName copyWarning -NotePropertyValue $fullCopyError
         return $result
     }
@@ -429,7 +429,7 @@ function Update-TargetWorkItem {
     $patch = Get-CreatePatch -WorkItem $SourceWorkItem -TargetFieldRefs $TargetFieldRefs -SourceProject $SourceProject -TargetProject $TargetProject -PreserveClassificationPaths $PreserveClassificationPaths
     $fieldPatch = @($patch | Where-Object { $_.path -like '/fields/*' })
     if ($fieldPatch.Count -eq 0) { return }
-    Invoke-Ado -Method PATCH -Uri $uri -Headers $Headers -Body (ConvertTo-JsonPatchBody -Operations $fieldPatch) -ContentType 'application/json-patch+json' | Out-Null
+    Invoke-Ado -Method PATCH -Uri $uri -Headers $Headers -Body (ConvertTo-JsonPatchBody -Operations $fieldPatch) -ContentType 'application/json-patch+json; charset=utf-8' | Out-Null
 }
 
 function New-TargetWorkItemRelation {
@@ -440,7 +440,7 @@ function New-TargetWorkItemRelation {
     $patch = @(
         (New-PatchOp -Path '/relations/-' -Value @{ rel = $RelationType; url = $targetUrl; attributes = @{ comment = 'Copied from source query relationship' } })
     )
-    Invoke-Ado -Method PATCH -Uri $uri -Headers $Headers -Body (ConvertTo-JsonPatchBody -Operations $patch) -ContentType 'application/json-patch+json' | Out-Null
+    Invoke-Ado -Method PATCH -Uri $uri -Headers $Headers -Body (ConvertTo-JsonPatchBody -Operations $patch) -ContentType 'application/json-patch+json; charset=utf-8' | Out-Null
 }
 
 if ([string]::IsNullOrWhiteSpace($LogPath)) {
@@ -507,7 +507,7 @@ $createdQuery = Set-Query -QueryParts $parts -Wiql $targetWiql -Base $targetBase
 
 Write-Info 'Executing source query...'
 $wiqlUri = "$sourceBase/$(UrlEnc $SourceProject)/_apis/wit/wiql?api-version=7.1"
-$queryResult = Invoke-Ado -Method POST -Uri $wiqlUri -Headers $sourceHeaders -Body @{ query = $query.wiql } -ContentType 'application/json'
+$queryResult = Invoke-Ado -Method POST -Uri $wiqlUri -Headers $sourceHeaders -Body @{ query = $query.wiql } -ContentType 'application/json; charset=utf-8'
 $ids = @(Get-QueryIdsFromResult -QueryResult $queryResult)
 $sourceRelations = @(Get-QueryRelationsFromResult -QueryResult $queryResult)
 if ($ids.Count -eq 0) { Write-Warn 'The source query returned no work items or the response shape was unexpected.' }

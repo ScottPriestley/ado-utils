@@ -24,6 +24,7 @@ Other folder workflows:
 - [Default area configuration](ado-set-default-area/README.md)
 - [Iteration Path import and migration](ado-import-iterations/README.md)
 - [Wiki extraction, load, and direct migration](ado-migrate-wiki/README.md)
+- [Inherited-process migration](ado-migrate-process/README.md)
 - [Inherited-process work item type migration](ado-migrate-workitemtype/README.md)
 
 `AdoUtils.Common.psm1` is the shared runtime contract; `tests/run-offline-checks.ps1` is an offline verifier, not an Azure DevOps entry script. Generated output folders, CSVs, logs, ZIP files, and the separate `New folder` web application are not migration entry scripts.
@@ -66,6 +67,7 @@ Root URL inputs use the literal prompts `Source URL`, `Source Query URL`, `Targe
 | Field extraction | Process: Read; Work Items: Read | None |
 | Area/Iteration migration | Work Items: Read | Work Items: Read & write |
 | Wiki migration | Project/team metadata and Code/Wiki: Read | Project/team metadata and Code/Wiki: Read & write |
+| Process migration | Process and Work Items: Read | Process and Work Items: Read & write |
 | Work item type migration | Process and Work Items: Read | Process and Work Items: Read & write |
 
 ## Safety and rerun behavior

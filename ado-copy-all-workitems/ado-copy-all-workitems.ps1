@@ -456,6 +456,7 @@ $patchContentType = 'application/json-patch+json; charset=utf-8'
     # Deferred because a parent can be created after its child.
 
     $linked = 0
+    $linksAlreadyPresent = 0
     $linkFailures = 0
 
     foreach ($sourceId in $sourceRelations.Keys) {
@@ -488,15 +489,28 @@ $patchContentType = 'application/json-patch+json; charset=utf-8'
                     -Uri "$targetUrl/_apis/wit/workitems/${childTargetId}?api-version=7.1" | Out-Null
                 $linked++
             } catch {
+                $linkError = [string]$_.Exception.Message
+
+                # A rerun resumes from the state file and re-walks every relation, so
+                # the links it created last time are all still there. Azure DevOps
+                # rejects a duplicate relation, which is the expected answer here, not
+                # a failure: without this the second run of a completed migration would
+                # report every single link as broken.
+                if ($linkError -match 'already exists|VS402313|RelationAlreadyExists') {
+                    $linksAlreadyPresent++
+                    continue
+                }
+
                 $linkFailures++
                 Write-AdoRunLog -Level error -Operation 'link-work-item' -Outcome failed `
-                    -Target "$sourceId -> $sourceParentId" -Message ([string]$_.Exception.Message) `
+                    -Target "$sourceId -> $sourceParentId" -Message $linkError `
                     -StatusCode (Get-ResponseStatusCode $_)
             }
         }
     }
 
     Write-Host "Recreated $linked parent/child link(s)."
+    if ($linksAlreadyPresent -gt 0) { Write-Host "$linksAlreadyPresent link(s) were already present and left as they are." }
 
     # --- Summary -------------------------------------------------------------
 
@@ -523,20 +537,33 @@ $patchContentType = 'application/json-patch+json; charset=utf-8'
         Write-Host 'Migrate the target process first (see ado-migrate-workitemtype), then rerun to copy these items.'
     }
 
-    if ($failures.Count -gt 0 -or $linkFailures -gt 0 -or $unsupportedTypes.Count -gt 0) {
+    # A work item type the target process does not define is a prerequisite gap, not a
+    # failure this script can recover from: rerunning changes nothing until the process
+    # is migrated. Treating it as a failure would also stop the surrounding sequence
+    # dead, so a target using a different process could never reach the query,
+    # dashboard, or wiki steps. It is reported loudly instead. Genuine failures - an
+    # item or link the target rejected for any other reason - still fail the run.
+    if ($failures.Count -gt 0 -or $linkFailures -gt 0) {
         $failurePath = [IO.Path]::ChangeExtension($StatePath, '.failures.json')
         $failures | ConvertTo-Json -Depth 4 | Set-Content -Path $failurePath -Encoding UTF8
 
         $parts = @()
+        if ($failures.Count -gt 0) { $parts += "$($failures.Count) work item(s) failed" }
+        if ($linkFailures -gt 0)   { $parts += "$linkFailures link(s) failed" }
         if ($unsupportedTypes.Count -gt 0) {
-            $parts += "$skippedUnsupported item(s) skipped because their type is missing from the target ($(($unsupportedTypes | Sort-Object) -join ', '))"
+            $parts += "$skippedUnsupported item(s) were also skipped because their type is missing from the target"
         }
-        if ($failures.Count -gt 0)  { $parts += "$($failures.Count) work item(s) failed" }
-        if ($linkFailures -gt 0)    { $parts += "$linkFailures link(s) failed" }
 
         $message = "Copied $created work item(s). " + ($parts -join '; ') + ". Details: $failurePath"
         Complete-AdoScriptRun -Outcome partial -Operation 'copy-all-workitems' -Message $message
         throw $message
+    }
+
+    if ($unsupportedTypes.Count -gt 0) {
+        Complete-AdoScriptRun -Outcome partial -Operation 'copy-all-workitems' `
+            -Message ("Copied $created work item(s) and $linked link(s). $skippedUnsupported item(s) skipped: " +
+                      "the target process does not define $(($unsupportedTypes | Sort-Object) -join ', ').")
+        return
     }
 
     Complete-AdoScriptRun -Outcome succeeded -Operation 'copy-all-workitems' `

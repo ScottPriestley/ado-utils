@@ -67,7 +67,7 @@ $entryScripts = @(
         Sort-Object FullName
 )
 
-Assert-Condition ($entryScripts.Count -eq 24) "Expected 24 runnable PowerShell entry scripts in this worktree, found $($entryScripts.Count)."
+Assert-Condition ($entryScripts.Count -eq 25) "Expected 25 runnable PowerShell entry scripts in this worktree, found $($entryScripts.Count)."
 
 foreach ($scriptFile in $entryScripts) {
     $tokens = $null
@@ -118,6 +118,20 @@ foreach ($scriptFile in $entryScripts) {
             $logical.Text -notmatch 'charset') {
             Assert-Condition $false "$relativePath line $($logical.Number): a request with -Body must set ContentType with charset=utf-8, or non-ASCII characters are silently corrupted."
         }
+    }
+
+    # Splatted calls hide the body: "$params.Body = ..." followed by
+    # "Invoke-WebRequest @params" never puts -Body on the same line as the call, so
+    # the line-based rule above cannot see it. Check the file as a whole instead - if
+    # it assigns a Body into a splat hashtable, that hashtable must also carry a
+    # ContentType with a charset.
+    # Not anchored to line start: the assignment is commonly written inline, as in
+    # "if ($null -ne $Body) { $params.Body = ... }", which an anchored pattern misses.
+    # Comment lines are removed first so a comment describing the hazard is not
+    # mistaken for it.
+    $codeOnly = ($sourceLines | Where-Object { $_ -notmatch '^\s*#' }) -join "`n"
+    if ($codeOnly -match '\$\w+\.Body\s*=' -or $codeOnly -match "\`$\w+\['Body'\]\s*=") {
+        Assert-Condition ($codeOnly -match 'charset') "$relativePath assigns a request Body into a splat hashtable but never sets a ContentType with charset=utf-8, so non-ASCII characters are silently corrupted."
     }
 }
 

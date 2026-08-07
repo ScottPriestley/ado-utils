@@ -184,8 +184,19 @@ function Invoke-AdoRestMethod {
 
             if ($null -ne $Body) {
                 $parameters.Body = $Body
+                # A body must always declare charset=utf-8. Windows PowerShell 5.1
+                # otherwise encodes it as ASCII/ISO-8859-1 and silently degrades
+                # non-ASCII characters, which for a WIQL body means the query text
+                # sent no longer matches the query written.
+                $parameters.ContentType = if ($ContentType -and $ContentType -match 'charset') {
+                    $ContentType
+                } elseif ($ContentType) {
+                    "$ContentType; charset=utf-8"
+                } else {
+                    'application/json; charset=utf-8'
+                }
             }
-            if ($ContentType) {
+            elseif ($ContentType) {
                 $parameters.ContentType = $ContentType
             }
 

@@ -111,7 +111,14 @@ function Invoke-Ado {
         [switch]$AllowNotFound
     )
     $params = @{ Method = $Method; Uri = $Uri; Headers = $Headers; TimeoutSec = 60; UseBasicParsing = $true }
-    if ($null -ne $Body) { $params.Body = ($Body | ConvertTo-Json -Depth 20) }
+    if ($null -ne $Body) {
+        $params.Body = ($Body | ConvertTo-Json -Depth 20)
+        # charset=utf-8 is required: Windows PowerShell 5.1 otherwise encodes the body
+        # as ASCII/ISO-8859-1 and silently degrades non-ASCII characters. Work item
+        # type and field names are carried verbatim, so a corrupted name produces a
+        # subtly wrong definition rather than an error.
+        $params.ContentType = 'application/json; charset=utf-8'
+    }
     try {
         $resp = Invoke-WebRequest -UseBasicParsing @params
         if ($resp.Content) { return $resp.Content | ConvertFrom-Json }

@@ -106,7 +106,11 @@ function Invoke-Ado {
     Write-Log "ADO $Method $Uri"
     $params = @{ Method = $Method; Uri = $Uri; Headers = $Headers }
     if ($null -ne $Body) {
-        $params.ContentType = $ContentType
+        # Attach the charset here rather than to each caller's literal, because the
+        # branch below compares $ContentType exactly. Without charset=utf-8 Windows
+        # PowerShell 5.1 encodes a string body as ASCII/ISO-8859-1 and silently
+        # degrades curly quotes, dashes and accents in test case titles and steps.
+        $params.ContentType = if ($ContentType -match 'charset') { $ContentType } else { "$ContentType; charset=utf-8" }
         $params.Body = if ($Body -is [string]) {
             $Body
         } elseif ($ContentType -eq 'application/json-patch+json') {

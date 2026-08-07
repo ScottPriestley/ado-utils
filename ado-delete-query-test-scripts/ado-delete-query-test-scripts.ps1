@@ -110,7 +110,9 @@ function Invoke-Ado {
     Write-Log "ADO $Method $Uri"
     $params = @{ Method = $Method; Uri = $Uri; Headers = $Headers }
     if ($null -ne $Body) {
-        $params.ContentType = $ContentType
+        # charset=utf-8 or Windows PowerShell 5.1 encodes the string body as
+        # ASCII/ISO-8859-1 and silently degrades non-ASCII characters.
+        $params.ContentType = if ($ContentType -match 'charset') { $ContentType } else { "$ContentType; charset=utf-8" }
         $params.Body = if ($Body -is [string]) { $Body } else { $Body | ConvertTo-Json -Depth 100 }
     }
     $maxAttempts = 4
