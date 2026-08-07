@@ -42,7 +42,13 @@ $commonModulePath = Join-Path (Split-Path -Parent $PSScriptRoot) 'AdoUtils.Commo
 Import-Module $commonModulePath -Force
 $adoRun = Initialize-AdoScriptRun -ScriptPath $PSCommandPath -LogDirectory $LogDirectory -NonInteractive:$NonInteractive
 trap { Complete-AdoScriptRun -Outcome failed -ErrorRecord $_ -Operation 'migrate-wiki'; throw }
-$script:LogPath = Join-Path (Get-Location) "WikiMigration_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+
+# Resolve LogDirectory the same way Initialize-AdoScriptRun does to avoid system32 write failures
+if ([string]::IsNullOrWhiteSpace($LogDirectory)) {
+    $LogDirectory = Join-Path (Split-Path -Parent $PSScriptRoot) 'logs'
+}
+$resolvedLogDir = [IO.Path]::GetFullPath($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($LogDirectory))
+$script:LogPath = Join-Path $resolvedLogDir "WikiMigration_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
 
 function Write-MigrationLog {
     param(

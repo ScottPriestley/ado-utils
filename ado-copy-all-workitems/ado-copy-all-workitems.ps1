@@ -414,27 +414,60 @@ $patchContentType = 'application/json-patch+json; charset=utf-8'
                         -Target $sourceId -Message "Work item type '$type' does not exist in the target project."
                     continue
                 }
-                # Retry once without the two things that most often break a create:
-                # a state the target process does not define, and a classification
-                # path that does not exist in the target.
+                # Drop only what the target actually rejected. An earlier version
+                # discarded the state AND the classification paths on any failure,
+                # so a work item refused solely for an unmapped state also lost its
+                # Area and Iteration Path - real data thrown away for no reason. The
+                # error text says which one is at fault, so reduce that first and
+                # fall back to dropping both only if the targeted retry also fails.
                 $reason = [string]$_.Exception.Message
-                $retry = New-FieldPatch -WorkItem $item -SourceProjectName $source.Project `
-                    -TargetProjectName $target.Project -IncludeIdentities:$CopyIdentityFields `
-                    -OmitState -ResetClassification
 
-                try {
-                    $newItem = Invoke-AdoJson -Method Post -Uri $createUri -Headers $patchHeaders -ContentType $patchContentType `
-                        -Body (ConvertTo-PatchBody -Operations $retry.Operations)
-                    $degraded.Add("$sourceId ($type): created without original state and area/iteration path.")
+                $stateAtFault = $reason -match "field 'State'|field 'Reason'|not in the list of supported values|TF237124"
+                $classAtFault = $reason -match 'TF51011|[Aa]rea ?[Pp]ath|[Ii]teration ?[Pp]ath|classification'
+                if (-not $stateAtFault -and -not $classAtFault) {
+                    # Cause unclear: reduce both rather than guess wrong.
+                    $stateAtFault = $true
+                    $classAtFault = $true
+                }
+
+                $newItem = $null
+                $dropped = $null
+
+                foreach ($plan in @(
+                    @{ OmitState = $stateAtFault; ResetClass = $classAtFault },
+                    @{ OmitState = $true;         ResetClass = $true }
+                )) {
+                    # The second plan is the catch-all; skip it when it is identical.
+                    if ($null -ne $dropped) { break }
+                    if ($newItem) { break }
+
+                    $retry = New-FieldPatch -WorkItem $item -SourceProjectName $source.Project `
+                        -TargetProjectName $target.Project -IncludeIdentities:$CopyIdentityFields `
+                        -OmitState:$plan.OmitState -ResetClassification:$plan.ResetClass
+
+                    try {
+                        $newItem = Invoke-AdoJson -Method Post -Uri $createUri -Headers $patchHeaders -ContentType $patchContentType `
+                            -Body (ConvertTo-PatchBody -Operations $retry.Operations)
+
+                        $lost = @()
+                        if ($plan.OmitState)  { $lost += 'original state' }
+                        if ($plan.ResetClass) { $lost += 'area/iteration path' }
+                        $dropped = $lost -join ' and '
+                    } catch {
+                        $reason = [string]$_.Exception.Message
+                    }
+                }
+
+                if ($newItem) {
+                    $degraded.Add("$sourceId ($type): created without $dropped.")
                     Write-AdoRunLog -Level warning -Operation 'create-work-item' -Outcome degraded `
-                        -Target $sourceId -Message "Retried without state and classification. First error: $reason"
-                } catch {
+                        -Target $sourceId -Message "Retried without $dropped. First error: $reason"
+                } else {
                     $failures.Add([pscustomobject]@{
-                        SourceId = $sourceId; Type = $type; Error = [string]$_.Exception.Message
+                        SourceId = $sourceId; Type = $type; Error = $reason
                     })
                     Write-AdoRunLog -Level error -Operation 'create-work-item' -Outcome failed `
-                        -Target $sourceId -Message ([string]$_.Exception.Message) `
-                        -StatusCode (Get-ResponseStatusCode $_)
+                        -Target $sourceId -Message $reason
                     continue
                 }
             }

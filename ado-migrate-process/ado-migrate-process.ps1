@@ -478,7 +478,9 @@ foreach ($srcWit in $srcWits) {
     $witStateCount = 0
     foreach ($srcState in $srcStates | Where-Object { $_.customizationType -ne 'system' }) {
         $existing = $tgtStates | Where-Object { $_.name -eq $srcState.name }
-        if (-not $existing) {
+        if ($existing) {
+            Write-Skip "  State already exists: $($srcState.name) on $($srcWit.name)"
+        } else {
             $stateBody = @{
                 name = $srcState.name
                 color = Get-Prop $srcState 'color' '007acc'
@@ -489,15 +491,20 @@ foreach ($srcWit in $srcWits) {
                 Invoke-Ado -Method POST -Uri $createStateUri -Headers $tgtHeaders -Body $stateBody | Out-Null
                 $witStateCount++
                 $stateCount++
+                Write-AdoRunLog -Level info -Operation create-state -Outcome created -Target "$($srcWit.name)/$($srcState.name)" -Message "Category: $($srcState.stateCategory)"
             } catch {
                 # Silently skip 404 errors for WITs that don't exist in target process
-                if ($_.Exception.Message -notmatch "Cannot find work item type") {
+                if ($_.Exception.Message -match "Cannot find work item type") {
+                    Write-Warn2 "  WIT '$($srcWit.name)' not found in target process — cannot create state '$($srcState.name)'"
+                    Write-AdoRunLog -Level warning -Operation create-state -Outcome skipped -Target "$($srcWit.name)/$($srcState.name)" -Message "WIT not found in target process"
+                } else {
                     Write-Warn2 "  Failed to create state '$($srcState.name)': $_"
+                    Write-AdoRunLog -Level warning -Operation create-state -Outcome failed -Target "$($srcWit.name)/$($srcState.name)" -Message $_.Exception.Message
                 }
             }
         }
     }
-    
+
     # Hide states that are hidden in source
     foreach ($srcState in $srcStates | Where-Object { (Get-Prop $_ 'hidden' $false) -eq $true }) {
         $existing = $tgtStates | Where-Object { $_.name -eq $srcState.name -and (Get-Prop $_ 'hidden' $false) -eq $false }
@@ -507,17 +514,23 @@ foreach ($srcWit in $srcWits) {
             try {
                 Invoke-Ado -Method PATCH -Uri $hideUri -Headers $tgtHeaders -Body $hideBody | Out-Null
                 $witStateCount++
+                Write-AdoRunLog -Level info -Operation hide-state -Outcome updated -Target "$($srcWit.name)/$($srcState.name)"
             } catch {
-                # Silently skip 404 errors for WITs that don't exist in target process
-                if ($_.Exception.Message -notmatch "Cannot find work item type") {
+                if ($_.Exception.Message -match "Cannot find work item type") {
+                    Write-Warn2 "  WIT '$($srcWit.name)' not found in target process — cannot hide state '$($srcState.name)'"
+                    Write-AdoRunLog -Level warning -Operation hide-state -Outcome skipped -Target "$($srcWit.name)/$($srcState.name)" -Message "WIT not found in target process"
+                } else {
                     Write-Warn2 "  Failed to hide state '$($srcState.name)': $_"
+                    Write-AdoRunLog -Level warning -Operation hide-state -Outcome failed -Target "$($srcWit.name)/$($srcState.name)" -Message $_.Exception.Message
                 }
             }
         }
     }
-    
+
     if ($witStateCount -gt 0) {
         Write-Ok "  Created/updated $witStateCount states"
+    } else {
+        Write-Skip "  No new states to create for $($srcWit.name)"
     }
     
     # Migrate rules (best effort)
@@ -556,19 +569,34 @@ foreach ($srcWit in $srcWits) {
         Write-Ok "  Created $witRuleCount rules"
     }
     
-    # Migrate layout
+    # Migrate layout (skip for system WITs or if source is locked)
     Write-Step "  Migrating layout for WIT: $($srcWit.name)"
-    $srcLayoutUri = "$srcOrgUrl/_apis/work/processes/$srcProcessId/workitemtypes/$($srcWit.referenceName)/layout?$vLayout"
-    try {
-        $srcLayout = Invoke-Ado -Uri $srcLayoutUri -Headers $srcHeaders
-    } catch {
-        # Skip layout migration if source layout cannot be read or target WIT is locked
-        if ($_.Exception.Message -match "locked" -or $_.Exception.Message -match "Cannot find work item type") {
-            Write-Warn2 "  Cannot migrate layout for WIT '$($srcWit.name)': WIT is locked or not customizable"
-        } else {
-            Write-Warn2 "  Failed to read layout for WIT '$($srcWit.name)': $_"
-        }
+    
+    # Check if source WIT is a system WIT or locked - if so, skip layout entirely
+    $srcWitCustomization = Get-Prop $srcWit 'customizationType'
+    if ($srcWitCustomization -eq 'system') {
+        Write-Skip "  Skipping layout for system WIT: $($srcWit.name)"
         $srcLayout = $null
+    } else {
+        $srcLayoutUri = "$srcOrgUrl/_apis/work/processes/$srcProcessId/workitemtypes/$($srcWit.referenceName)/layout?$vLayout"
+        
+        # Temporarily set ErrorActionPreference to Continue to prevent errors from escaping to trap
+        $prevErrorAction = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        
+        try {
+            $srcLayout = Invoke-Ado -Uri $srcLayoutUri -Headers $srcHeaders
+        } catch {
+            # Skip layout migration if source layout cannot be read or WIT is locked
+            if ($_.Exception.Message -match "locked|Cannot find work item type|cannot modify form layout") {
+                Write-Warn2 "  Cannot migrate layout for WIT '$($srcWit.name)': WIT is locked or not customizable"
+            } else {
+                Write-Warn2 "  Failed to read layout for WIT '$($srcWit.name)': $_"
+            }
+            $srcLayout = $null
+        } finally {
+            $ErrorActionPreference = $prevErrorAction
+        }
     }
     
     if ($srcLayout -and $srcLayout.pages) {
