@@ -193,7 +193,7 @@ try {
             $source = @($rows | Where-Object { ((@($_.ParentPath, $_.Name) | Where-Object { $_ }) -join '\') -eq $path })[0]
             $body = @{ name = $name }
             if ($source -and ($source.StartDate -or $source.FinishDate)) { $body.attributes = @{}; if ($source.StartDate) { $body.attributes.startDate = "$($source.StartDate)T00:00:00Z" }; if ($source.FinishDate) { $body.attributes.finishDate = "$($source.FinishDate)T00:00:00Z" } }
-            Invoke-WebRequest -Method Post -Uri "${parentUri}?api-version=7.1" -Headers $headers -Body ($body | ConvertTo-Json -Compress) -TimeoutSec 30 -UseBasicParsing | Out-Null
+            Invoke-WebRequest -Method Post -Uri "${parentUri}?api-version=7.1" -Headers $headers -Body ($body | ConvertTo-Json -Compress) -ContentType 'application/json; charset=utf-8' -TimeoutSec 30 -UseBasicParsing | Out-Null
             [void]$created.Add($path); [void]$existing.Add($path)
         }
     }

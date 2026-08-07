@@ -90,11 +90,14 @@ function Get-ResponseStatusCode {
 }
 
 function New-AdoHeaders {
-    param([Parameter(Mandatory)][string]$PlainPat, [string]$ContentType = 'application/json')
+    <#
+        Content-Type is deliberately NOT set here. It is passed to Invoke-RestMethod
+        via -ContentType instead, so the charset can be attached; see Invoke-AdoJson.
+    #>
+    param([Parameter(Mandatory)][string]$PlainPat)
     @{
-        Authorization  = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(':' + $PlainPat))
-        Accept         = 'application/json'
-        'Content-Type' = $ContentType
+        Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(':' + $PlainPat))
+        Accept        = 'application/json'
     }
 }
 
@@ -103,7 +106,13 @@ function Invoke-AdoJson {
         [Parameter(Mandatory)][string]$Method,
         [Parameter(Mandatory)][string]$Uri,
         [Parameter(Mandatory)][hashtable]$Headers,
-        [string]$Body
+        [string]$Body,
+        # charset=utf-8 is mandatory, not decorative. Without it Windows PowerShell 5.1
+        # and PowerShell before 7.4 encode a string -Body as ASCII/ISO-8859-1, which
+        # mangles curly quotes, en dashes and accented characters. Work item titles and
+        # descriptions are full of them, and the corrupted body can be malformed enough
+        # that Azure DevOps answers "You must pass a valid patch document".
+        [string]$ContentType = 'application/json; charset=utf-8'
     )
     # Invoke-RestMethod deliberately. Under Windows PowerShell 5.1 a plain
     # Invoke-WebRequest hands the response to the Internet Explorer DOM parser, which
@@ -112,7 +121,10 @@ function Invoke-AdoJson {
     $arguments = @{
         Method = $Method; Uri = $Uri; Headers = $Headers; TimeoutSec = 120
     }
-    if ($PSBoundParameters.ContainsKey('Body')) { $arguments['Body'] = $Body }
+    if ($PSBoundParameters.ContainsKey('Body')) {
+        $arguments['Body'] = $Body
+        $arguments['ContentType'] = $ContentType
+    }
 
     try { Invoke-RestMethod @arguments }
     catch {
@@ -324,7 +336,8 @@ if ([string]::IsNullOrWhiteSpace($StatePath)) {
 
 try {
     $sourceHeaders = New-AdoHeaders -PlainPat $sourcePlainPat
-    $patchHeaders  = New-AdoHeaders -PlainPat $targetPlainPat -ContentType 'application/json-patch+json'
+    $patchHeaders  = New-AdoHeaders -PlainPat $targetPlainPat
+$patchContentType = 'application/json-patch+json; charset=utf-8'
 
     # Resume map: source id -> target id.
     $map = @{}
@@ -389,7 +402,7 @@ try {
 
             $newItem = $null
             try {
-                $newItem = Invoke-AdoJson -Method Post -Uri $createUri -Headers $patchHeaders `
+                $newItem = Invoke-AdoJson -Method Post -Uri $createUri -Headers $patchHeaders -ContentType $patchContentType `
                     -Body (ConvertTo-PatchBody -Operations $patch.Operations)
             } catch {
                 # 404 on create means the work item type itself is absent from the
@@ -410,7 +423,7 @@ try {
                     -OmitState -ResetClassification
 
                 try {
-                    $newItem = Invoke-AdoJson -Method Post -Uri $createUri -Headers $patchHeaders `
+                    $newItem = Invoke-AdoJson -Method Post -Uri $createUri -Headers $patchHeaders -ContentType $patchContentType `
                         -Body (ConvertTo-PatchBody -Operations $retry.Operations)
                     $degraded.Add("$sourceId ($type): created without original state and area/iteration path.")
                     Write-AdoRunLog -Level warning -Operation 'create-work-item' -Outcome degraded `
@@ -470,7 +483,7 @@ try {
             )
 
             try {
-                Invoke-AdoJson -Method Patch -Headers $patchHeaders `
+                Invoke-AdoJson -Method Patch -Headers $patchHeaders -ContentType $patchContentType `
                     -Body (ConvertTo-PatchBody -Operations $linkOperations) `
                     -Uri "$targetUrl/_apis/wit/workitems/${childTargetId}?api-version=7.1" | Out-Null
                 $linked++

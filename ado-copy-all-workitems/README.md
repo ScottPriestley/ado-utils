@@ -56,6 +56,26 @@ once with the paths reset to the project root and the state omitted. Items
 created that way are counted and listed at the end of the run as reduced
 fidelity, and each one is recorded in the error log.
 
+## Work item types missing from the target
+
+A work item type the target process does not define cannot be created. The first
+item of such a type produces a 404, after which every remaining item of that type
+is skipped without another API call rather than collecting hundreds of identical
+failures.
+
+The run ends by naming the missing types and the number of items affected, and
+exits with a partial-failure result. Migrate the target process first (see
+[ado-migrate-workitemtype](../ado-migrate-workitemtype/README.md)) and rerun to
+pick those items up; recorded items are skipped on the rerun.
+
+## Board fields
+
+Fields named `WEF_<guid>_*` are per-board artefacts Azure DevOps generates for
+Kanban state, such as `System.ExtensionMarker`, `Kanban.Column`, and
+`Kanban.Lane`. The GUID identifies a board in the **source** project, so the
+target has no matching field and rejects the whole work item with `TF51535`.
+They carry no content worth migrating and are excluded.
+
 ## Identity fields
 
 Fields whose value is an identity, such as `System.AssignedTo`, are skipped by

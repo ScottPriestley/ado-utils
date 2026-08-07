@@ -42,6 +42,26 @@ function ConvertTo-AdoSafeFilePart {
     (($Value -replace '[\\/:*?"<>|]', '_') -replace '\s+', ' ').Trim()
 }
 
+function Get-TargetStateDirectory {
+    <#
+        Resume state must outlive a single run. Keeping it in the timestamped run
+        directory meant every rerun started with an empty source-to-target map and
+        created a second copy of every work item already migrated - and the UI
+        explicitly offers "Rerun failed step". Keying it to the target project
+        instead makes a rerun resume, which is what the copy script was built to do.
+
+        Deliberately independent of -RunRoot: a caller pointing runs at a scratch
+        directory must still share resume state with every other run against the
+        same target.
+    #>
+    param([Parameter(Mandatory)]$Target)
+    $base = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'AdoMigrationLogs'
+    $targetPart = '{0}_{1}' -f (ConvertTo-AdoSafeFilePart $Target.Org), (ConvertTo-AdoSafeFilePart $Target.Project)
+    $path = Join-Path (Join-Path $base $targetPart) 'state'
+    [IO.Directory]::CreateDirectory($path) | Out-Null
+    $path
+}
+
 function New-RunDirectory {
     param([Parameter(Mandatory)]$Target)
     $path = if ([string]::IsNullOrWhiteSpace($RunRoot)) {
@@ -403,7 +423,7 @@ function Invoke-SetupStep {
                 # the source.
                 $sourceUrl = 'https://dev.azure.com/{0}/{1}' -f (UrlEnc $Source.Org), (UrlEnc $Source.Project)
                 Invoke-EntryScript -ScriptPath (Join-Path $PSScriptRoot '..\ado-copy-all-workitems\ado-copy-all-workitems.ps1') -LogPath $logPath -Arguments @{
-                    SourceProjectUrl = $sourceUrl; TargetProjectUrl = $TargetProjectUrl; SourcePat = $ResolvedSourcePat; TargetPat = $ResolvedTargetPat; StatePath = (Join-Path $RunDirectory 'workitems-state.json'); LogDirectory = $TechnicalLogDirectory; NonInteractive = $true
+                    SourceProjectUrl = $sourceUrl; TargetProjectUrl = $TargetProjectUrl; SourcePat = $ResolvedSourcePat; TargetPat = $ResolvedTargetPat; StatePath = (Join-Path (Get-TargetStateDirectory -Target $Target) 'workitems-state.json'); LogDirectory = $TechnicalLogDirectory; NonInteractive = $true
                 }
             }
             'queries' {

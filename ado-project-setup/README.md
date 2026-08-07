@@ -61,7 +61,18 @@ The runner also writes:
 - `progress.jsonl` for UI status updates.
 - `summary.json` for the final run summary.
 - `technical-jsonl/` containing canonical ado-utils JSONL logs from wrapped scripts.
-- Step-specific state/export files such as work-item state and dashboard export artifacts.
+- Step-specific export artifacts such as the dashboard export.
+
+Work item resume state is deliberately **not** per-run. It lives at:
+
+```text
+%USERPROFILE%\Documents\AdoMigrationLogs\<target-org>_<target-project>\state\workitems-state.json
+```
+
+That file maps each source work item to the target item created from it. Rerunning
+the work item step reads it and skips what already exists. Deleting it makes the
+next run copy every work item again, creating duplicates - so keep it with the
+target project, and delete it only when starting that target over from scratch.
 
 Do not commit generated run folders, logs, state files, or exports.
 
@@ -94,6 +105,24 @@ The HTML must not collect PATs or attempt to run migrations directly.
 The launcher is additive. Wrapped scripts preserve their existing behavior: they create missing objects, reuse state where supported, skip or patch according to their README, and do not perform implicit deletes. A failed run can be rerun for selected failed steps after reviewing logs and correcting the cause.
 
 The target project must already exist and use the intended process template. The launcher does not migrate permissions, organization extensions, work-item history, every identity mapping, or rollback state.
+
+### Process mismatch is the most common source of partial results
+
+The seven steps copy *content*, not the *process* that defines it. If the target
+uses a different process template from the source, everything that depends on a
+custom type or field is reported as skipped rather than copied:
+
+- Work items whose type does not exist in the target are skipped, and the missing
+  types are named at the end of step 4.
+- Shared queries referencing a custom field are skipped in step 5.
+- Dashboard widgets bound to those queries import but stay empty.
+
+Migrating the target process first with
+[ado-migrate-workitemtype](../ado-migrate-workitemtype/README.md) removes this
+entire class of skip. That step is deliberately **not** part of the seven-step
+sequence: it changes the target's process definition, which is a heavier and less
+reversible operation than copying content, and many target projects intentionally
+use a different process.
 
 ## Verification
 

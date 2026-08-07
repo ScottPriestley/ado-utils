@@ -92,12 +92,31 @@ foreach ($scriptFile in $entryScripts) {
 # descriptions are full of them, so the write "succeeds" and the content is corrupted.
 foreach ($scriptFile in $entryScripts) {
     $relativePath = Get-RepoRelativePath -BasePath $repoRoot -Path $scriptFile.FullName
-    $lineNumber = 0
-    foreach ($line in [IO.File]::ReadAllLines($scriptFile.FullName)) {
-        $lineNumber++
-        if ($line -match '^\s*#') { continue }
-        if ($line -match 'Invoke-(RestMethod|WebRequest)' -and $line -match '-Body' -and $line -notmatch 'charset') {
-            Assert-Condition $false "$relativePath line ${lineNumber}: a request with -Body must set ContentType with charset=utf-8, or non-ASCII characters are silently corrupted."
+    $sourceLines = [IO.File]::ReadAllLines($scriptFile.FullName)
+
+    # Join backtick continuations into one logical line first. A call is routinely
+    # wrapped across lines, and testing each physical line separately would report a
+    # correctly-written call whose -Body and -ContentType sit on different lines.
+    $logicalLines = @()
+    $buffer = ''
+    $bufferStart = 0
+    for ($i = 0; $i -lt $sourceLines.Count; $i++) {
+        $current = $sourceLines[$i]
+        if ($buffer -eq '') { $bufferStart = $i + 1 }
+        $buffer += ' ' + $current
+        if ($current -notmatch '`\s*$') {
+            $logicalLines += [pscustomobject]@{ Number = $bufferStart; Text = $buffer }
+            $buffer = ''
+        }
+    }
+    if ($buffer -ne '') { $logicalLines += [pscustomobject]@{ Number = $bufferStart; Text = $buffer } }
+
+    foreach ($logical in $logicalLines) {
+        if ($logical.Text -match '^\s*#') { continue }
+        if ($logical.Text -match 'Invoke-(RestMethod|WebRequest)' -and
+            $logical.Text -match '-Body' -and
+            $logical.Text -notmatch 'charset') {
+            Assert-Condition $false "$relativePath line $($logical.Number): a request with -Body must set ContentType with charset=utf-8, or non-ASCII characters are silently corrupted."
         }
     }
 }

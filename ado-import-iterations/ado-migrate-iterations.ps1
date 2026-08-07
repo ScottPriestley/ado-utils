@@ -232,7 +232,7 @@ try {
         }
 
         if ($PSCmdlet.ShouldProcess("$targetProject/$relativePath", 'Create Azure DevOps Iteration Path')) {
-            Invoke-WebRequest -Method Post -Uri "${parentUri}?api-version=7.1" -Headers $targetHeaders -Body ($body | ConvertTo-Json -Compress) -TimeoutSec 30 -UseBasicParsing | Out-Null
+            Invoke-WebRequest -Method Post -Uri "${parentUri}?api-version=7.1" -Headers $targetHeaders -Body ($body | ConvertTo-Json -Compress) -ContentType 'application/json; charset=utf-8' -TimeoutSec 30 -UseBasicParsing | Out-Null
             [void]$created.Add($relativePath)
         }
     }

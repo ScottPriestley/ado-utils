@@ -159,7 +159,11 @@ try {
         }
         if ($PSCmdlet.ShouldProcess($area, 'Create Azure DevOps Area Path')) {
             $body = @{ name = $name } | ConvertTo-Json -Compress
-            Invoke-WebRequest -Method Post -Uri "${parentUri}?api-version=7.1" -Headers $headers -Body $body -TimeoutSec 30 -UseBasicParsing | Out-Null
+            # charset=utf-8 is required: without it a string -Body is encoded as
+            # ASCII/ISO-8859-1 on Windows PowerShell 5.1, corrupting area path names
+            # that contain accented or typographic characters.
+            Invoke-WebRequest -Method Post -Uri "${parentUri}?api-version=7.1" -Headers $headers -Body $body `
+                -ContentType 'application/json; charset=utf-8' -TimeoutSec 30 -UseBasicParsing | Out-Null
             [void]$created.Add($area)
         }
     }

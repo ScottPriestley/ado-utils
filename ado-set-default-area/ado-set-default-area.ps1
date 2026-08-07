@@ -235,7 +235,7 @@ try {
     } | ConvertTo-Json -Compress
 
     if ($PSCmdlet.ShouldProcess($resolvedAreaPath, 'Update Azure DevOps team area path settings')) {
-        Invoke-RestMethod -Method Patch -Uri "${teamFieldValuesUrl}?api-version=7.1" -Headers $headers -Body $updateBody -ContentType 'application/json' -TimeoutSec 30 | Out-Null
+        Invoke-RestMethod -Method Patch -Uri "${teamFieldValuesUrl}?api-version=7.1" -Headers $headers -Body $updateBody -ContentType 'application/json; charset=utf-8' -TimeoutSec 30 | Out-Null
     }
 
     if ($WhatIfPreference) {
