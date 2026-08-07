@@ -86,6 +86,22 @@ foreach ($scriptFile in $entryScripts) {
     Assert-Condition ($text -match 'Complete-AdoScriptRun') "$relativePath does not complete canonical run logs."
 }
 
+# A string -Body without an explicit charset is encoded as ASCII/ISO-8859-1 by Windows
+# PowerShell 5.1 and PowerShell before 7.4, silently degrading characters outside that
+# range (en dash to hyphen, curly quotes to straight). Wiki pages and work item
+# descriptions are full of them, so the write "succeeds" and the content is corrupted.
+foreach ($scriptFile in $entryScripts) {
+    $relativePath = Get-RepoRelativePath -BasePath $repoRoot -Path $scriptFile.FullName
+    $lineNumber = 0
+    foreach ($line in [IO.File]::ReadAllLines($scriptFile.FullName)) {
+        $lineNumber++
+        if ($line -match '^\s*#') { continue }
+        if ($line -match 'Invoke-(RestMethod|WebRequest)' -and $line -match '-Body' -and $line -notmatch 'charset') {
+            Assert-Condition $false "$relativePath line ${lineNumber}: a request with -Body must set ContentType with charset=utf-8, or non-ASCII characters are silently corrupted."
+        }
+    }
+}
+
 # "@($text | ConvertFrom-Json)" collapses a JSON array into a SINGLE element under
 # Windows PowerShell 5.1, while PowerShell 7 unrolls it correctly. Code written and
 # tested in pwsh then run by the launcher (which uses 5.1) silently processes the
