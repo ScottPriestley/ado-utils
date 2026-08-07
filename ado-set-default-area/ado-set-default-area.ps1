@@ -188,15 +188,21 @@ if ([string]::IsNullOrWhiteSpace($plainPat)) {
 }
 
 try {
-    $headers = @{ 
+    # These calls use Invoke-RestMethod deliberately. Under Windows PowerShell 5.1 a
+    # plain Invoke-WebRequest hands the response to the Internet Explorer DOM parser,
+    # which blocks indefinitely in a windowless process such as the one the
+    # ado-migrate:// launcher starts; TimeoutSec bounds the HTTP request but not that
+    # parsing step, so the symptom is a hang rather than an error. Invoke-RestMethod
+    # never parses HTML, so it avoids the problem without the basic-parsing switch
+    # this folder's offline check forbids, and behaves identically in both editions.
+    $headers = @{
         Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(':' + $plainPat))
         Accept = 'application/json'
-        'Content-Type' = 'application/json'
     }
 
     $teamFieldValuesUrl = Get-TeamFieldValuesUrl -BaseOrganizationUrl $Organization -ProjectName $Project -TeamName $Team
     try {
-        $existingValues = (Invoke-WebRequest -Method Get -Uri "${teamFieldValuesUrl}?api-version=7.1" -Headers $headers -TimeoutSec 30).Content | ConvertFrom-Json
+        $existingValues = Invoke-RestMethod -Method Get -Uri "${teamFieldValuesUrl}?api-version=7.1" -Headers $headers -TimeoutSec 30
     } catch {
         throw (Get-AdoApiErrorMessage -ErrorRecord $_ -ProjectName $Project -TeamName $Team)
     }
@@ -229,7 +235,7 @@ try {
     } | ConvertTo-Json -Compress
 
     if ($PSCmdlet.ShouldProcess($resolvedAreaPath, 'Update Azure DevOps team area path settings')) {
-        Invoke-WebRequest -Method Patch -Uri "${teamFieldValuesUrl}?api-version=7.1" -Headers $headers -Body $updateBody -TimeoutSec 30 | Out-Null
+        Invoke-RestMethod -Method Patch -Uri "${teamFieldValuesUrl}?api-version=7.1" -Headers $headers -Body $updateBody -ContentType 'application/json' -TimeoutSec 30 | Out-Null
     }
 
     if ($WhatIfPreference) {
@@ -238,7 +244,7 @@ try {
         return
     }
 
-    $updatedValues = (Invoke-WebRequest -Method Get -Uri "${teamFieldValuesUrl}?api-version=7.1" -Headers $headers -TimeoutSec 30).Content | ConvertFrom-Json
+    $updatedValues = Invoke-RestMethod -Method Get -Uri "${teamFieldValuesUrl}?api-version=7.1" -Headers $headers -TimeoutSec 30
     $updatedArea = $updatedValues.values | Where-Object { $areaCandidates -contains $_.value } | Select-Object -First 1
     if (-not $updatedArea) {
         throw "Verification failed. Area path '$resolvedAreaPath' was not returned by the team field values endpoint."

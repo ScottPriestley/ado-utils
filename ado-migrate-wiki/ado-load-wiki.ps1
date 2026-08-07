@@ -305,7 +305,11 @@ function Get-OrCreateTargetWiki {
         projectId = $projectId
     } | ConvertTo-Json -Depth 3
 
-    $wiki = Invoke-RestMethod -Uri $uri -Headers $Headers -Method Post -Body $body -ErrorAction Stop
+    # Explicit charset: without it, Windows PowerShell 5.1 and PowerShell before 7.4
+    # encode a string -Body as ASCII/ISO-8859-1 and silently degrade characters
+    # outside that range (en dash to hyphen, curly quotes to straight).
+    $wiki = Invoke-RestMethod -Uri $uri -Headers $Headers -Method Post -Body $body `
+        -ContentType 'application/json; charset=utf-8' -ErrorAction Stop
     Write-Host "Created target wiki '$($wiki.name)'." -ForegroundColor Green
     return $wiki
 }
@@ -330,7 +334,7 @@ function Get-AzureDevOpsWikiPageState {
     $uri = "$script:ApiBaseUri/$organizationSegment/$(ConvertTo-UriSegment -Value $Project)/_apis/wiki/wikis/$wikiSegment/pages?path=$encodedPath&includeContent=true&api-version=7.1"
 
     try {
-        $response = Invoke-WebRequest -Uri $uri -Headers $Headers -Method Get -ErrorAction Stop
+        $response = Invoke-WebRequest -UseBasicParsing -Uri $uri -Headers $Headers -Method Get -ErrorAction Stop
         $page = $response.Content | ConvertFrom-Json
         return [pscustomobject]@{
             Exists  = $true
@@ -380,7 +384,10 @@ function Set-AzureDevOpsWikiPage {
     $encodedPath = [Uri]::EscapeDataString($PagePath)
     $uri = "$script:ApiBaseUri/$organizationSegment/$(ConvertTo-UriSegment -Value $Project)/_apis/wiki/wikis/$wikiSegment/pages?path=$encodedPath&api-version=7.1"
     $body = @{ content = $Content } | ConvertTo-Json
-    $null = Invoke-RestMethod -Uri $uri -Headers $requestHeaders -Method Put -Body $body -ErrorAction Stop
+    # Explicit charset, as above: page content is exactly where non-ASCII characters
+    # live, so omitting it corrupts the written page.
+    $null = Invoke-RestMethod -Uri $uri -Headers $requestHeaders -Method Put -Body $body `
+        -ContentType 'application/json; charset=utf-8' -ErrorAction Stop
 
     if ($state.Exists) {
         return 'Updated'

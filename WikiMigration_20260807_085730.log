@@ -1,0 +1,103 @@
+﻿[2026-08-07 08:57:30.733] [Info] === Azure DevOps Wiki Migration Started ===
+[2026-08-07 08:57:31.019] [Success] Connected to source and target projects.
+[2026-08-07 08:57:31.162] [Info] Reading source wiki 'ProServ-Model-Combo-Project.wiki'.
+[2026-08-07 08:57:31.461] [Info] Retrieved content for '/Dashboards & Purpose'.
+[2026-08-07 08:57:31.559] [Info] Retrieved content for '/Environment Definitions'.
+[2026-08-07 08:57:31.657] [Info] Retrieved content for '/Project Stages'.
+[2026-08-07 08:57:31.747] [Info] Retrieved content for '/Project Stages/Deployment'.
+[2026-08-07 08:57:31.827] [Info] Retrieved content for '/Project Stages/Deployment/CRP - Conference Room Pilot'.
+[2026-08-07 08:57:31.979] [Info] Retrieved content for '/Project Stages/Deployment/Cutover'.
+[2026-08-07 08:57:32.119] [Info] Retrieved content for '/Project Stages/Deployment/Mock Go Live'.
+[2026-08-07 08:57:32.206] [Info] Retrieved content for '/Project Stages/Deployment/Performance Testing'.
+[2026-08-07 08:57:32.299] [Info] Retrieved content for '/Project Stages/Deployment/UAT - User Acceptance Testing'.
+[2026-08-07 08:57:32.386] [Info] Retrieved content for '/Project Stages/Design and Build'.
+[2026-08-07 08:57:32.485] [Info] Retrieved content for '/Project Stages/Design and Build/Iterations'.
+[2026-08-07 08:57:32.583] [Info] Retrieved content for '/Project Stages/Design and Build/Iterations/Design and Build Tips for Success'.
+[2026-08-07 08:57:32.667] [Info] Retrieved content for '/Project Stages/Design and Build/Iterations/Workshops'.
+[2026-08-07 08:57:32.763] [Info] Retrieved content for '/Project Stages/Design and Build/Test Management'.
+[2026-08-07 08:57:32.855] [Info] Retrieved content for '/Project Stages/Go Live & Hypercare'.
+[2026-08-07 08:57:32.954] [Info] Retrieved content for '/Project Stages/Go Live & Hypercare/Hypercare'.
+[2026-08-07 08:57:33.073] [Info] Retrieved content for '/Project Stages/Project Initiation'.
+[2026-08-07 08:57:33.200] [Info] Retrieved content for '/Project Stages/Project Initiation/Questionnaire'.
+[2026-08-07 08:57:33.318] [Info] Retrieved content for '/Project Stages/Project Initiation/Solution Validation'.
+[2026-08-07 08:57:33.435] [Info] Retrieved content for '/Project Stages/Stabilization - Should this be Maintain - that is what is in the PMO intro deck'.
+[2026-08-07 08:57:33.511] [Info] Retrieved content for '/Project Stages/Stabilization - Should this be Maintain - that is what is in the PMO intro deck/Phase 2'.
+[2026-08-07 08:57:33.627] [Info] Retrieved content for '/Project Stages/Stabilization - Should this be Maintain - that is what is in the PMO intro deck/Transition to Managed Services'.
+[2026-08-07 08:57:33.734] [Info] Retrieved content for '/Project Summary'.
+[2026-08-07 08:57:33.829] [Info] Retrieved content for '/Project Timeline (High Level)'.
+[2026-08-07 08:57:33.917] [Info] Retrieved content for '/Requirement to Gap to Development Flow'.
+[2026-08-07 08:57:34.050] [Info] Retrieved content for '/Work Item Definitions'.
+[2026-08-07 08:57:34.138] [Info] Retrieved content for '/Work Item Definitions/Bug Work Item'.
+[2026-08-07 08:57:34.249] [Info] Retrieved content for '/Work Item Definitions/Configuration Work Item'.
+[2026-08-07 08:57:34.387] [Info] Retrieved content for '/Work Item Definitions/Data Migration Work Item'.
+[2026-08-07 08:57:34.496] [Info] Retrieved content for '/Work Item Definitions/Decision Work Item'.
+[2026-08-07 08:57:34.604] [Info] Retrieved content for '/Work Item Definitions/Deliverable Work Item'.
+[2026-08-07 08:57:34.808] [Info] Retrieved content for '/Work Item Definitions/GAP Work Item'.
+[2026-08-07 08:57:34.933] [Info] Retrieved content for '/Work Item Definitions/Issue Work Item'.
+[2026-08-07 08:57:35.185] [Info] Retrieved content for '/Work Item Definitions/Question Work Item'.
+[2026-08-07 08:57:35.276] [Info] Retrieved content for '/Work Item Definitions/Requirement Work Item'.
+[2026-08-07 08:57:35.421] [Info] Retrieved content for '/Work Item Definitions/Test Case Work Item'.
+[2026-08-07 08:57:35.529] [Info] Retrieved content for '/Work Item Definitions/User Story Work Item'.
+[2026-08-07 08:57:35.547] [Success] Retrieved content for 37 source page(s).
+[2026-08-07 08:57:36.613] [Success] Created target wiki 'TestBed.wiki'.
+[2026-08-07 08:57:36.751] [Info] Preflighting 15 referenced wiki attachment(s).
+[2026-08-07 08:57:36.764] [Info] Source wiki 'ProServ-Model-Combo-Project.wiki': repositoryId '354a44d3-4fe0-4800-a32c-7a970962179a', mappedPath '/', attachment scopePath '/.attachments'.
+[2026-08-07 08:57:36.908] [Info] Source wiki attachment listing returned 21 item(s) under '/.attachments'.
+[2026-08-07 08:57:37.153] [Warning] Diagnostic: no path in the source attachment listing (21 total item(s)) resembles 'image-f15f7ac0-d911-4cad-a7af-ea5f93fc68fc.png'. Expected path was '/.attachments/image-f15f7ac0-d911-4cad-a7af-ea5f93fc68fc.png'.
+[2026-08-07 08:57:37.173] [Warning] Skipping unresolved attachment (missing): '/.attachments/image-f15f7ac0-d911-4cad-a7af-ea5f93fc68fc.png' on '/Requirement to Gap to Development Flow' was not found at '/.attachments/image-f15f7ac0-d911-4cad-a7af-ea5f93fc68fc.png' or in its Git history.
+[2026-08-07 08:57:37.343] [Info] Writing attachments to repository '6918e79c-f7d4-4060-bc01-0195e3aeba26' branch 'refs/heads/wikiMaster' under '/'.
+[2026-08-07 08:57:38.850] [Info] Uploaded and validated attachment 'image-f162321f-9a27-41ee-8827-9aa3c20dbeff.png' (154843 bytes, SHA-256 fb142273646cfe0334ed59d36679c5ae0ad41321ada41c53c04ed1de52c907ac).
+[2026-08-07 08:57:39.761] [Info] Uploaded and validated attachment 'image-f201b418-b2d0-42aa-983f-826178cb203c.png' (35704 bytes, SHA-256 5d62e39c589756e18a157d2db98892d87f70b189ea9526c8a9da97abccdb227b).
+[2026-08-07 08:57:40.669] [Info] Uploaded and validated attachment 'image-b264eea0-e740-40c0-8b20-e1d8deee2545.png' (32078 bytes, SHA-256 8a53e1f7b34b54d4afe4673fd106136803300ae7138ff6c80ef1f0bd889950e5).
+[2026-08-07 08:57:41.497] [Info] Uploaded and validated attachment 'image-c2e88598-28ad-4f6b-a21d-ba4b373a80f4.png' (67079 bytes, SHA-256 cbd3b5a08962abad3882639dd69e1568b77882113915cb1fdddc17f8193476f4).
+[2026-08-07 08:57:42.431] [Info] Uploaded and validated attachment 'image-05e1ad32-d832-4620-83f1-82aa106ae52f.png' (70516 bytes, SHA-256 29df1e7aa65e11381a49dce695e80d8cd327e8a484cab3b141ddaabbc6172e29).
+[2026-08-07 08:57:43.542] [Info] Uploaded and validated attachment 'Gap to Development Flow-c06c6b20-b5bb-4349-9042-705ed9d38d2c.png' (58381 bytes, SHA-256 106b5cb43aece1c1e8afb63e0e98c7366165026b220139e73d9b0a609877b84d).
+[2026-08-07 08:57:44.552] [Info] Uploaded and validated attachment 'Issue-7509dd8d-c8f8-47e2-8ea0-f5f538279997.jpg' (103588 bytes, SHA-256 20f4862158d9dae9805f40c013f7095c59cdb64edce35738870dd2f59f4a53f5).
+[2026-08-07 08:57:45.876] [Info] Uploaded and validated attachment 'image-7095c22d-19b2-4a14-8ffc-bf6012683903.png' (150916 bytes, SHA-256 8fa77940f23e16bf21ed80b5d9ed0c872867be079e0cc73a4266dda82d00b11f).
+[2026-08-07 08:57:46.512] [Info] Uploaded and validated attachment 'image-f146631a-9d47-46d9-8785-a46a559a33bb.png' (28338 bytes, SHA-256 304d74a6dc29b81a423a624e7b7ee51bfa74079aa00fd3db68f53e81f268fd07).
+[2026-08-07 08:57:47.599] [Info] Uploaded and validated attachment 'image-4d58408a-ed35-4449-8e73-a62130c95d98.png' (96081 bytes, SHA-256 909469c24461f037cd676e27b7acc4c2427e536416d7869be643ceced1fd668c).
+[2026-08-07 08:57:48.528] [Info] Uploaded and validated attachment 'image-98075c2f-0d36-4bb4-a4f8-b58d76987df6.png' (55022 bytes, SHA-256 d340275ed25c40d4e9c547334550cbfdd99a0546724f5bf41e93bae3b0d6d187).
+[2026-08-07 08:57:49.612] [Info] Uploaded and validated attachment 'image-14311ada-4769-4cc8-b13c-e7a818ef4953.png' (89776 bytes, SHA-256 12a7fd4572371b6143c6e5d4ee55ea48520c07dd9d38910b7a1453a5d7bc43b9).
+[2026-08-07 08:57:51.169] [Info] Uploaded and validated attachment 'image-17794254-8d3b-4c69-a69f-4d4d532385b5.png' (112605 bytes, SHA-256 d5fdcbc85f2d320815c3cbe2907cea0d9534275d421b42b5362f035bf2f25f79).
+[2026-08-07 08:57:52.630] [Info] Uploaded and validated attachment 'image-0c816129-356e-49e9-a402-d50b43db6cad.png' (163288 bytes, SHA-256 2153d3514a59c6fa56d9978fb60839b00df74d45ffedba189c3a926eee250cc5).
+[2026-08-07 08:57:52.635] [Warning] Skipped 1 unresolved attachment(s); affected pages keep their existing broken link(s): '/.attachments/image-f15f7ac0-d911-4cad-a7af-ea5f93fc68fc.png' on '/Requirement to Gap to Development Flow' was not found at '/.attachments/image-f15f7ac0-d911-4cad-a7af-ea5f93fc68fc.png' or in its Git history.
+[2026-08-07 08:57:52.648] [Success] Attachment migration complete. Total: 15, Uploaded: 14, Repaired: 0, Skipped: 1.
+[2026-08-07 08:57:53.309] [Info] Created '/Project Summary'.
+[2026-08-07 08:57:53.892] [Info] Created '/Project Timeline (High Level)'.
+[2026-08-07 08:57:54.417] [Info] Created '/Project Stages'.
+[2026-08-07 08:57:54.961] [Info] Created '/Work Item Definitions'.
+[2026-08-07 08:57:55.521] [Info] Created '/Requirement to Gap to Development Flow'.
+[2026-08-07 08:57:56.073] [Info] Created '/Environment Definitions'.
+[2026-08-07 08:57:56.590] [Info] Created '/Dashboards & Purpose'.
+[2026-08-07 08:57:57.107] [Info] Created '/Project Stages/Project Initiation'.
+[2026-08-07 08:57:57.627] [Info] Created '/Work Item Definitions/Bug Work Item'.
+[2026-08-07 08:57:58.168] [Info] Created '/Project Stages/Design and Build'.
+[2026-08-07 08:57:58.671] [Info] Created '/Work Item Definitions/Configuration Work Item'.
+[2026-08-07 08:57:59.195] [Info] Created '/Project Stages/Deployment'.
+[2026-08-07 08:57:59.751] [Info] Created '/Work Item Definitions/Data Migration Work Item'.
+[2026-08-07 08:58:00.291] [Info] Created '/Project Stages/Go Live & Hypercare'.
+[2026-08-07 08:58:00.858] [Info] Created '/Work Item Definitions/Decision Work Item'.
+[2026-08-07 08:58:01.440] [Info] Created '/Project Stages/Stabilization - Should this be Maintain - that is what is in the PMO intro deck'.
+[2026-08-07 08:58:01.957] [Info] Created '/Work Item Definitions/Deliverable Work Item'.
+[2026-08-07 08:58:02.612] [Info] Created '/Work Item Definitions/GAP Work Item'.
+[2026-08-07 08:58:03.138] [Info] Created '/Work Item Definitions/Issue Work Item'.
+[2026-08-07 08:58:03.700] [Info] Created '/Work Item Definitions/Question Work Item'.
+[2026-08-07 08:58:04.248] [Info] Created '/Work Item Definitions/Requirement Work Item'.
+[2026-08-07 08:58:04.778] [Info] Created '/Work Item Definitions/User Story Work Item'.
+[2026-08-07 08:58:05.491] [Info] Created '/Work Item Definitions/Test Case Work Item'.
+[2026-08-07 08:58:06.066] [Info] Created '/Project Stages/Deployment/CRP - Conference Room Pilot'.
+[2026-08-07 08:58:06.621] [Info] Created '/Project Stages/Design and Build/Iterations'.
+[2026-08-07 08:58:07.169] [Info] Created '/Project Stages/Go Live & Hypercare/Hypercare'.
+[2026-08-07 08:58:07.708] [Info] Created '/Project Stages/Project Initiation/Questionnaire'.
+[2026-08-07 08:58:08.435] [Info] Created '/Project Stages/Stabilization - Should this be Maintain - that is what is in the PMO intro deck/Phase 2'.
+[2026-08-07 08:58:09.390] [Info] Created '/Project Stages/Deployment/UAT - User Acceptance Testing'.
+[2026-08-07 08:58:10.038] [Info] Created '/Project Stages/Design and Build/Test Management'.
+[2026-08-07 08:58:10.684] [Info] Created '/Project Stages/Project Initiation/Solution Validation'.
+[2026-08-07 08:58:11.246] [Info] Created '/Project Stages/Stabilization - Should this be Maintain - that is what is in the PMO intro deck/Transition to Managed Services'.
+[2026-08-07 08:58:11.952] [Info] Created '/Project Stages/Deployment/Performance Testing'.
+[2026-08-07 08:58:12.606] [Info] Created '/Project Stages/Deployment/Mock Go Live'.
+[2026-08-07 08:58:13.135] [Info] Created '/Project Stages/Deployment/Cutover'.
+[2026-08-07 08:58:13.726] [Info] Created '/Project Stages/Design and Build/Iterations/Design and Build Tips for Success'.
+[2026-08-07 08:58:14.327] [Info] Created '/Project Stages/Design and Build/Iterations/Workshops'.
+[2026-08-07 08:58:14.332] [Info] Validating target page content.
+[2026-08-07 08:58:14.564] [Error] Migration failed: Target validation failed for '/Project Stages'.

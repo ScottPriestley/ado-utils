@@ -1,0 +1,45 @@
+﻿[2026-08-07 09:00:54.894] [Info] === Azure DevOps Wiki Migration Started ===
+[2026-08-07 09:00:55.292] [Success] Connected to source and target projects.
+[2026-08-07 09:00:55.509] [Info] Reading source wiki 'ProServ-Model-Combo-Project.wiki'.
+[2026-08-07 09:00:55.823] [Info] Retrieved content for '/Dashboards & Purpose'.
+[2026-08-07 09:00:55.917] [Info] Retrieved content for '/Environment Definitions'.
+[2026-08-07 09:00:56.200] [Info] Retrieved content for '/Project Stages'.
+[2026-08-07 09:00:56.307] [Info] Retrieved content for '/Project Stages/Deployment'.
+[2026-08-07 09:00:56.416] [Info] Retrieved content for '/Project Stages/Deployment/CRP - Conference Room Pilot'.
+[2026-08-07 09:00:56.531] [Info] Retrieved content for '/Project Stages/Deployment/Cutover'.
+[2026-08-07 09:00:56.832] [Info] Retrieved content for '/Project Stages/Deployment/Mock Go Live'.
+[2026-08-07 09:00:56.951] [Info] Retrieved content for '/Project Stages/Deployment/Performance Testing'.
+[2026-08-07 09:00:57.160] [Info] Retrieved content for '/Project Stages/Deployment/UAT - User Acceptance Testing'.
+[2026-08-07 09:00:57.532] [Info] Retrieved content for '/Project Stages/Design and Build'.
+[2026-08-07 09:00:58.943] [Info] Retrieved content for '/Project Stages/Design and Build/Iterations'.
+[2026-08-07 09:00:59.983] [Info] Retrieved content for '/Project Stages/Design and Build/Iterations/Design and Build Tips for Success'.
+[2026-08-07 09:01:00.712] [Info] Retrieved content for '/Project Stages/Design and Build/Iterations/Workshops'.
+[2026-08-07 09:01:00.941] [Info] Retrieved content for '/Project Stages/Design and Build/Test Management'.
+[2026-08-07 09:01:01.999] [Info] Retrieved content for '/Project Stages/Go Live & Hypercare'.
+[2026-08-07 09:01:02.681] [Info] Retrieved content for '/Project Stages/Go Live & Hypercare/Hypercare'.
+[2026-08-07 09:01:03.116] [Info] Retrieved content for '/Project Stages/Project Initiation'.
+[2026-08-07 09:01:03.435] [Info] Retrieved content for '/Project Stages/Project Initiation/Questionnaire'.
+[2026-08-07 09:01:03.906] [Info] Retrieved content for '/Project Stages/Project Initiation/Solution Validation'.
+[2026-08-07 09:01:04.056] [Info] Retrieved content for '/Project Stages/Stabilization - Should this be Maintain - that is what is in the PMO intro deck'.
+[2026-08-07 09:01:04.374] [Info] Retrieved content for '/Project Stages/Stabilization - Should this be Maintain - that is what is in the PMO intro deck/Phase 2'.
+[2026-08-07 09:01:04.567] [Info] Retrieved content for '/Project Stages/Stabilization - Should this be Maintain - that is what is in the PMO intro deck/Transition to Managed Services'.
+[2026-08-07 09:01:04.774] [Info] Retrieved content for '/Project Summary'.
+[2026-08-07 09:01:05.199] [Info] Retrieved content for '/Project Timeline (High Level)'.
+[2026-08-07 09:01:05.539] [Info] Retrieved content for '/Requirement to Gap to Development Flow'.
+[2026-08-07 09:01:06.203] [Info] Retrieved content for '/Work Item Definitions'.
+[2026-08-07 09:01:06.356] [Info] Retrieved content for '/Work Item Definitions/Bug Work Item'.
+[2026-08-07 09:01:06.640] [Info] Retrieved content for '/Work Item Definitions/Configuration Work Item'.
+[2026-08-07 09:01:07.762] [Info] Retrieved content for '/Work Item Definitions/Data Migration Work Item'.
+[2026-08-07 09:01:10.046] [Info] Retrieved content for '/Work Item Definitions/Decision Work Item'.
+[2026-08-07 09:01:10.623] [Info] Retrieved content for '/Work Item Definitions/Deliverable Work Item'.
+[2026-08-07 09:01:10.837] [Info] Retrieved content for '/Work Item Definitions/GAP Work Item'.
+[2026-08-07 09:01:10.992] [Info] Retrieved content for '/Work Item Definitions/Issue Work Item'.
+[2026-08-07 09:01:11.344] [Info] Retrieved content for '/Work Item Definitions/Question Work Item'.
+[2026-08-07 09:01:11.633] [Info] Retrieved content for '/Work Item Definitions/Requirement Work Item'.
+[2026-08-07 09:01:11.807] [Info] Retrieved content for '/Work Item Definitions/Test Case Work Item'.
+[2026-08-07 09:01:12.078] [Info] Retrieved content for '/Work Item Definitions/User Story Work Item'.
+[2026-08-07 09:01:12.221] [Success] Retrieved content for 37 source page(s).
+[2026-08-07 09:01:12.605] [Info] Using existing target wiki 'TestBed.wiki'.
+[2026-08-07 09:01:13.057] [Info] Preflighting 15 referenced wiki attachment(s).
+[2026-08-07 09:01:13.148] [Info] Source wiki 'ProServ-Model-Combo-Project.wiki': repositoryId '354a44d3-4fe0-4800-a32c-7a970962179a', mappedPath '/', attachment scopePath '/.attachments'.
+[2026-08-07 09:01:13.695] [Error] Migration failed: The property 'versionType' cannot be found on this object. Verify that the property exists.

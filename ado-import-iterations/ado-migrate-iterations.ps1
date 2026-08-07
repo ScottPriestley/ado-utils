@@ -67,7 +67,27 @@ function Resolve-OrganizationUrl([string]$InputValue, [string]$Label) {
 function Get-IterationTree([string]$Organization, [string]$Project, [hashtable]$Headers) {
     $projectUri = [Uri]::EscapeDataString($Project)
     $baseUri = "{0}/{1}/_apis/wit/classificationnodes/iterations" -f $Organization.TrimEnd('/'), $projectUri
-    $tree = (Invoke-WebRequest -Method Get -Uri "${baseUri}?`$depth=20&api-version=7.1" -Headers $Headers -TimeoutSec 30 -UseBasicParsing).Content | ConvertFrom-Json
+    $requestUri = "${baseUri}?`$depth=20&api-version=7.1"
+    try {
+        $tree = (Invoke-WebRequest -Method Get -Uri $requestUri -Headers $Headers -TimeoutSec 30 -UseBasicParsing).Content | ConvertFrom-Json
+    }
+    catch {
+        $statusCode = $null
+        try { $statusCode = [int]$_.Exception.Response.StatusCode } catch { }
+        if ($statusCode -eq 404) {
+            # A PAT belongs to one organization. Presented against a different one it
+            # yields 404 rather than 401, because the service will not confirm that
+            # the project exists. That is the most common cause here, so name it
+            # before the rarer explanations. The full request URI is reported so the
+            # api-version is visible and not mistaken for the problem.
+            throw ("Azure DevOps returned 404 while reading Iteration Paths for project '$Project' in '$Organization'. " +
+                   "The most likely cause is that the PAT was created in a different organization: a PAT is valid for one " +
+                   "organization only, and presenting it elsewhere returns 404 rather than a permission error. Confirm the " +
+                   "PAT was issued in '$Organization', that the project name matches exactly including spaces, and that the " +
+                   "PAT has Work Items read access. Request: $requestUri")
+        }
+        throw
+    }
     [pscustomobject]@{
         BaseUri = $baseUri
         Tree    = $tree

@@ -29,7 +29,7 @@ param(
     [int[]]$SourcePlanIds,
     [SecureString]$SourcePat,
     [SecureString]$TargetPat,
-    [string]$StatePath = (Join-Path $PSScriptRoot 'ado-copy-test-management.state.json'),
+    [string]$StatePath,
     [string]$LogPath,
     [string[]]$AdditionalFieldReferenceNames = @(),
     [switch]$PreserveClassificationPaths,
@@ -42,6 +42,9 @@ param(
 
 Set-StrictMode -Version 3.0
 $ErrorActionPreference = 'Stop'
+# $PSScriptRoot is empty in parameter defaults for a [CmdletBinding()] script
+# started with powershell.exe -File, so this default is resolved here instead.if ([string]::IsNullOrWhiteSpace($StatePath)) { $StatePath = Join-Path $PSScriptRoot 'ado-copy-test-management.state.json' }
+
 $commonModulePath = Join-Path $PSScriptRoot 'AdoUtils.Common.psm1'
 if (-not (Test-Path -LiteralPath $commonModulePath)) {
     $commonModulePath = Join-Path $PSScriptRoot '..\AdoUtils.Common.psm1'
@@ -143,7 +146,7 @@ function Invoke-AdoPagedGet {
         Write-Log "ADO GET $pageUri"
         $maxAttempts = 4
         for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
-            try { $response = Invoke-WebRequest -Method GET -Uri $pageUri -Headers $Headers; break }
+            try { $response = Invoke-WebRequest -UseBasicParsing -Method GET -Uri $pageUri -Headers $Headers; break }
             catch {
                 $status = Get-ExceptionStatusCode -ErrorRecord $_
                 $detail = Get-ExceptionDetail -ErrorRecord $_

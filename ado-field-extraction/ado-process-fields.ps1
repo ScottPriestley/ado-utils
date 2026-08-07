@@ -6,10 +6,17 @@ param(
     [string]$Organization,
     [SecureString]$Pat,
     [string]$ProcessId,
-    [string]$OutputPath = (Join-Path $PSScriptRoot 'ADO_Process_Fields.csv'),
+    [string]$OutputPath,
     [string]$LogDirectory,
     [switch]$NonInteractive
 )
+
+# $PSScriptRoot is empty in parameter defaults for a [CmdletBinding()] script
+# started with powershell.exe -File, so this default is resolved here instead.
+if ([string]::IsNullOrWhiteSpace($OutputPath)) {
+    $OutputPath = Join-Path $PSScriptRoot 'ADO_Process_Fields.csv'
+}
+
 $commonModulePath = Join-Path (Split-Path -Parent $PSScriptRoot) 'AdoUtils.Common.psm1'
 Import-Module $commonModulePath -Force
 $adoRun = Initialize-AdoScriptRun -ScriptPath $PSCommandPath -LogDirectory $LogDirectory -NonInteractive:$NonInteractive

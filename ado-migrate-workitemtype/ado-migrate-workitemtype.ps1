@@ -113,7 +113,7 @@ function Invoke-Ado {
     $params = @{ Method = $Method; Uri = $Uri; Headers = $Headers; TimeoutSec = 60; UseBasicParsing = $true }
     if ($null -ne $Body) { $params.Body = ($Body | ConvertTo-Json -Depth 20) }
     try {
-        $resp = Invoke-WebRequest @params
+        $resp = Invoke-WebRequest -UseBasicParsing @params
         if ($resp.Content) { return $resp.Content | ConvertFrom-Json }
         return $null
     }

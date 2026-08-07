@@ -40,7 +40,11 @@ $queriesPath = Join-Path $ExportDir 'queries.json'
 if (-not (Test-Path -LiteralPath $queriesPath)) {
     throw "Input file not found: $queriesPath - run step 1 first and verify export directory."
 }
-$queries = @(Read-Utf8Text $queriesPath | ConvertFrom-Json)
+# Piped through ForEach-Object deliberately. In Windows PowerShell 5.1 - which the
+# launcher runs - "@($json | ConvertFrom-Json)" yields ONE element holding the whole
+# array, so the loop below would run once with $q bound to every query at once.
+# PowerShell 7 unrolls it correctly, so the fault is invisible when testing in pwsh.
+$queries = @(Read-Utf8Text $queriesPath | ConvertFrom-Json | ForEach-Object { $_ })
 if (-not @($queries).Count) { throw "No queries found in $queriesPath - run step 1 first." }
 
 # Auto-detect source project name from mapping.json if not passed
@@ -117,9 +121,24 @@ foreach ($q in @($queries)) {
     $qpath = $qpath -replace '\\', '/'
     $relDir = ($qpath -replace '^(Shared Queries|My Queries)/', '') -replace "/$([regex]::Escape($q.name))$", ''
     if ($relDir -eq $q.name -or [string]::IsNullOrWhiteSpace($relDir)) { $relDir = '' }
+    # Folder preparation used to throw straight out of the script, so a single
+    # unpreparable folder ended the whole run and the message named only the folder,
+    # not the query that asked for it or the relative path it was derived from.
     $parent = $rootPath
+    $folderError = $null
     foreach ($seg in ($relDir -split '/' | Where-Object { $_ })) {
-        $parent = Confirm-QueryFolder -ParentPath $parent -Name $seg
+        try {
+            $parent = Confirm-QueryFolder -ParentPath $parent -Name $seg
+        } catch {
+            $folderError = ("segment '$seg' under '$parent' (query '$($q.name)', source path " +
+                            "'$($q.path)', derived folder '$relDir'): $(Get-AdoMsg $_)")
+            break
+        }
+    }
+    if ($folderError) {
+        $failedOther += "$($q.name) - could not prepare folder: $folderError"
+        Write-Host "  FAILED:  folder prep - $folderError" -ForegroundColor Red
+        continue
     }
 
     # WIQL transform: retarget explicit project references. @project needs no change.
@@ -205,5 +224,15 @@ if (@($failedOther).Count) {
     @($failedOther) | Where-Object { $_ } | Sort-Object -Unique | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red }
 }
 Write-Utf8Text -Path (Join-Path $ExportDir 'queries-skipped.txt') -Text ((@($skippedProc) | Where-Object { $_ } | Sort-Object -Unique) -join "`r`n")
-if (@($failedOther).Count -or @($skippedProc).Count) { throw 'One or more dashboard query migrations failed or were blocked; review the summary and rerun.' }
+
+# Only genuine failures stop the run. A process-mismatch skip means the target lacks
+# a field, type, or state the query needs; rerunning cannot change that, and blocking
+# here would also prevent the dashboards that use the queries that DID migrate from
+# being imported at all. Those skips are reported above and in queries-skipped.txt.
+if (@($failedOther).Count) {
+    throw "$(@($failedOther).Count) dashboard query migration(s) failed for a recoverable reason; review the summary and rerun."
+}
+if (@($skippedProc).Count) {
+    Write-Host ("`n{0} query/queries could not be recreated because the target process is missing fields or types they use. Dashboard widgets bound to them will be empty until the process is migrated." -f @($skippedProc).Count) -ForegroundColor DarkYellow
+}
 Complete-AdoScriptRun -Outcome succeeded -Operation 'migrate-dashboard-queries'

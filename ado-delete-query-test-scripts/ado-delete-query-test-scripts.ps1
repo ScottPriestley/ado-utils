@@ -58,8 +58,16 @@ function Write-Log {
 }
 
 function Get-AuthHeader([SecureString]$PatValue, [bool]$ForcePrompt) {
-    if ($ForcePrompt -and $null -ne $PatValue) { Write-Log '-PromptForPat forces the secure prompt and ignores the supplied parameter.' -Level WARN }
-    $resolvedPat = Resolve-AdoPat -Pat $(if ($ForcePrompt) { $null } else { $PatValue }) -Role Default
+    if ($ForcePrompt) {
+        if ($null -ne $PatValue) { Write-Log '-PromptForPat forces the secure prompt and ignores the supplied parameter.' -Level WARN }
+        Write-Log '-PromptForPat bypasses ADO_PAT and requests a fresh hidden credential.'
+        $resolvedPat = Read-AdoInput -Prompt (Get-AdoPrompt -Name Pat) -AsSecureString
+        if ($null -eq $resolvedPat -or [string]::IsNullOrWhiteSpace((ConvertFrom-AdoSecureString -SecureString $resolvedPat))) {
+            throw 'A non-empty ADO_PAT credential is required.'
+        }
+        return New-AdoAuthorizationHeaders -Pat $resolvedPat
+    }
+    $resolvedPat = Resolve-AdoPat -Pat $PatValue -Role Default
     return New-AdoAuthorizationHeaders -Pat $resolvedPat
 }
 
@@ -133,7 +141,7 @@ function Invoke-AdoPagedGet {
         Write-Log "ADO GET $pageUri"
         $maxAttempts = 4
         for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
-            try { $response = Invoke-WebRequest -Method GET -Uri $pageUri -Headers $Headers; break }
+            try { $response = Invoke-WebRequest -UseBasicParsing -Method GET -Uri $pageUri -Headers $Headers; break }
             catch {
                 $status = Get-ExceptionStatusCode -ErrorRecord $_
                 $detail = Get-ExceptionDetail -ErrorRecord $_
@@ -371,7 +379,7 @@ try {
                 try {
                     $resolvedSuite = Resolve-TestSuiteArtifact -WorkItem $entry -Suites $allSuites -AllowTitleMatch $AllowTitleResolution.IsPresent
                     $order = 20; $planId = [int]$resolvedSuite.PlanId; $suiteId = [int]$resolvedSuite.Suite.id; $apiId = $suiteId; $resolution = $resolvedSuite.Match
-                    $deleteUri = "$base/$(UrlEnc $target.Project)/_apis/testplan/Plans/$planId/suites/$suiteId?api-version=7.1"
+                    $deleteUri = "$base/$(UrlEnc $target.Project)/_apis/testplan/Plans/$planId/suites/${suiteId}?api-version=7.1"
                 } catch {
                     $unresolved.Add([pscustomobject]@{ WorkItemId = $entry.WorkItemId; WorkItemType = $entry.WorkItemType; Title = $entry.Title; Reason = $_.Exception.Message })
                     Write-Log "Unresolved Test Suite work item #$($entry.WorkItemId): $($_.Exception.Message)" -Level WARN
@@ -381,7 +389,7 @@ try {
                 if ($resolvedPlans.ContainsKey([int]$entry.WorkItemId)) {
                     $resolvedPlan = $resolvedPlans[[int]$entry.WorkItemId]
                     $order = 30; $planId = [int]$resolvedPlan.Plan.id; $apiId = $planId; $resolution = $resolvedPlan.Match
-                    $deleteUri = "$base/$(UrlEnc $target.Project)/_apis/testplan/plans/$planId?api-version=7.1"
+                    $deleteUri = "$base/$(UrlEnc $target.Project)/_apis/testplan/plans/${planId}?api-version=7.1"
                 } else { continue }
             }
             [pscustomobject]@{ DeleteOrder = $order; WorkItemId = $entry.WorkItemId; ApiArtifactId = $apiId; WorkItemType = $entry.WorkItemType; PlanId = $planId; SuiteId = $suiteId; IdResolution = $resolution; Title = $entry.Title; State = $entry.State; AreaPath = $entry.AreaPath; IterationPath = $entry.IterationPath; DeleteUri = $deleteUri }

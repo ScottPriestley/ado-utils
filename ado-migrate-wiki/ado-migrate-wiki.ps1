@@ -184,7 +184,15 @@ function Invoke-AzureDevOpsJsonRequest {
     )
 
     try {
-        return Invoke-RestMethod -Uri $Uri -Headers $Headers -Method $Method -Body $Body -ErrorAction Stop
+        # Explicit charset. Windows PowerShell 5.1 and PowerShell before 7.4 encode a
+        # string -Body as ASCII/ISO-8859-1 unless the Content-Type carries
+        # charset=utf-8, silently degrading characters outside that range: an en dash
+        # arrives as a hyphen, curly quotes as straight ones. Wiki pages are full of
+        # such characters, so the pages wrote "successfully" and then failed
+        # post-write validation because the target content no longer matched the
+        # source. ado-dashboard-migration/_common.ps1 carries the same fix.
+        return Invoke-RestMethod -Uri $Uri -Headers $Headers -Method $Method -Body $Body `
+            -ContentType 'application/json; charset=utf-8' -ErrorAction Stop
     }
     catch {
         throw (Get-AzureDevOpsErrorMessage -ErrorRecord $_ -Operation $Method.ToUpperInvariant() -Uri $Uri)
@@ -204,7 +212,7 @@ function Invoke-AzureDevOpsBinaryGet {
     $binaryHeaders['Accept'] = 'application/octet-stream'
     $null = $binaryHeaders.Remove('Content-Type')
     try {
-        $response = Invoke-WebRequest -Uri $Uri -Headers $binaryHeaders -Method Get -OutFile $tempFile -ErrorAction Stop
+        $response = Invoke-WebRequest -UseBasicParsing -Uri $Uri -Headers $binaryHeaders -Method Get -OutFile $tempFile -ErrorAction Stop
         if ($null -ne $response) {
             $contentType = [string]$response.Headers['Content-Type']
             if ($contentType.StartsWith('application/json', [StringComparison]::OrdinalIgnoreCase)) {
@@ -429,7 +437,7 @@ function Get-AzureDevOpsWikiPage {
         (ConvertTo-UriSegment -Value $Organization), (ConvertTo-UriSegment -Value $Project), `
         (ConvertTo-UriSegment -Value $WikiIdentifier), ([Uri]::EscapeDataString($PagePath))
     try {
-        $response = Invoke-WebRequest -Uri $uri -Headers $Headers -Method Get -ErrorAction Stop
+        $response = Invoke-WebRequest -UseBasicParsing -Uri $uri -Headers $Headers -Method Get -ErrorAction Stop
         $page = $response.Content | ConvertFrom-Json
     }
     catch {
@@ -533,7 +541,11 @@ function Get-OrCreateTargetWiki {
         return $wiki
     }
 
-    $wikiName = if ([string]::IsNullOrWhiteSpace($RequestedWikiName)) { $projectName } else { $RequestedWikiName }
+    # A project wiki is backed by a Git repository of the same name, and every project
+    # already has a default repository named after the project. Requesting the bare
+    # project name therefore fails with TF400948 (repository already exists). Azure
+    # DevOps itself names project wikis "<Project>.wiki", so match that.
+    $wikiName = if ([string]::IsNullOrWhiteSpace($RequestedWikiName)) { "$projectName.wiki" } else { $RequestedWikiName }
     $uri = "$script:ApiBaseUri/{0}/{1}/_apis/wiki/wikis?api-version=7.1-preview.2" -f `
         (ConvertTo-UriSegment -Value $Organization), (ConvertTo-UriSegment -Value $projectId)
     $body = @{ name = $wikiName; type = 'projectWiki'; projectId = $projectId } | ConvertTo-Json
@@ -590,6 +602,20 @@ function ConvertTo-AzureDevOpsWikiRepositoryPath {
     return $mappedPath + $WikiPath
 }
 
+function Get-OptionalProperty {
+    <#
+        Azure DevOps omits optional fields from its JSON rather than sending them as
+        null, and Set-StrictMode makes reading an absent property fatal. Version
+        descriptors in particular arrive without versionType or versionOptions when
+        those hold their default values.
+    #>
+    param([object]$Object, [Parameter(Mandatory = $true)][string]$Name)
+    if ($null -eq $Object) { return '' }
+    $property = $Object.PSObject.Properties[$Name]
+    if ($null -eq $property) { return '' }
+    [string]$property.Value
+}
+
 function Get-AzureDevOpsWikiBranchRefName {
     param(
         [Parameter(Mandatory = $true)]
@@ -597,13 +623,13 @@ function Get-AzureDevOpsWikiBranchRefName {
     )
 
     $versionDescriptor = @($Wiki.versions) | Where-Object {
-        $null -ne $_ -and -not [string]::IsNullOrWhiteSpace([string]$_.version)
+        $null -ne $_ -and -not [string]::IsNullOrWhiteSpace((Get-OptionalProperty -Object $_ -Name 'version'))
     } | Select-Object -First 1
     if ($null -eq $versionDescriptor) {
         return $null
     }
 
-    $versionType = [string]$versionDescriptor.versionType
+    $versionType = Get-OptionalProperty -Object $versionDescriptor -Name 'versionType'
     if ([string]::IsNullOrWhiteSpace($versionType)) {
         $versionType = 'branch'
     }
@@ -624,18 +650,22 @@ function Get-AzureDevOpsWikiVersionQuery {
     )
 
     $versionDescriptor = @($Wiki.versions) | Where-Object {
-        $null -ne $_ -and -not [string]::IsNullOrWhiteSpace([string]$_.version)
+        $null -ne $_ -and -not [string]::IsNullOrWhiteSpace((Get-OptionalProperty -Object $_ -Name 'version'))
     } | Select-Object -First 1
     if ($null -eq $versionDescriptor) {
         return ''
     }
 
-    $query = '&versionDescriptor.version={0}' -f (ConvertTo-UriSegment -Value ([string]$versionDescriptor.version))
-    if (-not [string]::IsNullOrWhiteSpace([string]$versionDescriptor.versionType)) {
-        $query += '&versionDescriptor.versionType={0}' -f (ConvertTo-UriSegment -Value ([string]$versionDescriptor.versionType))
+    $descriptorVersion = Get-OptionalProperty -Object $versionDescriptor -Name 'version'
+    $descriptorType    = Get-OptionalProperty -Object $versionDescriptor -Name 'versionType'
+    $descriptorOptions = Get-OptionalProperty -Object $versionDescriptor -Name 'versionOptions'
+
+    $query = '&versionDescriptor.version={0}' -f (ConvertTo-UriSegment -Value $descriptorVersion)
+    if (-not [string]::IsNullOrWhiteSpace($descriptorType)) {
+        $query += '&versionDescriptor.versionType={0}' -f (ConvertTo-UriSegment -Value $descriptorType)
     }
-    if (-not [string]::IsNullOrWhiteSpace([string]$versionDescriptor.versionOptions)) {
-        $query += '&versionDescriptor.versionOptions={0}' -f (ConvertTo-UriSegment -Value ([string]$versionDescriptor.versionOptions))
+    if (-not [string]::IsNullOrWhiteSpace($descriptorOptions)) {
+        $query += '&versionDescriptor.versionOptions={0}' -f (ConvertTo-UriSegment -Value $descriptorOptions)
     }
     return $query
 }
@@ -732,12 +762,14 @@ function Get-AzureDevOpsGitCommitsForPath {
         (ConvertTo-UriSegment -Value $repositoryId), ([Uri]::EscapeDataString($GitPath))
 
     $versionDescriptor = @($Wiki.versions) | Where-Object {
-        $null -ne $_ -and -not [string]::IsNullOrWhiteSpace([string]$_.version)
+        $null -ne $_ -and -not [string]::IsNullOrWhiteSpace((Get-OptionalProperty -Object $_ -Name 'version'))
     } | Select-Object -First 1
     if ($null -ne $versionDescriptor) {
-        $uri += '&searchCriteria.itemVersion.version={0}' -f (ConvertTo-UriSegment -Value ([string]$versionDescriptor.version))
-        if (-not [string]::IsNullOrWhiteSpace([string]$versionDescriptor.versionType)) {
-            $uri += '&searchCriteria.itemVersion.versionType={0}' -f (ConvertTo-UriSegment -Value ([string]$versionDescriptor.versionType))
+        $uri += '&searchCriteria.itemVersion.version={0}' -f `
+            (ConvertTo-UriSegment -Value (Get-OptionalProperty -Object $versionDescriptor -Name 'version'))
+        $descriptorType = Get-OptionalProperty -Object $versionDescriptor -Name 'versionType'
+        if (-not [string]::IsNullOrWhiteSpace($descriptorType)) {
+            $uri += '&searchCriteria.itemVersion.versionType={0}' -f (ConvertTo-UriSegment -Value $descriptorType)
         }
     }
     $uri += '&api-version=7.1'
@@ -1138,7 +1170,7 @@ function Get-AzureDevOpsWikiPageState {
         (ConvertTo-UriSegment -Value $Organization), (ConvertTo-UriSegment -Value $Project), `
         (ConvertTo-UriSegment -Value $WikiIdentifier), ([Uri]::EscapeDataString($PagePath))
     try {
-        $response = Invoke-WebRequest -Uri $uri -Headers $Headers -Method Get -ErrorAction Stop
+        $response = Invoke-WebRequest -UseBasicParsing -Uri $uri -Headers $Headers -Method Get -ErrorAction Stop
         $page = $response.Content | ConvertFrom-Json
         return [pscustomobject]@{
             Exists  = $true

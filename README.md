@@ -8,10 +8,12 @@ Each top-level script now lives in its own folder with a dedicated README:
 
 | Script | Capability | Important exclusions |
 | --- | --- | --- |
+| [ado-project-setup](ado-project-setup/README.md) | PC-friendly launcher for selecting and running the project setup migration sequence through a local WPF UI and `ado-migrate://` protocol entry point. | Does not create the target project, migrate permissions, store PATs, or determine the final Production hosting location for HTML/scripts. |
 | [ado-copy-test-management](ado-copy-test-management/README.md) | Copies Test Plans, suite trees, Test Case work items, rich-text fields, and suite membership to another project. Falls back to Work Item Tracking source discovery when the source identity can read work items but the Test Plan service rejects source discovery because of licensing or service-specific project visibility. | Does not migrate history, attachments, test runs/results, shared-step artifacts, identity mapping, permissions, reusable shared-step artifacts, or cross-organization configuration IDs. Dynamic/requirement suites are copied as static suites unless opted out. WIT fallback fidelity depends on source test work-item links. |
 | [ado-copy-query-workitems](ado-copy-query-workitems/README.md) | Copies one saved query, its returned work items, supported fields, and query relationships to another project. | Does not clone every field, attachment, history entry, identity, or external relation. Classification paths are rewritten to the target root unless `-PreserveClassificationPaths` is used. |
+| [ado-copy-all-workitems](ado-copy-all-workitems/README.md) | Copies every work item in a source project, discovered with WIQL so no saved query and no source write access are needed. Rich-text fields are copied byte-for-byte and parent/child links are recreated in a second pass. | Does not copy history, revisions, attachments, comments, permissions, or links other than parent/child. Identity fields are skipped unless `-CopyIdentityFields` is used. |
 | [ado-delete-query-test-scripts](ado-delete-query-test-scripts/README.md) | Builds a review manifest for test artifacts returned by one saved query and, only with `-Apply` plus exact confirmation, deletes reviewed Test Management artifacts. | Does not delete arbitrary Work Item Tracking records. Relationship queries and title-based resolution are opt-in. |
-| [ado-extract-discussions](ado-extract-discussions/README.md) | Exports every work item's title, description, and paged comments to CSV. | Does not export revisions, attachments, relations, or restore data. |
+| [ado-extract-discussions](ado-extract-discussions/README.md) | Executes one saved query and exports its selected fields plus paged comments to CSV. | Does not export revisions, attachments, relations, or restore data. |
 | [ado-migrate-query](ado-migrate-query/README.md) | Copies a configurable query-ID set, rewrites project references, and records completed target IDs. | Does not overwrite differing target WIQL or migrate query permissions/favorites. Its checked-in defaults are environment-specific and must be reviewed. |
 
 Other folder workflows:
@@ -38,7 +40,7 @@ Repository root is intentionally kept lean: shared module plus this index README
 
 ## Authentication and minimum PAT scopes
 
-PAT resolution is consistent: a supplied `SecureString` parameter wins, otherwise the role-specific environment variable is read, otherwise a hidden prompt is used. The variables are `ADO_PAT`, `ADO_SOURCE_PAT`, and `ADO_TARGET_PAT`. `ado-delete-query-test-scripts/ado-delete-query-test-scripts.ps1 -PromptForPat` intentionally ignores `-Pat` and the normal parameter path and forces the hidden prompt. `-NonInteractive` turns every missing interactive input into an error.
+PAT resolution is consistent unless a folder README states an exception: a supplied `SecureString` parameter wins, otherwise the role-specific environment variable is read, otherwise a hidden prompt is used. The variables are `ADO_PAT`, `ADO_SOURCE_PAT`, and `ADO_TARGET_PAT`. `ado-extract-discussions/ado-extract-discussions.ps1` prompts for a fresh PAT when `-Pat` is omitted and does not read `ADO_PAT`. `ado-delete-query-test-scripts/ado-delete-query-test-scripts.ps1 -PromptForPat` intentionally ignores `-Pat` and the normal parameter path and forces the hidden prompt. `-NonInteractive` turns every missing interactive input into an error.
 
 The exact shared prompts are:
 
@@ -82,6 +84,7 @@ Use explicit non-secret inputs and a `SecureString` PAT. This example performs t
 $pat = Read-Host 'Azure DevOps PAT (input hidden)' -AsSecureString
 ./ado-extract-discussions/ado-extract-discussions.ps1 `
   -ProjectUrl 'https://dev.azure.com/contoso/Project' `
+  -QueryUrl 'https://dev.azure.com/contoso/Project/_queries/query/00000000-0000-0000-0000-000000000000/' `
   -Pat $pat `
   -LogDirectory './run-logs' `
   -NonInteractive
@@ -126,7 +129,7 @@ Script-folder-specific parameters:
 | `ado-copy-test-management/ado-copy-test-management.ps1` | `SourceProjectUrl`, `TargetProjectUrl`, `SourceOrg`, `SourceProject`, `TargetOrg`, `TargetProject`, `SourcePlanIds`, `SourcePat`, `TargetPat`, `StatePath` (default `ado-copy-test-management.state.json`), `LogPath`, `AdditionalFieldReferenceNames`, `PreserveClassificationPaths`, `SkipNotifications`, `DoNotConvertDynamicSuitesToStatic`, `CopyStandaloneTestCasesWhenSuitesUnavailable`, `WhatIf`, common logging switches. |
 | `ado-copy-query-workitems/ado-copy-query-workitems.ps1` | `SourceQueryUrl`, `TargetProjectUrl`, `QueryFolder` (default `Shared Queries`), `SourcePat`, `TargetPat`, `StatePath` (default `ado-copy-query-workitems.state.json`), `LogPath`, `PreserveClassificationPaths`, common logging switches. |
 | `ado-delete-query-test-scripts/ado-delete-query-test-scripts.ps1` | `QueryUrl`, `Pat`, `PromptForPat`, `DeleteWorkItemTypes`, `RequiredWorkItemType`, `ManifestPath`, `LogPath`, `ForceOverwriteManifest`, `AllowTitleResolution`, `AllowRelationshipResults`, `Apply`, `ConfirmationText`, `SkipNotifications`, common logging switches. |
-| `ado-extract-discussions/ado-extract-discussions.ps1` | `ProjectUrl`, `Pat`, common logging switches. Output CSV is fixed beside the script. |
+| `ado-extract-discussions/ado-extract-discussions.ps1` | `ProjectUrl`, `QueryUrl`, `Pat`, common logging switches. Output CSV is query-specific and timestamped beside the script. |
 | `ado-migrate-query/ado-migrate-query.ps1` | `SourceOrg`, `SourceProject`, `TargetOrg`, `TargetProject`, `QueryIds`, `TargetRootFolder`, `OutputDirectory`, `SourcePat`, `TargetPat`, common logging switches. |
 
 `LogPath` parameters control legacy human-readable script logs where present; they do not replace the shared JSONL logs controlled by `LogDirectory`.

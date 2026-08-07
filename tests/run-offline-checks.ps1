@@ -67,7 +67,7 @@ $entryScripts = @(
         Sort-Object FullName
 )
 
-Assert-Condition ($entryScripts.Count -eq 20) "Expected 20 runnable PowerShell entry scripts in this worktree, found $($entryScripts.Count)."
+Assert-Condition ($entryScripts.Count -eq 24) "Expected 24 runnable PowerShell entry scripts in this worktree, found $($entryScripts.Count)."
 
 foreach ($scriptFile in $entryScripts) {
     $tokens = $null
@@ -84,6 +84,40 @@ foreach ($scriptFile in $entryScripts) {
     Assert-Condition ($text -match 'AdoUtils\.Common\.psm1') "$relativePath does not import AdoUtils.Common.psm1."
     Assert-Condition ($text -match 'Initialize-AdoScriptRun') "$relativePath does not initialize canonical run logs."
     Assert-Condition ($text -match 'Complete-AdoScriptRun') "$relativePath does not complete canonical run logs."
+}
+
+# "@($text | ConvertFrom-Json)" collapses a JSON array into a SINGLE element under
+# Windows PowerShell 5.1, while PowerShell 7 unrolls it correctly. Code written and
+# tested in pwsh then run by the launcher (which uses 5.1) silently processes the
+# whole array as one item. Pipe through ForEach-Object to enumerate in both editions.
+foreach ($scriptFile in $entryScripts) {
+    $relativePath = Get-RepoRelativePath -BasePath $repoRoot -Path $scriptFile.FullName
+    $lineNumber = 0
+    foreach ($line in [IO.File]::ReadAllLines($scriptFile.FullName)) {
+        $lineNumber++
+        # Comment lines are skipped: these checks are textual, and a comment that
+        # documents the hazard would otherwise be reported as the hazard.
+        if ($line -match '^\s*#') { continue }
+        if ($line -match '@\([^)]*ConvertFrom-Json' -and $line -notmatch 'ForEach-Object') {
+            Assert-Condition $false "$relativePath line ${lineNumber}: @(... ConvertFrom-Json) yields one element instead of the array under Windows PowerShell 5.1. Pipe through ForEach-Object { `$_ }."
+        }
+    }
+}
+
+# In an interpolated string, "$id?api-version=7.1" does not end the variable name at
+# the question mark: PowerShell reads "$id?api" as the name. Without StrictMode that
+# silently builds a URL with an empty segment; with it, the script dies at the call.
+# Both forms below are correct: "${id}?api-version=..." or "$id`?api-version=...".
+foreach ($scriptFile in $entryScripts) {
+    $relativePath = Get-RepoRelativePath -BasePath $repoRoot -Path $scriptFile.FullName
+    $lineNumber = 0
+    foreach ($line in [IO.File]::ReadAllLines($scriptFile.FullName)) {
+        $lineNumber++
+        if ($line -match '^\s*#') { continue }
+        if ($line -match '(?<!`)\$[A-Za-z_][A-Za-z0-9_]*\?') {
+            Assert-Condition $false "$relativePath line ${lineNumber}: an interpolated variable is followed by an unescaped '?', which PowerShell parses into the variable name. Use `${name}? or `$name``?."
+        }
+    }
 }
 
 $commonText = [IO.File]::ReadAllText($commonModulePath)
@@ -116,9 +150,22 @@ foreach ($prompt in $expectedPrompts) {
 Assert-Condition ($commonText -match 'ADO_PAT') 'Common PAT resolver does not reference ADO_PAT.'
 Assert-Condition ($commonText -match 'ADO_SOURCE_PAT') 'Common PAT resolver does not reference ADO_SOURCE_PAT.'
 Assert-Condition ($commonText -match 'ADO_TARGET_PAT') 'Common PAT resolver does not reference ADO_TARGET_PAT.'
+Assert-Condition ($commonText -match 'ConvertTo-AdoSecureString') 'Common PAT resolver does not use the internal SecureString conversion helper.'
+Assert-Condition ($commonText -notmatch 'ConvertTo-SecureString') 'Common PAT resolver should not depend on the Microsoft.PowerShell.Security ConvertTo-SecureString cmdlet.'
 Assert-Condition ($commonText -match 'Read-AdoInput[\s\S]+-AsSecureString') 'Common PAT resolver does not use a hidden prompt fallback.'
 Assert-Condition ($commonText -match '\{0\}-success log-\{1\}\.jsonl') 'Common run logger does not create canonical success JSONL filenames.'
 Assert-Condition ($commonText -match '\{0\}-error log-\{1\}\.jsonl') 'Common run logger does not create canonical error JSONL filenames.'
+
+$projectSetupDir = Join-Path $repoRoot 'ado-project-setup'
+$runnerText = [IO.File]::ReadAllText((Join-Path $projectSetupDir 'ado-project-setup-runner.ps1'))
+$uiText = [IO.File]::ReadAllText((Join-Path $projectSetupDir 'ado-project-setup-ui.ps1'))
+$installerText = [IO.File]::ReadAllText((Join-Path $projectSetupDir 'install-ado-migrate-protocol.ps1'))
+Assert-Condition ($runnerText -match 'ado-set-default-area') 'Project setup runner does not wrap the default-area script.'
+Assert-Condition ($runnerText -match 'All Work Items') 'Project setup runner does not create or reuse an all-work-items query.'
+Assert-Condition ($runnerText -match '\{0\}_\{1\} \{2\}\.log') 'Project setup runner should preserve the documented activity-log naming contract.'
+Assert-Condition ($uiText -match '\$uri\.Host') 'Project setup UI does not parse ado-migrate action from the URI host.'
+Assert-Condition ($uiText -match 'ADO Migration Launcher') 'Project setup UI does not include the approved launcher title.'
+Assert-Condition ($installerText -match '-WindowStyle Hidden') 'Protocol installer does not hide the PowerShell launch window.'
 
 Import-Module $commonModulePath -Force
 $tempLogDir = Join-Path ([IO.Path]::GetTempPath()) ("ado-utils-offline-checks-{0}" -f [Guid]::NewGuid().ToString('N'))
@@ -148,7 +195,7 @@ try {
         $sourceFromEnvironment = Resolve-AdoPat -Role Source
         Assert-Condition ((ConvertFrom-AdoSecureString -SecureString $sourceFromEnvironment) -eq 'source-env-offline-check') 'Resolve-AdoPat did not use ADO_SOURCE_PAT when no parameter was supplied.'
 
-        $sourceParameter = ConvertTo-SecureString -String 'source-parameter-offline-check' -AsPlainText -Force
+        $sourceParameter = ConvertTo-AdoSecureString -PlainText 'source-parameter-offline-check'
         $sourceFromParameter = Resolve-AdoPat -Pat $sourceParameter -Role Source
         Assert-Condition ((ConvertFrom-AdoSecureString -SecureString $sourceFromParameter) -eq 'source-parameter-offline-check') 'Resolve-AdoPat did not prefer the SecureString parameter over ADO_SOURCE_PAT.'
 

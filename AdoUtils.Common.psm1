@@ -249,6 +249,17 @@ function ConvertFrom-AdoSecureString {
     $plainText
 }
 
+function ConvertTo-AdoSecureString {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$PlainText)
+    $secureString = [SecureString]::new()
+    foreach ($character in $PlainText.ToCharArray()) {
+        $secureString.AppendChar($character)
+    }
+    $secureString.MakeReadOnly()
+    $secureString
+}
+
 function Resolve-AdoPat {
     [CmdletBinding()]
     param(
@@ -261,7 +272,7 @@ function Resolve-AdoPat {
         $environmentValue = [Environment]::GetEnvironmentVariable($environmentName)
         if (-not [string]::IsNullOrWhiteSpace($environmentValue)) {
             Add-AdoSensitiveValue -Value $environmentValue
-            $Pat = ConvertTo-SecureString -String $environmentValue -AsPlainText -Force
+            $Pat = ConvertTo-AdoSecureString -PlainText $environmentValue
         }
     }
     if ($null -eq $Pat) {
@@ -287,4 +298,4 @@ function New-AdoAuthorizationHeaders {
     } finally { $plainText = $null }
 }
 
-Export-ModuleMember -Function Get-AdoPrompt, ConvertTo-AdoOrganizationName, ConvertFrom-AdoProjectUrl, Resolve-AdoProjectEndpoint, Initialize-AdoScriptRun, Add-AdoSensitiveValue, Protect-AdoLogValue, Write-AdoRunLog, Complete-AdoScriptRun, Read-AdoInput, Resolve-AdoRequiredInput, ConvertFrom-AdoSecureString, Resolve-AdoPat, New-AdoAuthorizationHeaders
+Export-ModuleMember -Function Get-AdoPrompt, ConvertTo-AdoOrganizationName, ConvertFrom-AdoProjectUrl, Resolve-AdoProjectEndpoint, Initialize-AdoScriptRun, Add-AdoSensitiveValue, Protect-AdoLogValue, Write-AdoRunLog, Complete-AdoScriptRun, Read-AdoInput, Resolve-AdoRequiredInput, ConvertFrom-AdoSecureString, ConvertTo-AdoSecureString, Resolve-AdoPat, New-AdoAuthorizationHeaders

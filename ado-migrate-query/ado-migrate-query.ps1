@@ -39,7 +39,7 @@ param(
 		'7dedbc10-25d9-4240-895c-21d6bf3b975a'
 	),
 	[string]$TargetRootFolder = 'Shared Queries',
-	[string]$OutputDirectory = (Join-Path $PSScriptRoot 'ado-query-migration-output'),
+	[string]$OutputDirectory,
 	[SecureString]$SourcePat,
 	[SecureString]$TargetPat,
 	[string]$LogDirectory,
@@ -48,6 +48,9 @@ param(
 
 Set-StrictMode -Version 3.0
 $ErrorActionPreference = 'Stop'
+# $PSScriptRoot is empty in parameter defaults for a [CmdletBinding()] script
+# started with powershell.exe -File, so this default is resolved here instead.if ([string]::IsNullOrWhiteSpace($OutputDirectory)) { $OutputDirectory = Join-Path $PSScriptRoot 'ado-query-migration-output' }
+
 $commonModulePath = Join-Path $PSScriptRoot 'AdoUtils.Common.psm1'
 if (-not (Test-Path -LiteralPath $commonModulePath)) {
 	$commonModulePath = Join-Path $PSScriptRoot '..\AdoUtils.Common.psm1'
