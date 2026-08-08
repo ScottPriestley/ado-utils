@@ -198,8 +198,20 @@ function Complete-AdoScriptRun {
     )
     if ($null -eq $script:RunContext -or $script:RunContext.Completed) { return }
     if ($Outcome -in @('failed', 'partial')) {
-        if ([string]::IsNullOrWhiteSpace($Message) -and $null -ne $ErrorRecord) { $Message = [string]$ErrorRecord.Exception.Message }
-        $errorType = if ($null -eq $ErrorRecord) { '' } else { [string]$ErrorRecord.Exception.GetType().FullName }
+        # $ErrorRecord isn't always a genuine [ErrorRecord] -- errors that cross a
+        # WPF event-handler boundary (e.g. a DispatcherTimer Add_Tick scriptblock)
+        # have shown up here without a usable .Exception. Under StrictMode that
+        # access itself throws, which used to silently replace the real failure
+        # message with "The property 'Exception' cannot be found on this object" --
+        # masking the actual bug being reported. Match Get-AdoStatusCode below and
+        # degrade gracefully instead.
+        if ([string]::IsNullOrWhiteSpace($Message) -and $null -ne $ErrorRecord) {
+            try { $Message = [string]$ErrorRecord.Exception.Message } catch { $Message = [string]$ErrorRecord }
+        }
+        $errorType = ''
+        if ($null -ne $ErrorRecord) {
+            try { $errorType = [string]$ErrorRecord.Exception.GetType().FullName } catch { $errorType = [string]$ErrorRecord.GetType().FullName }
+        }
         Write-AdoRunLog -Level error -Operation $Operation -Outcome $Outcome -Target $Target -Message $Message -ErrorType $errorType -StatusCode (Get-AdoStatusCode $ErrorRecord)
     } else {
         Write-AdoRunLog -Level info -Operation $Operation -Outcome $Outcome -Target $Target -Message $Message

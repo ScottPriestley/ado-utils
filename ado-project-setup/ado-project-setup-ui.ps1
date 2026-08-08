@@ -653,20 +653,52 @@ function Update-LogIndicators {
 
 $timer.Add_Tick({
     if ($script:ProgressPath -and (Test-Path -LiteralPath $script:ProgressPath)) {
-        $lines = @(Get-Content -LiteralPath $script:ProgressPath)
-        for ($i = $script:SeenProgressLines; $i -lt $lines.Count; $i++) {
-            if ([string]::IsNullOrWhiteSpace($lines[$i])) { continue }
-            $event = $lines[$i] | ConvertFrom-Json
-            $match = @($steps | Where-Object { $_.Id -eq $event.step } | Select-Object -First 1)
-            if ($match.Count) {
-                $match[0].Status = (Get-Culture).TextInfo.ToTitleCase([string]$event.status)
-                $match[0].Detail = [string]$event.message
-                $match[0].Log = [string]$event.logPath
+        # The runner process has this file open for an Add-Content append at the
+        # same moment this timer can fire, which occasionally trips a sharing
+        # violation. It's transient and self-resolves within milliseconds -- skip
+        # this tick and pick the file back up on the next one instead of letting
+        # the IOException escape to the script-level trap and abort the run.
+        try {
+            $lines = @(Get-Content -LiteralPath $script:ProgressPath -ErrorAction Stop)
+        } catch {
+            $lines = $null
+        }
+        if ($null -ne $lines) {
+            # Only touch the grids when the log actually grew. Items.Refresh() tears
+            # down and rebuilds the DataGrid's visual rows, so calling it on every
+            # 1-second tick regardless of whether anything changed caused the whole
+            # grid to visibly flicker for the entire run.
+            if ($lines.Count -gt $script:SeenProgressLines) {
+                $processedThrough = $script:SeenProgressLines
+                for ($i = $script:SeenProgressLines; $i -lt $lines.Count; $i++) {
+                    if ([string]::IsNullOrWhiteSpace($lines[$i])) { $processedThrough = $i + 1; continue }
+                    # The runner process appends to this file (Add-Content) while this
+                    # timer reads it (Get-Content) roughly once a second, on a separate
+                    # process. A tick can land mid-write and see a torn/partial JSON
+                    # line. Rather than let that crash the whole UI (it used to: the
+                    # ConvertFrom-Json failure escaped to the script-level trap and
+                    # aborted the run), stop at the bad line and leave it for the next
+                    # tick, by which point the write will have completed and the line
+                    # will parse cleanly.
+                    try {
+                        $event = $lines[$i] | ConvertFrom-Json
+                    } catch {
+                        break
+                    }
+                    $match = @($steps | Where-Object { $_.Id -eq $event.step } | Select-Object -First 1)
+                    if ($match.Count) {
+                        $match[0].Status = (Get-Culture).TextInfo.ToTitleCase([string]$event.status)
+                        $match[0].Detail = [string]$event.message
+                        $match[0].Log = [string]$event.logPath
+                    }
+                    $processedThrough = $i + 1
+                }
+                if ($processedThrough -gt $script:SeenProgressLines) {
+                    $script:SeenProgressLines = $processedThrough
+                    Update-LogIndicators
+                }
             }
         }
-        $script:SeenProgressLines = $lines.Count
-        Refresh-Grids
-        Update-LogIndicators
     }
     if ($script:RunnerProcess -and $script:RunnerProcess.HasExited) {
         $timer.Stop()

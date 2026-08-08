@@ -3,7 +3,9 @@ param(
     [string]$SourceProjectUrl,
     [string]$TargetProjectUrl,
     [string[]]$Steps = @('team-config', 'iterations', 'areas', 'work-items', 'queries', 'dashboards', 'wiki'),
-    [string]$TargetTeam,
+    [string]$ProcessName,
+    [ValidateSet('FullAuto', 'AssistedManual', 'ExportOnly')]
+    [string]$ProcessMode = 'AssistedManual',
     [string]$DefaultAreaPath,
     [string]$SourceWikiName,
     [string]$TargetWikiName,
@@ -19,13 +21,74 @@ $ErrorActionPreference = 'Stop'
 $commonModulePath = Join-Path (Split-Path -Parent $PSScriptRoot) 'AdoUtils.Common.psm1'
 Import-Module $commonModulePath -Force
 $adoRun = Initialize-AdoScriptRun -ScriptPath $PSCommandPath -LogDirectory $RunRoot -NonInteractive:$NonInteractive
-trap { Complete-AdoScriptRun -Outcome failed -ErrorRecord $_ -Operation 'project-setup-runner'; throw }
+
+function Write-RunnerCrashLog {
+    <#
+        Write-AdoRunLog/Complete-AdoScriptRun in AdoUtils.Common.psm1 use a
+        MODULE-SCOPED $script:RunContext, shared for the life of this process.
+        Every child script this runner invokes (via `& $command` in
+        Invoke-EntryScript -- same process, new scope, NOT a new process, so
+        SecureString PATs can be passed directly) also calls
+        Initialize-AdoScriptRun/Complete-AdoScriptRun, which re-point and then
+        mark-Completed that SAME shared module state. By the time this
+        runner's own trap fires -- which can only happen after at least one
+        child script has already run -- Complete-AdoScriptRun's own guard
+        (`if ($null -eq $script:RunContext -or $script:RunContext.Completed) { return }`)
+        silently no-ops, because the shared context was already completed by
+        the last child. Confirmed via a synthetic repro: three scripts chained
+        the same way as this runner's real steps, no induced errors -- the
+        outer script's own final success message never reached its log file,
+        only the very first "initialize" line (written before any child ran)
+        did. This is why prior crash reports showed a genuinely EMPTY runner
+        error log even though the trap demonstrably fired (the process still
+        exited non-zero and re-threw).
+
+        Write directly to THIS runner's own captured $adoRun context instead
+        -- a plain local variable, untouched by whatever child scripts do to
+        the shared module state -- so a crash here is never silently lost.
+    #>
+    param([Parameter(Mandatory)]$ErrorRecord, [Parameter(Mandatory)]$RunContext)
+    if ($null -eq $RunContext -or [string]::IsNullOrWhiteSpace($RunContext.ErrorLogPath)) { return }
+    if (-not (Test-Path -LiteralPath $RunContext.ErrorLogPath)) { return }
+    try {
+        # $ErrorRecord isn't guaranteed to be a genuine [ErrorRecord] with a usable
+        # .Exception -- and because this whole block is wrapped in a swallowing
+        # catch, an unguarded access here doesn't just log a wrong message, it
+        # skips writing the crash record entirely (the empty-error-log symptom
+        # this function exists to prevent). Degrade field-by-field instead.
+        $message = ''
+        try { $message = [string]$ErrorRecord.Exception.Message } catch { $message = [string]$ErrorRecord }
+        $errorType = ''
+        try { $errorType = [string]$ErrorRecord.Exception.GetType().FullName } catch { $errorType = [string]$ErrorRecord.GetType().FullName }
+        $record = [ordered]@{
+            timestampUtc = [DateTime]::UtcNow.ToString('o')
+            level        = 'error'
+            script       = 'ado-project-setup-runner'
+            runId        = $RunContext.RunId
+            operation    = 'project-setup-runner'
+            outcome      = 'failed'
+            target       = ''
+            message      = $message
+            errorType    = $errorType
+            statusCode   = $null
+        }
+        $line = $record | ConvertTo-Json -Compress
+        [IO.File]::AppendAllText($RunContext.ErrorLogPath, $line + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
+    } catch { }
+}
+
+trap {
+    Write-RunnerCrashLog -ErrorRecord $_ -RunContext $adoRun
+    Complete-AdoScriptRun -Outcome failed -ErrorRecord $_ -Operation 'project-setup-runner'
+    throw
+}
 
 # Declared before any logging can occur: Protect-TextLogFallback reads it, and under
 # StrictMode an unassigned variable is fatal. Populated once the PATs resolve.
 $script:LocalSecrets = @()
 
 $script:StepCatalog = [ordered]@{
+    'process'     = [pscustomobject]@{ Number = 0; Activity = 'process'; Name = 'Migrate Process Template' }
     'team-config' = [pscustomobject]@{ Number = 1; Activity = 'default-area'; Name = 'Set target team default area' }
     'iterations'  = [pscustomobject]@{ Number = 2; Activity = 'iterations'; Name = 'Copy Iteration Paths' }
     'areas'       = [pscustomobject]@{ Number = 3; Activity = 'area-paths'; Name = 'Copy Area Paths' }
@@ -126,7 +189,7 @@ function Write-TextLog {
 function Write-ProgressEvent {
     param(
         [Parameter(Mandatory)][string]$Step,
-        [Parameter(Mandatory)][ValidateSet('pending', 'running', 'succeeded', 'failed', 'skipped')][string]$Status,
+        [Parameter(Mandatory)][ValidateSet('pending', 'running', 'succeeded', 'failed', 'skipped', 'degraded', 'exported')][string]$Status,
         [string]$Message = '',
         [string]$LogPath = '',
         [int]$Percent = -1
@@ -192,7 +255,6 @@ function Invoke-AdoJson {
 
 function Resolve-DefaultTeamName {
     param([Parameter(Mandatory)]$Target, [Parameter(Mandatory)][hashtable]$Headers)
-    if (-not [string]::IsNullOrWhiteSpace($TargetTeam)) { return $TargetTeam }
     $base = 'https://dev.azure.com/{0}' -f (UrlEnc $Target.Org)
     $project = Invoke-AdoJson -Method GET -Uri "$base/_apis/projects/$(UrlEnc $Target.Project)?api-version=7.1" -Headers $Headers
     $teams = @(Invoke-AdoJson -Method GET -Uri "$base/_apis/projects/$($project.id)/teams?`$top=200&api-version=7.1" -Headers $Headers).value
@@ -200,6 +262,36 @@ function Resolve-DefaultTeamName {
     if ($projectTeam.Count) { return [string]$projectTeam[0].name }
     if ($teams.Count -eq 1) { return [string]$teams[0].name }
     throw "Target team was not supplied and a default could not be inferred. Available teams: $($teams.name -join ', ')"
+}
+
+function Get-ChildRunLogMessage {
+    <#
+        A child entry script's JSONL success/error log ends with the exact,
+        specific message it wrote via Complete-AdoScriptRun -- e.g. which
+        AssistedManual sub-case triggered a stop, or where an ExportOnly file
+        landed. Reading that last line lets the runner surface the SAME
+        specific text in its own progress event / UI banner, instead of a
+        generic "check the log" message.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$LogDirectory,
+        [Parameter(Mandatory)][ValidateSet('success', 'error')][string]$Kind
+    )
+    $filter = if ($Kind -eq 'success') { '*-success log-*.jsonl' } else { '*-error log-*.jsonl' }
+    $log = Get-ChildItem -LiteralPath $LogDirectory -Filter $filter -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Length -gt 0 } |
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -First 1
+    if ($null -eq $log) { return $null }
+    $lastLine = Get-Content -LiteralPath $log.FullName -ErrorAction SilentlyContinue |
+        Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+        Select-Object -Last 1
+    if ([string]::IsNullOrWhiteSpace($lastLine)) { return $null }
+    try {
+        $parsed = $lastLine | ConvertFrom-Json
+        if (-not [string]::IsNullOrWhiteSpace([string]$parsed.message)) { return [string]$parsed.message }
+    } catch { }
+    $null
 }
 
 function Invoke-EntryScript {
@@ -211,6 +303,9 @@ function Invoke-EntryScript {
     Write-TextLog -Path $LogPath -Message "Running $ScriptPath"
     $command = Get-Command $ScriptPath -ErrorAction Stop
     try {
+        # Reset first: $LASTEXITCODE is only set by `exit` inside the child script, so
+        # without this a step that never calls exit would inherit a previous step's code.
+        $global:LASTEXITCODE = 0
         # Success, error, warning and information streams only. The verbose and debug
         # streams are deliberately not captured: some entry scripts set
         # $VerbosePreference = 'Continue', which turns Import-Module -Force into
@@ -220,25 +315,13 @@ function Invoke-EntryScript {
             $text = ($_ | Out-String).TrimEnd()
             if (-not [string]::IsNullOrWhiteSpace($text)) { Write-TextLog -Path $LogPath -Message $text }
         }
+        return $global:LASTEXITCODE
     }
     catch {
         $message = $_.Exception.Message
         if ($Arguments.ContainsKey('LogDirectory') -and -not [string]::IsNullOrWhiteSpace([string]$Arguments.LogDirectory)) {
-            $childErrorLog = Get-ChildItem -LiteralPath $Arguments.LogDirectory -Filter '*-error log-*.jsonl' -File -ErrorAction SilentlyContinue |
-                Where-Object { $_.Length -gt 0 } |
-                Sort-Object LastWriteTime -Descending |
-                Select-Object -First 1
-            if ($null -ne $childErrorLog) {
-                $childErrorLine = Get-Content -LiteralPath $childErrorLog.FullName -ErrorAction SilentlyContinue |
-                    Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
-                    Select-Object -Last 1
-                if (-not [string]::IsNullOrWhiteSpace($childErrorLine)) {
-                    try {
-                        $childError = $childErrorLine | ConvertFrom-Json
-                        if (-not [string]::IsNullOrWhiteSpace([string]$childError.message)) { $message = [string]$childError.message }
-                    } catch { }
-                }
-            }
+            $childMessage = Get-ChildRunLogMessage -LogDirectory $Arguments.LogDirectory -Kind error
+            if (-not [string]::IsNullOrWhiteSpace($childMessage)) { $message = $childMessage }
         }
         throw $message
     }
@@ -417,7 +500,9 @@ function Invoke-SetupStep {
         [Parameter(Mandatory)][hashtable]$SourceHeaders,
         [Parameter(Mandatory)][hashtable]$TargetHeaders,
         [Parameter(Mandatory)][string]$RunDirectory,
-        [Parameter(Mandatory)][string]$TechnicalLogDirectory
+        [Parameter(Mandatory)][string]$TechnicalLogDirectory,
+        [string]$ProcessName,
+        [string]$ProcessMode
     )
     $meta = $script:StepCatalog[$Step]
     $logPath = New-StepLogPath -Target $Target -Activity $meta.Activity -RunDirectory $RunDirectory
@@ -425,22 +510,52 @@ function Invoke-SetupStep {
     Write-ProgressEvent -Step $Step -Status running -Message $meta.Name -LogPath $logPath -Percent 0
     try {
         switch ($Step) {
+            'process' {
+                if ([string]::IsNullOrWhiteSpace($ProcessName)) {
+                    throw 'A process name is required for process migration.'
+                }
+                $exitCode = Invoke-EntryScript -ScriptPath (Join-Path $PSScriptRoot '..\ado-migrate-process\ado-migrate-process.ps1') -LogPath $logPath -Arguments @{
+                    SourceOrganization = $Source.Org; SourceProcess = $ProcessName; SourcePat = $ResolvedSourcePat; TargetOrganization = $Target.Org; TargetProcess = $ProcessName; TargetPat = $ResolvedTargetPat; TargetProject = $Target.Project; ProcessMode = $ProcessMode; LogDirectory = $TechnicalLogDirectory; NonInteractive = $true
+                }
+                # ado-migrate-process.ps1 exits 3 (AssistedManual: created the process,
+                # but a person still needs to create or switch the target project, then
+                # rerun) or 4 (ExportOnly: wrote a handoff file, nothing to rerun). Either
+                # way it already wrote the exact reason as the last line of its own
+                # success log -- surface that instead of a generic message so the
+                # coordinator sees specifics without opening a log file.
+                if ($exitCode -eq 3) {
+                    $childMessage = Get-ChildRunLogMessage -LogDirectory $TechnicalLogDirectory -Kind success
+                    $message = if (-not [string]::IsNullOrWhiteSpace($childMessage)) { $childMessage } else {
+                        "Process created. Ask an Azure DevOps admin to create or switch project '$($Target.Project)' onto it (Organization Settings > Process > $ProcessName), then run this step again to finish."
+                    }
+                    Write-ProgressEvent -Step $Step -Status degraded -Message $message -LogPath $logPath -Percent 100
+                    return [pscustomobject]@{ step = $Step; status = 'degraded'; logPath = $logPath; message = $message }
+                }
+                if ($exitCode -eq 4) {
+                    $childMessage = Get-ChildRunLogMessage -LogDirectory $TechnicalLogDirectory -Kind success
+                    $message = if (-not [string]::IsNullOrWhiteSpace($childMessage)) { $childMessage } else {
+                        "Process exported for manual handoff. See the per-step log for the exported file path; hand it to the customer's Azure DevOps admin, then start a new run once the target project and process are ready."
+                    }
+                    Write-ProgressEvent -Step $Step -Status exported -Message $message -LogPath $logPath -Percent 100
+                    return [pscustomobject]@{ step = $Step; status = 'exported'; logPath = $logPath; message = $message }
+                }
+            }
             'team-config' {
                 $team = Resolve-DefaultTeamName -Target $Target -Headers $TargetHeaders
                 $area = if ([string]::IsNullOrWhiteSpace($DefaultAreaPath)) { $Target.Project } else { $DefaultAreaPath }
                 Invoke-EntryScript -ScriptPath (Join-Path $PSScriptRoot '..\ado-set-default-area\ado-set-default-area.ps1') -LogPath $logPath -Arguments @{
                     ProjectUrl = $TargetProjectUrl; Team = $team; AreaPath = $area; Pat = $ResolvedTargetPat; LogDirectory = $TechnicalLogDirectory; NonInteractive = $true
-                }
+                } | Out-Null
             }
             'iterations' {
                 Invoke-EntryScript -ScriptPath (Join-Path $PSScriptRoot '..\ado-import-iterations\ado-migrate-iterations.ps1') -LogPath $logPath -Arguments @{
                     SourceOrganization = $Source.Org; SourceProject = $Source.Project; SourcePat = $ResolvedSourcePat; TargetOrganization = $Target.Org; TargetProject = $Target.Project; TargetPat = $ResolvedTargetPat; LogDirectory = $TechnicalLogDirectory; NonInteractive = $true
-                }
+                } | Out-Null
             }
             'areas' {
                 Invoke-EntryScript -ScriptPath (Join-Path $PSScriptRoot '..\ado-import-area-paths\ado-migrate-area-paths.ps1') -LogPath $logPath -Arguments @{
                     SourceOrganization = $Source.Org; SourceProject = $Source.Project; SourcePat = $ResolvedSourcePat; TargetOrganization = $Target.Org; TargetProject = $Target.Project; TargetPat = $ResolvedTargetPat; LogDirectory = $TechnicalLogDirectory; NonInteractive = $true
-                }
+                } | Out-Null
             }
             'work-items' {
                 # Discovers work items with WIQL rather than creating a saved query in
@@ -450,7 +565,7 @@ function Invoke-SetupStep {
                 $sourceUrl = 'https://dev.azure.com/{0}/{1}' -f (UrlEnc $Source.Org), (UrlEnc $Source.Project)
                 Invoke-EntryScript -ScriptPath (Join-Path $PSScriptRoot '..\ado-copy-all-workitems\ado-copy-all-workitems.ps1') -LogPath $logPath -Arguments @{
                     SourceProjectUrl = $sourceUrl; TargetProjectUrl = $TargetProjectUrl; SourcePat = $ResolvedSourcePat; TargetPat = $ResolvedTargetPat; StatePath = (Join-Path (Get-TargetStateDirectory -Target $Target) 'workitems-state.json'); LogDirectory = $TechnicalLogDirectory; NonInteractive = $true
-                }
+                } | Out-Null
             }
             'queries' {
                 Copy-SharedQueries -Source $Source -Target $Target -SourceHeaders $SourceHeaders -TargetHeaders $TargetHeaders -LogPath $logPath
@@ -458,15 +573,15 @@ function Invoke-SetupStep {
             'dashboards' {
                 $exportDir = Join-Path $RunDirectory 'dashboard-export'
                 $team = Resolve-DefaultTeamName -Target $Target -Headers $TargetHeaders
-                Invoke-EntryScript -ScriptPath (Join-Path $PSScriptRoot '..\ado-dashboard-migration\01-export-dashboards.ps1') -LogPath $logPath -Arguments @{ Org = $Source.Org; Project = $Source.Project; OutDir = $exportDir; SourcePat = $ResolvedSourcePat; LogDirectory = $TechnicalLogDirectory; NonInteractive = $true }
-                Invoke-EntryScript -ScriptPath (Join-Path $PSScriptRoot '..\ado-dashboard-migration\02-migrate-queries.ps1') -LogPath $logPath -Arguments @{ TargetOrg = $Target.Org; TargetProject = $Target.Project; ExportDir = $exportDir; SourceProjectName = $Source.Project; TargetPat = $ResolvedTargetPat; LogDirectory = $TechnicalLogDirectory; NonInteractive = $true }
-                Invoke-EntryScript -ScriptPath (Join-Path $PSScriptRoot '..\ado-dashboard-migration\03-import-dashboards.ps1') -LogPath $logPath -Arguments @{ TargetOrg = $Target.Org; TargetProject = $Target.Project; TargetTeam = $team; ExportDir = $exportDir; TargetPat = $ResolvedTargetPat; LogDirectory = $TechnicalLogDirectory; NonInteractive = $true }
+                Invoke-EntryScript -ScriptPath (Join-Path $PSScriptRoot '..\ado-dashboard-migration\01-export-dashboards.ps1') -LogPath $logPath -Arguments @{ Org = $Source.Org; Project = $Source.Project; OutDir = $exportDir; SourcePat = $ResolvedSourcePat; LogDirectory = $TechnicalLogDirectory; NonInteractive = $true } | Out-Null
+                Invoke-EntryScript -ScriptPath (Join-Path $PSScriptRoot '..\ado-dashboard-migration\02-migrate-queries.ps1') -LogPath $logPath -Arguments @{ TargetOrg = $Target.Org; TargetProject = $Target.Project; ExportDir = $exportDir; SourceProjectName = $Source.Project; TargetPat = $ResolvedTargetPat; LogDirectory = $TechnicalLogDirectory; NonInteractive = $true } | Out-Null
+                Invoke-EntryScript -ScriptPath (Join-Path $PSScriptRoot '..\ado-dashboard-migration\03-import-dashboards.ps1') -LogPath $logPath -Arguments @{ TargetOrg = $Target.Org; TargetProject = $Target.Project; TargetTeam = $team; ExportDir = $exportDir; TargetPat = $ResolvedTargetPat; LogDirectory = $TechnicalLogDirectory; NonInteractive = $true } | Out-Null
             }
             'wiki' {
                 $wikiArgs = @{ SourceOrganization = $Source.Org; SourceProject = $Source.Project; TargetOrganization = $Target.Org; TargetProject = $Target.Project; SourcePat = $ResolvedSourcePat; TargetPat = $ResolvedTargetPat; LogDirectory = $TechnicalLogDirectory; NonInteractive = $true }
                 if (-not [string]::IsNullOrWhiteSpace($SourceWikiName)) { $wikiArgs.SourceWikiName = $SourceWikiName }
                 if (-not [string]::IsNullOrWhiteSpace($TargetWikiName)) { $wikiArgs.TargetWikiName = $TargetWikiName }
-                Invoke-EntryScript -ScriptPath (Join-Path $PSScriptRoot '..\ado-migrate-wiki\ado-migrate-wiki.ps1') -LogPath $logPath -Arguments $wikiArgs
+                Invoke-EntryScript -ScriptPath (Join-Path $PSScriptRoot '..\ado-migrate-wiki\ado-migrate-wiki.ps1') -LogPath $logPath -Arguments $wikiArgs | Out-Null
             }
             default { throw "Unknown setup step '$Step'." }
         }
@@ -516,15 +631,26 @@ foreach ($step in $orderedSteps) {
 
 $results = [Collections.Generic.List[object]]::new()
 $failed = $false
+$actionRequired = $false
+# Distinct from $actionRequired: ExportOnly means the run is fully over, with
+# nothing to rerun in this same session (no target project exists yet at all)
+# -- as opposed to $actionRequired's "rerun this exact step later" meaning.
+$exported = $false
 foreach ($step in $orderedSteps) {
-    if ($failed) {
-        Write-ProgressEvent -Step $step -Status skipped -Message 'Skipped because an earlier selected step failed.'
-        [void]$results.Add([pscustomobject]@{ step = $step; status = 'skipped'; logPath = ''; message = 'Skipped because an earlier selected step failed.' })
+    if ($failed -or $actionRequired -or $exported) {
+        $skipMessage =
+            if ($exported) { 'Skipped: the process was exported for manual handoff; no target project exists yet in this run.' }
+            elseif ($actionRequired) { 'Skipped: an earlier step needs a manual action before this can run.' }
+            else { 'Skipped because an earlier selected step failed.' }
+        Write-ProgressEvent -Step $step -Status skipped -Message $skipMessage
+        [void]$results.Add([pscustomobject]@{ step = $step; status = 'skipped'; logPath = ''; message = $skipMessage })
         continue
     }
-    $result = Invoke-SetupStep -Step $step -Source $source -Target $target -ResolvedSourcePat $sourcePatResolved -ResolvedTargetPat $targetPatResolved -SourceHeaders $sourceHeaders -TargetHeaders $targetHeaders -RunDirectory $runDirectory -TechnicalLogDirectory $technicalLogDirectory
+    $result = Invoke-SetupStep -Step $step -Source $source -Target $target -ResolvedSourcePat $sourcePatResolved -ResolvedTargetPat $targetPatResolved -SourceHeaders $sourceHeaders -TargetHeaders $targetHeaders -RunDirectory $runDirectory -TechnicalLogDirectory $technicalLogDirectory -ProcessName $ProcessName -ProcessMode $ProcessMode
     [void]$results.Add($result)
     if ($result.status -eq 'failed') { $failed = $true }
+    if ($result.status -eq 'degraded') { $actionRequired = $true }
+    if ($result.status -eq 'exported') { $exported = $true }
 }
 
 $summary = [pscustomobject]@{
@@ -533,10 +659,13 @@ $summary = [pscustomobject]@{
     runDirectory = $runDirectory
     progressPath = $ProgressPath
     results = $results.ToArray()
-    finalStatus = if ($failed) { 'failed' } else { 'succeeded' }
+    finalStatus = if ($failed) { 'failed' } elseif ($exported) { 'exported' } elseif ($actionRequired) { 'action-required' } else { 'succeeded' }
 }
 $summary | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath (Join-Path $runDirectory 'summary.json') -Encoding utf8
 $summary | ConvertTo-Json -Depth 20
 
-Complete-AdoScriptRun -Outcome $(if ($failed) { 'partial' } else { 'succeeded' }) -ErrorRecord $null -Operation 'project-setup-runner' -Message "Project setup run $($summary.finalStatus)."
+# 'action-required' and 'exported' are both clean stops, not failures: exit 0 so
+# the launcher UI does not paint every pending step red waiting for a manual step
+# it cannot perform.
+Complete-AdoScriptRun -Outcome $(if ($failed) { 'partial' } elseif ($exported -or $actionRequired) { 'partial' } else { 'succeeded' }) -ErrorRecord $null -Operation 'project-setup-runner' -Message "Project setup run $($summary.finalStatus)."
 if ($failed) { exit 1 }
