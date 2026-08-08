@@ -39,70 +39,181 @@ Add-Type -AssemblyName WindowsBase
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="ADO Migration Launcher" Width="1080" Height="760" MinWidth="940" MinHeight="680"
-        WindowStartupLocation="CenterScreen" Background="#f4f5f7">
+        WindowStartupLocation="CenterScreen" Background="#F2F5F8"
+        FontFamily="Segoe UI Variable Text, Segoe UI">
+  <Window.Resources>
+    <Style x:Key="PrimaryButton" TargetType="Button">
+      <Setter Property="Background" Value="#1AA6C9"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="16,8"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="8" BorderThickness="0">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="border" Property="Background" Value="#0E86A8"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter TargetName="border" Property="Background" Value="#a0a0a0"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="SecondaryButton" TargetType="Button">
+      <Setter Property="Background" Value="#F2F5F8"/>
+      <Setter Property="Foreground" Value="#15232F"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="BorderBrush" Value="#E3E8EC"/>
+      <Setter Property="Padding" Value="16,8"/>
+      <Setter Property="FontWeight" Value="Medium"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="border" Property="Background" Value="#E7ECEF"/>
+                <Setter TargetName="border" Property="BorderBrush" Value="#1AA6C9"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style TargetType="TextBox">
+      <Setter Property="BorderBrush" Value="#E3E8EC"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="Foreground" Value="#15232F"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Style.Triggers>
+        <Trigger Property="IsFocused" Value="True">
+          <Setter Property="BorderBrush" Value="#1AA6C9"/>
+        </Trigger>
+        <Trigger Property="IsEnabled" Value="False">
+          <Setter Property="Background" Value="#F2F5F8"/>
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+    <Style TargetType="PasswordBox">
+      <Setter Property="BorderBrush" Value="#E3E8EC"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="Foreground" Value="#15232F"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Style.Triggers>
+        <Trigger Property="IsFocused" Value="True">
+          <Setter Property="BorderBrush" Value="#1AA6C9"/>
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+  </Window.Resources>
   <Grid Margin="24">
-    <Border Background="White" BorderBrush="#d0d3d8" BorderThickness="1" CornerRadius="8">
+    <Border Background="White" BorderBrush="#E3E8EC" BorderThickness="1" CornerRadius="14">
+      <Border.Effect>
+        <DropShadowEffect Color="#0A2E4D" Opacity="0.16" BlurRadius="28" ShadowDepth="6" Direction="270"/>
+      </Border.Effect>
       <Grid>
-        <!-- Auto, not a fixed height: the phase strip needs 16 + 44 + 8 + label + 14,
-             which overflowed the old fixed 88 and clipped the labels. -->
-        <Grid.RowDefinitions><RowDefinition Height="48"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-        <Border Grid.Row="0" Background="#0f2a44" CornerRadius="8,8,0,0">
-          <DockPanel Margin="20,0">
+        <Grid.RowDefinitions><RowDefinition Height="68"/><RowDefinition Height="1"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+        <Border Grid.Row="0" Background="#072238" CornerRadius="14,14,0,0">
+          <DockPanel Margin="24,0">
             <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
-              <TextBlock Text="Hso" Foreground="White" FontFamily="Georgia" FontStyle="Italic" FontSize="18" FontWeight="SemiBold"/>
-              <TextBlock Text=" | " Foreground="#a9b7c6" FontSize="16" Margin="8,0"/>
+              <TextBlock Text="HSO" Foreground="White" FontFamily="Georgia" FontStyle="Italic" FontSize="18" FontWeight="SemiBold"/>
+              <TextBlock Text=" | " Foreground="#5C7A90" FontSize="16" Margin="8,0"/>
               <TextBlock Text="ADO Migration Launcher" Foreground="White" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
             </StackPanel>
-            <TextBlock x:Name="HeaderStatus" DockPanel.Dock="Right" Text="not connected" Foreground="#a9b7c6" FontSize="13" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+            <StackPanel x:Name="HeaderStatus" DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center" Visibility="Collapsed">
+              <TextBlock x:Name="HeaderSourceText" Text="Source: not connected" Foreground="#BFE7F2" FontSize="11" HorizontalAlignment="Right" Margin="0,0,0,2"/>
+              <TextBlock x:Name="HeaderTargetText" Text="Target: not connected" Foreground="#BFE7F2" FontSize="11" HorizontalAlignment="Right"/>
+            </StackPanel>
           </DockPanel>
         </Border>
-        <!-- Background="Transparent" on each panel is required: a Panel with a null
-             Background is not hit-testable, so clicks would fall through the gaps
-             between the circle and its label. -->
-        <UniformGrid Grid.Row="1" Columns="4" Margin="40,16,40,14">
-          <StackPanel x:Name="PhaseConnectPanel" HorizontalAlignment="Center" Background="Transparent" ToolTip="Go back to source and target details"><Border x:Name="PhaseConnect" Width="44" Height="44" CornerRadius="22" BorderBrush="#0f6cbd" BorderThickness="1"><TextBlock x:Name="PhaseConnectNumber" Text="1" Foreground="#0f6cbd" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock x:Name="PhaseConnectLabel" Text="CONNECT" FontSize="11" FontWeight="SemiBold" Foreground="#1f2933" Margin="0,8,0,0" HorizontalAlignment="Center"/></StackPanel>
-          <StackPanel x:Name="PhaseChoosePanel" HorizontalAlignment="Center" Background="Transparent" ToolTip="Choose which steps to run"><Border x:Name="PhaseChoose" Width="44" Height="44" CornerRadius="22" BorderBrush="#e3e5e8" BorderThickness="1"><TextBlock x:Name="PhaseChooseNumber" Text="2" Foreground="#6b7480" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock x:Name="PhaseChooseLabel" Text="CHOOSE STEPS" FontSize="11" FontWeight="SemiBold" Foreground="#6b7480" Margin="0,8,0,0" HorizontalAlignment="Center"/></StackPanel>
-          <StackPanel x:Name="PhaseRunPanel" HorizontalAlignment="Center" Background="Transparent" ToolTip="View the current or most recent run"><Border x:Name="PhaseRun" Width="44" Height="44" CornerRadius="22" BorderBrush="#e3e5e8" BorderThickness="1"><TextBlock x:Name="PhaseRunNumber" Text="3" Foreground="#6b7480" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock x:Name="PhaseRunLabel" Text="RUN" FontSize="11" FontWeight="SemiBold" Foreground="#6b7480" Margin="0,8,0,0" HorizontalAlignment="Center"/></StackPanel>
-          <StackPanel x:Name="PhaseDonePanel" HorizontalAlignment="Center" Background="Transparent" ToolTip="View the results of the last run"><Border x:Name="PhaseDone" Width="44" Height="44" CornerRadius="22" BorderBrush="#e3e5e8" BorderThickness="1"><TextBlock x:Name="PhaseDoneNumber" Text="4" Foreground="#6b7480" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock x:Name="PhaseDoneLabel" Text="DONE" FontSize="11" FontWeight="SemiBold" Foreground="#6b7480" Margin="0,8,0,0" HorizontalAlignment="Center"/></StackPanel>
+        <Border Grid.Row="1" Background="#12405C" Height="1"/>
+        <UniformGrid Grid.Row="2" Columns="4" Margin="40,16,40,14">
+          <StackPanel x:Name="PhaseConnectPanel" HorizontalAlignment="Center" Background="Transparent" ToolTip="Go back to source and target details"><Border x:Name="PhaseConnect" Width="48" Height="48" CornerRadius="24" BorderBrush="#1AA6C9" BorderThickness="1"><TextBlock x:Name="PhaseConnectNumber" Text="1" Foreground="#1AA6C9" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock x:Name="PhaseConnectLabel" Text="CONNECT" FontSize="11" FontWeight="SemiBold" Foreground="#15232F" Margin="0,8,0,0" HorizontalAlignment="Center"/></StackPanel>
+          <StackPanel x:Name="PhaseChoosePanel" HorizontalAlignment="Center" Background="Transparent" ToolTip="Choose which steps to run"><Border x:Name="PhaseChoose" Width="48" Height="48" CornerRadius="24" BorderBrush="#E3E8EC" BorderThickness="1"><TextBlock x:Name="PhaseChooseNumber" Text="2" Foreground="#85949F" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock x:Name="PhaseChooseLabel" Text="CHOOSE STEPS" FontSize="11" FontWeight="SemiBold" Foreground="#85949F" Margin="0,8,0,0" HorizontalAlignment="Center"/></StackPanel>
+          <StackPanel x:Name="PhaseRunPanel" HorizontalAlignment="Center" Background="Transparent" ToolTip="View the current or most recent run"><Border x:Name="PhaseRun" Width="48" Height="48" CornerRadius="24" BorderBrush="#E3E8EC" BorderThickness="1"><TextBlock x:Name="PhaseRunNumber" Text="3" Foreground="#85949F" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock x:Name="PhaseRunLabel" Text="RUN" FontSize="11" FontWeight="SemiBold" Foreground="#85949F" Margin="0,8,0,0" HorizontalAlignment="Center"/></StackPanel>
+          <StackPanel x:Name="PhaseDonePanel" HorizontalAlignment="Center" Background="Transparent" ToolTip="View the results of the last run"><Border x:Name="PhaseDone" Width="48" Height="48" CornerRadius="24" BorderBrush="#E3E8EC" BorderThickness="1"><TextBlock x:Name="PhaseDoneNumber" Text="4" Foreground="#85949F" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock x:Name="PhaseDoneLabel" Text="DONE" FontSize="11" FontWeight="SemiBold" Foreground="#85949F" Margin="0,8,0,0" HorizontalAlignment="Center"/></StackPanel>
         </UniformGrid>
-        <Grid Grid.Row="2" Margin="40,18,40,32">
+        <Grid Grid.Row="3" Margin="24,18,24,24">
           <Grid x:Name="ConnectScreen">
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-            <StackPanel><TextBlock Text="Connect source and target" FontSize="22" FontWeight="SemiBold"/><TextBlock Text="Enter both project URLs and PATs once. They are held in memory only for this session and are never written to disk." Foreground="#6b7480" FontSize="14" Margin="0,6,0,22"/></StackPanel>
+            <StackPanel><TextBlock Text="Connect source and target" FontSize="23" FontWeight="SemiBold" FontFamily="Segoe UI Variable Display, Segoe UI Semibold, Segoe UI"/><TextBlock Text="Enter both project URLs and PATs once. They are held in memory only for this session and are never written to disk." Foreground="#85949F" FontSize="14" Margin="0,6,0,22"/></StackPanel>
             <Grid Grid.Row="1">
               <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="24"/><ColumnDefinition/></Grid.ColumnDefinitions>
               <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="20"/><RowDefinition Height="Auto"/><RowDefinition Height="20"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-              <StackPanel Grid.Row="0" Grid.Column="0"><TextBlock Text="Source project URL" FontSize="13" FontWeight="Medium" Margin="0,0,0,6"/><TextBox x:Name="SourceUrlBox" Height="34" Padding="10,6"/><TextBlock Text="Format: https://dev.azure.com/{org}/{project}" Foreground="#6b7480" FontSize="12" Margin="0,4,0,0"/></StackPanel>
-              <StackPanel Grid.Row="0" Grid.Column="2"><TextBlock Text="Target project URL" FontSize="13" FontWeight="Medium" Margin="0,0,0,6"/><TextBox x:Name="TargetUrlBox" Height="34" Padding="10,6"/><TextBlock Text="Target must already exist and use the intended process template." Foreground="#6b7480" FontSize="12" Margin="0,4,0,0"/></StackPanel>
-              <StackPanel Grid.Row="2" Grid.Column="0"><TextBlock Text="Source PAT" FontSize="13" FontWeight="Medium" Margin="0,0,0,6"/><PasswordBox x:Name="SourcePatBox" Height="34" Padding="10,6"/><TextBlock Text="Read scopes on Work Items, Queries, Wiki, and Dashboards." Foreground="#6b7480" FontSize="12" Margin="0,4,0,0"/></StackPanel>
-              <StackPanel Grid.Row="2" Grid.Column="2"><TextBlock Text="Target PAT" FontSize="13" FontWeight="Medium" Margin="0,0,0,6"/><PasswordBox x:Name="TargetPatBox" Height="34" Padding="10,6"/><TextBlock Text="Read and Write scopes plus Team Settings permissions." Foreground="#6b7480" FontSize="12" Margin="0,4,0,0"/></StackPanel>
-              <StackPanel Grid.Row="4" Grid.ColumnSpan="3"><TextBlock Text="Optional target team" FontSize="13" FontWeight="Medium" Margin="0,0,0,6"/><TextBox x:Name="TargetTeamBox" Width="360" HorizontalAlignment="Left" Height="34" Padding="10,6"/><TextBlock Text="Leave blank to infer the project default team." Foreground="#6b7480" FontSize="12" Margin="0,4,0,0"/></StackPanel>
+              <StackPanel Grid.Row="0" Grid.Column="0"><TextBlock Text="Source project URL" FontSize="13" FontWeight="Medium" Margin="0,0,0,6"/><TextBox x:Name="SourceUrlBox" Height="34" Padding="10,6"/><TextBlock Text="Format: https://dev.azure.com/{org}/{project}" Foreground="#85949F" FontSize="12" Margin="0,4,0,0"/></StackPanel>
+              <StackPanel Grid.Row="0" Grid.Column="2"><TextBlock Text="Target project URL" FontSize="13" FontWeight="Medium" Margin="0,0,0,6"/><TextBox x:Name="TargetUrlBox" Height="34" Padding="10,6"/><TextBlock Text="Target must already exist unless Step 0's mode below creates it." Foreground="#85949F" FontSize="12" Margin="0,4,0,0"/></StackPanel>
+              <StackPanel Grid.Row="2" Grid.Column="0"><TextBlock Text="Source PAT" FontSize="13" FontWeight="Medium" Margin="0,0,0,6"/><PasswordBox x:Name="SourcePatBox" Height="34" Padding="10,6"/><TextBlock Text="Read scopes on Work Items, Process, Queries, Wiki, and Dashboards." Foreground="#85949F" FontSize="12" Margin="0,4,0,0"/></StackPanel>
+              <StackPanel Grid.Row="2" Grid.Column="2"><TextBlock Text="Target PAT" FontSize="13" FontWeight="Medium" Margin="0,0,0,6"/><PasswordBox x:Name="TargetPatBox" Height="34" Padding="10,6"/><TextBlock Text="Read and Write scopes plus Process and Team Settings permissions." Foreground="#85949F" FontSize="12" Margin="0,4,0,0"/></StackPanel>
+              <StackPanel Grid.Row="4" Grid.Column="0"><TextBlock Text="Process name (optional for Step 0)" FontSize="13" FontWeight="Medium" Margin="0,0,0,6"/><TextBox x:Name="ProcessNameBox" Height="34" Padding="10,6"/><TextBlock Text="Required only if migrating the process template." Foreground="#85949F" FontSize="12" Margin="0,4,0,0"/></StackPanel>
+              <StackPanel Grid.Row="4" Grid.Column="2">
+                <TextBlock Text="Process migration mode (Step 0)" FontSize="13" FontWeight="Medium" Margin="0,0,0,6"/>
+                <RadioButton x:Name="ModeFullAutoRadio" GroupName="ProcessMode" Content="Full automation - create the process and the target project" IsChecked="True" Margin="0,0,0,6" FontSize="12"/>
+                <RadioButton x:Name="ModeAssistedRadio" GroupName="ProcessMode" Content="Process now, project later - I'll get the project created or switched myself" Margin="0,0,0,6" FontSize="12"/>
+                <RadioButton x:Name="ModeExportRadio" GroupName="ProcessMode" Content="Export process only - no changes in the target org, hand off a file" Margin="0,0,0,6" FontSize="12"/>
+                <TextBlock Text="Applies only if Step 0 is selected on the next screen." Foreground="#85949F" FontSize="12"/>
+              </StackPanel>
             </Grid>
-            <Button x:Name="ContinueButton" Grid.Row="2" Content="Continue" Width="120" Height="34" HorizontalAlignment="Right" Background="#0f6cbd" Foreground="White"/>
+            <Button x:Name="ContinueButton" Grid.Row="2" Content="Continue" Width="120" Height="36" HorizontalAlignment="Right" Style="{StaticResource PrimaryButton}"/>
           </Grid>
           <Grid x:Name="ChooseScreen" Visibility="Collapsed">
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-            <StackPanel><TextBlock Text="Choose steps to run" FontSize="22" FontWeight="SemiBold"/><TextBlock Text="Selected steps run in the order shown. You can rerun any step later." Foreground="#6b7480" FontSize="14" Margin="0,6,0,22"/></StackPanel>
-            <DataGrid x:Name="StepGrid" Grid.Row="1" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" BorderBrush="#e3e5e8" BorderThickness="1">
+            <StackPanel><TextBlock Text="Choose steps to run" FontSize="23" FontWeight="SemiBold" FontFamily="Segoe UI Variable Display, Segoe UI Semibold, Segoe UI"/><TextBlock Text="Selected steps run in the order shown. You can rerun any step later." Foreground="#85949F" FontSize="14" Margin="0,6,0,22"/></StackPanel>
+            <DataGrid x:Name="StepGrid" Grid.Row="1" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" BorderBrush="#E3E8EC" BorderThickness="1" RowHeight="36" AlternatingRowBackground="#f9fafb" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#E7ECEF">
               <DataGrid.Columns><DataGridCheckBoxColumn Header="Run" Binding="{Binding Selected}" Width="60"/><DataGridTextColumn Header="Step" Binding="{Binding Label}" Width="*"/><DataGridTextColumn Header="Details" Binding="{Binding Detail}" Width="2*"/></DataGrid.Columns>
             </DataGrid>
-            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,0"><Button x:Name="BackButton" Content="Back" Width="92" Height="34" Margin="0,0,10,0"/><Button x:Name="SelectAllButton" Content="Select all" Width="92" Height="34" Margin="0,0,10,0"/><Button x:Name="RunButton" Content="Run selected steps" Width="160" Height="34" Background="#0f6cbd" Foreground="White"/></StackPanel>
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0"><Button x:Name="BackButton" Content="Back" Width="92" Height="36" Margin="0,0,10,0" Style="{StaticResource SecondaryButton}"/><Button x:Name="SelectAllButton" Content="Select all" Width="92" Height="36" Margin="0,0,10,0" Style="{StaticResource SecondaryButton}"/><Button x:Name="RunButton" Content="Run selected steps" Width="160" Height="36" Style="{StaticResource PrimaryButton}"/></StackPanel>
           </Grid>
           <Grid x:Name="RunScreen" Visibility="Collapsed">
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-            <StackPanel><TextBlock Text="Migration in progress" FontSize="22" FontWeight="SemiBold"/><TextBlock x:Name="RunSubtitle" Text="Do not close this window. Each step writes a target-org_target-project activity log." Foreground="#6b7480" FontSize="14" Margin="0,6,0,22"/></StackPanel>
-            <DataGrid x:Name="RunGrid" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column" BorderBrush="#e3e5e8" BorderThickness="1">
-              <DataGrid.Columns><DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="110"/><DataGridTextColumn Header="Step" Binding="{Binding Label}" Width="*"/><DataGridTextColumn Header="Message" Binding="{Binding Detail}" Width="2*"/><DataGridTextColumn Header="Log" Binding="{Binding Log}" Width="2*"/></DataGrid.Columns>
+            <StackPanel><TextBlock Text="Migration in progress" FontSize="23" FontWeight="SemiBold" FontFamily="Segoe UI Variable Display, Segoe UI Semibold, Segoe UI"/><TextBlock x:Name="RunSubtitle" Text="Do not close this window. Each step writes a target-org_target-project activity log." Foreground="#85949F" FontSize="14" Margin="0,6,0,22"/></StackPanel>
+            <DataGrid x:Name="RunGrid" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column" BorderBrush="#E3E8EC" BorderThickness="1" RowHeight="36" AlternatingRowBackground="#f9fafb" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#E7ECEF">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="110"/>
+                <DataGridTextColumn Header="Step" Binding="{Binding Label}" Width="*"/>
+                <DataGridTextColumn Header="Message" Binding="{Binding Detail}" Width="2*"/>
+                <DataGridTemplateColumn Header="Log" Width="60">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate>
+                      <Ellipse Width="16" Height="16" Stroke="{Binding LogStroke}" StrokeThickness="2" Fill="{Binding LogFill}" Cursor="{Binding LogCursor}" ToolTip="{Binding Log}" HorizontalAlignment="Center"/>
+                    </DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+              </DataGrid.Columns>
             </DataGrid>
-            <Button x:Name="CancelRemainingButton" Grid.Row="2" Content="Cancel remaining" Width="140" Height="34" HorizontalAlignment="Right" Margin="0,24,0,0"/>
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0"><Button x:Name="BackToChooseFromRunButton" Content="&lt; Choose Steps" Width="140" Height="36" Margin="0,0,10,0" Style="{StaticResource SecondaryButton}"/><Button x:Name="CancelRemainingButton" Content="Cancel remaining" Width="140" Height="36" Style="{StaticResource SecondaryButton}"/></StackPanel>
           </Grid>
           <Grid x:Name="DoneScreen" Visibility="Collapsed">
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
             <Border x:Name="FinalBanner" Padding="12" CornerRadius="6" BorderThickness="1" Background="#eaf7ea" BorderBrush="#c1e3c1"><TextBlock x:Name="FinalMessage" Text="All selected steps completed successfully." FontSize="14" Foreground="#114c11" FontWeight="SemiBold"/></Border>
-            <DataGrid x:Name="SummaryGrid" Grid.Row="1" Margin="0,14,0,0" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column" BorderBrush="#e3e5e8" BorderThickness="1">
-              <DataGrid.Columns><DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="110"/><DataGridTextColumn Header="Step" Binding="{Binding Label}" Width="*"/><DataGridTextColumn Header="Log" Binding="{Binding Log}" Width="2*"/></DataGrid.Columns>
+            <DataGrid x:Name="SummaryGrid" Grid.Row="1" Margin="0,14,0,0" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column" BorderBrush="#E3E8EC" BorderThickness="1" RowHeight="36" AlternatingRowBackground="#f9fafb" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#E7ECEF">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="110"/>
+                <DataGridTextColumn Header="Step" Binding="{Binding Label}" Width="*"/>
+                <DataGridTemplateColumn Header="Log" Width="60">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate>
+                      <Ellipse Width="16" Height="16" Stroke="{Binding LogStroke}" StrokeThickness="2" Fill="{Binding LogFill}" Cursor="{Binding LogCursor}" ToolTip="{Binding Log}" HorizontalAlignment="Center"/>
+                    </DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+              </DataGrid.Columns>
             </DataGrid>
-            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,0"><Button x:Name="OpenLogsButton" Content="Open logs folder" Width="140" Height="34" Margin="0,0,10,0"/><Button x:Name="RerunFailedButton" Content="Rerun failed step" Width="140" Height="34" Margin="0,0,10,0"/><Button x:Name="CloseButton" Content="Close" Width="92" Height="34" Background="#0f6cbd" Foreground="White"/></StackPanel>
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0"><Button x:Name="BackToChooseFromDoneButton" Content="&lt; Choose Steps" Width="140" Height="36" Margin="0,0,10,0" Style="{StaticResource SecondaryButton}"/><Button x:Name="OpenLogsButton" Content="Open logs folder" Width="140" Height="36" Margin="0,0,10,0" Style="{StaticResource SecondaryButton}"/><Button x:Name="RerunFailedButton" Content="Rerun failed step" Width="140" Height="36" Margin="0,0,10,0" Style="{StaticResource SecondaryButton}"/><Button x:Name="CloseButton" Content="Close" Width="92" Height="36" Style="{StaticResource PrimaryButton}"/></StackPanel>
           </Grid>
         </Grid>
       </Grid>
@@ -116,6 +227,7 @@ function Find-Control { param([string]$Name) $window.FindName($Name) }
 
 $steps = [Collections.ObjectModel.ObservableCollection[object]]::new()
 @(
+    @($false, 'process', '0. Migrate Process Template (WITs, fields, picklists, rules)', 'Optional prerequisite if target uses a different process. Mode selected on the previous screen controls what happens: full automation creates the project too; assisted stops for a manual project step; export-only writes a handoff file and makes no target changes.'),
     @($true, 'team-config', '1. Set target team default area (Include sub areas)', 'Prerequisite for area-scoped work items.'),
     @($true, 'iterations', '2. Copy Iteration Paths', 'From source project root to target project root.'),
     @($true, 'areas', '3. Copy Area Paths', 'From source project root to target project root.'),
@@ -124,14 +236,40 @@ $steps = [Collections.ObjectModel.ObservableCollection[object]]::new()
     @($false, 'dashboards', '6. Copy Dashboards', 'All dashboards. Widgets rewired to target IDs.'),
     @($false, 'wiki', '7. Copy Wiki (pages, subpages, images)', 'Hierarchy and referenced images preserved.')
 ) | ForEach-Object {
-    $steps.Add([pscustomobject]@{ Selected = $_[0]; Id = $_[1]; Label = $_[2]; Detail = $_[3]; Status = 'Pending'; Log = '' })
+    $steps.Add([pscustomobject]@{ 
+        Selected = $_[0]; Id = $_[1]; Label = $_[2]; Detail = $_[3]; 
+        Status = 'Pending'; Log = ''; 
+        LogFill = 'Transparent'; LogStroke = '#E3E8EC'; LogCursor = 'Arrow'
+    })
 }
 
 foreach ($gridName in 'StepGrid','RunGrid','SummaryGrid') { (Find-Control $gridName).ItemsSource = $steps }
+
+# Add click handlers for log indicators in Run and Summary grids
+foreach ($gridName in @('RunGrid', 'SummaryGrid')) {
+    $grid = Find-Control $gridName
+    $grid.Add_PreviewMouseLeftButtonUp({
+        param($sender, $e)
+        $element = $e.OriginalSource
+        if ($element -is [System.Windows.Shapes.Ellipse]) {
+            $dataItem = $element.DataContext
+            if ($dataItem -and -not [string]::IsNullOrWhiteSpace($dataItem.Log)) {
+                if (Test-Path -LiteralPath $dataItem.Log) {
+                    Start-Process notepad.exe -ArgumentList "`"$($dataItem.Log)`""
+                }
+            }
+        }
+    })
+}
+
 $script:RunDirectory = $null
 $script:ProgressPath = $null
 $script:RunnerProcess = $null
 $script:SeenProgressLines = 0
+# Set when the last run ended with Step 0 in ExportOnly mode: there is nothing to
+# resume (no target-org calls were made), so "Rerun"/"Continue" semantics do not
+# apply -- the coordinator starts an entirely fresh run instead.
+$script:LastRunHadExport = $false
 
 $script:CurrentScreen = 'connect'
 $script:HasConnected  = $false
@@ -175,17 +313,25 @@ function Set-Screen {
         $reachable = Test-ScreenReachable -Screen $order[$i]
 
         if ($i -eq $activeIndex) {
-            $circle.BorderBrush = '#0f6cbd'; $circle.Background = '#e8f2fb'
-            $number.Foreground  = '#0f6cbd'; $number.Text = [string]($i + 1)
-            $label.Foreground   = '#1f2933'
+            # Current screen - show as active (blue) unless it's the Done screen
+            if ($Screen -eq 'done' -and $i -eq 3) {
+                # Done screen should show as complete (green checkmark) not active
+                $circle.BorderBrush = '#00b294'; $circle.Background = '#f1fbf8'
+                $number.Foreground  = '#00b294'; $number.Text = [char]0x2713
+                $label.Foreground   = '#15232F'
+            } else {
+                $circle.BorderBrush = '#1AA6C9'; $circle.Background = '#DDF2F7'
+                $number.Foreground  = '#1AA6C9'; $number.Text = [string]($i + 1)
+                $label.Foreground   = '#15232F'
+            }
         } elseif ($i -lt $activeIndex) {
             $circle.BorderBrush = '#00b294'; $circle.Background = '#f1fbf8'
             $number.Foreground  = '#00b294'; $number.Text = [char]0x2713
-            $label.Foreground   = '#6b7480'
+            $label.Foreground   = '#85949F'
         } else {
-            $circle.BorderBrush = '#e3e5e8'; $circle.Background = 'Transparent'
-            $number.Foreground  = '#6b7480'; $number.Text = [string]($i + 1)
-            $label.Foreground   = '#6b7480'
+            $circle.BorderBrush = '#E3E8EC'; $circle.Background = 'Transparent'
+            $number.Foreground  = '#85949F'; $number.Text = [string]($i + 1)
+            $label.Foreground   = '#85949F'
         }
 
         # Only offer a hand cursor where a click will actually go somewhere.
@@ -193,6 +339,31 @@ function Set-Screen {
         $panel.Opacity = if ($reachable -or $i -eq $activeIndex) { 1.0 } else { 0.45 }
     }
 }
+function Reset-ConnectScreen {
+    <#
+        Used after an ExportOnly run: that run made no target-org calls and has
+        nothing to resume, so "Start New Run" clears everything and returns to a
+        blank Connect screen rather than re-selecting steps on Choose.
+    #>
+    (Find-Control SourceUrlBox).Text = ''
+    (Find-Control TargetUrlBox).Text = ''
+    (Find-Control SourcePatBox).Clear()
+    (Find-Control TargetPatBox).Clear()
+    (Find-Control ProcessNameBox).Text = ''
+    (Find-Control ModeAssistedRadio).IsChecked = $true
+    (Find-Control HeaderStatus).Visibility = 'Collapsed'
+    $script:HasConnected = $false
+    $script:HasRun = $false
+    $script:RunDirectory = $null
+    $script:ProgressPath = $null
+    $script:SeenProgressLines = 0
+    $script:LastRunHadExport = $false
+    foreach ($step in $steps) {
+        $step.Status = 'Pending'; $step.Log = ''; $step.LogFill = 'Transparent'; $step.LogStroke = '#E3E8EC'; $step.LogCursor = 'Arrow'
+    }
+    Refresh-Grids
+}
+
 function ConvertTo-PlainText { param([Security.SecureString]$Secure) [System.Net.NetworkCredential]::new('', $Secure).Password }
 
 function Test-AdoProjectAccess {
@@ -219,20 +390,26 @@ function Test-AdoProjectAccess {
     try { $endpoint = ConvertFrom-AdoProjectUrl -Url $ProjectUrl -Role Target }
     catch { return [pscustomobject]@{ Ok = $false; Message = "$Label project URL is not valid. $($_.Exception.Message)" } }
 
-    $headers = @{
-        Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(':' + $PlainPat))
-        Accept        = 'application/json'
-    }
-    $uri = 'https://dev.azure.com/{0}/_apis/projects/{1}?api-version=7.1' -f
-        [Uri]::EscapeDataString($endpoint.Org), [Uri]::EscapeDataString($endpoint.Project)
-
     try {
+        $headers = @{
+            Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(':' + $PlainPat))
+            Accept        = 'application/json'
+        }
+        $uri = 'https://dev.azure.com/{0}/_apis/projects/{1}?api-version=7.1' -f
+            [Uri]::EscapeDataString($endpoint.Org), [Uri]::EscapeDataString($endpoint.Project)
+
         Invoke-RestMethod -Method Get -Uri $uri -Headers $headers -TimeoutSec 20 | Out-Null
-        return [pscustomobject]@{ Ok = $true; Message = '' }
+        return [pscustomobject]@{ Ok = $true; Message = ''; Status = 200; Org = $endpoint.Org; Project = $endpoint.Project }
     }
     catch {
+        # Capture before the switch: inside a switch's script blocks, $_ is
+        # rebound to the value being matched (here, $status) -- not the outer
+        # catch's error record. Referencing $_.Exception inside a switch case
+        # was silently grabbing $status.Exception, which doesn't exist and
+        # throws its own StrictMode error, masking whatever the real problem was.
+        $errorRecord = $_
         $status = $null
-        try { $status = [int]$_.Exception.Response.StatusCode } catch { }
+        try { $status = [int]$errorRecord.Exception.Response.StatusCode } catch { }
         $message = switch ($status) {
             401 { "$Label PAT was rejected. Check that it has not expired and was created in organization '$($endpoint.Org)'." }
             403 { "$Label PAT is valid but lacks permission to read project '$($endpoint.Project)'." }
@@ -242,9 +419,66 @@ function Test-AdoProjectAccess {
                 "and elsewhere returns 404 rather than a permission error. Confirm the PAT was issued in '$($endpoint.Org)' " +
                 "and that the project name matches exactly, including spaces."
             }
-            default { "$Label project could not be reached. $($_.Exception.Message)" }
+            default { "$Label project could not be reached. $($errorRecord.Exception.Message)" }
         }
-        return [pscustomobject]@{ Ok = $false; Message = $message }
+        return [pscustomobject]@{ Ok = $false; Message = $message; Status = $status; Org = $endpoint.Org; Project = $endpoint.Project }
+    }
+}
+
+function Test-AdoOrgAccess {
+    <#
+    .SYNOPSIS
+        Confirms a PAT is valid in an organization, without requiring any
+        specific project to exist yet.
+
+    .DESCRIPTION
+        Used as a fallback when Test-AdoProjectAccess 404s and Step 0 is in
+        play (a process name was supplied): the target project may
+        legitimately not exist yet -- FullAuto creates it, AssistedManual can
+        stop and ask a person to create it, and ExportOnly never touches the
+        target org at all. Lists (at most one) project in the org rather than
+        reading a specific one, so it confirms "this PAT works in this
+        organization" without needing the target project to be there.
+
+        Deliberately NOT _apis/ConnectionData: that endpoint isn't part of the
+        documented, versioned REST surface and rejects an api-version query
+        string with HTTP 400. Projects - List is a stable, documented
+        endpoint, and "Project/team metadata Read" is already a baseline
+        target PAT scope per this launcher's README, so this adds no new
+        permission requirement.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$ProjectUrl,
+        [Parameter(Mandatory)][string]$PlainPat,
+        [Parameter(Mandatory)][string]$Label
+    )
+
+    try { $endpoint = ConvertFrom-AdoProjectUrl -Url $ProjectUrl -Role Target }
+    catch { return [pscustomobject]@{ Ok = $false; Message = "$Label project URL is not valid. $($_.Exception.Message)" } }
+
+    try {
+        $headers = @{
+            Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(':' + $PlainPat))
+            Accept        = 'application/json'
+        }
+        $uri = 'https://dev.azure.com/{0}/_apis/projects?$top=1&api-version=7.1' -f [Uri]::EscapeDataString($endpoint.Org)
+
+        Invoke-RestMethod -Method Get -Uri $uri -Headers $headers -TimeoutSec 20 | Out-Null
+        return [pscustomobject]@{ Ok = $true; Message = ''; Org = $endpoint.Org; Project = $endpoint.Project }
+    }
+    catch {
+        # See the matching comment in Test-AdoProjectAccess: $_ inside a switch
+        # case is rebound to the switch subject, not the outer catch's error
+        # record, so it must be captured before the switch.
+        $errorRecord = $_
+        $status = $null
+        try { $status = [int]$errorRecord.Exception.Response.StatusCode } catch { }
+        $message = switch ($status) {
+            401 { "$Label PAT was rejected. Check that it has not expired and was created in organization '$($endpoint.Org)'." }
+            403 { "$Label PAT is valid but lacks permission to connect to organization '$($endpoint.Org)'." }
+            default { "$Label organization '$($endpoint.Org)' could not be reached. $($errorRecord.Exception.Message)" }
+        }
+        return [pscustomobject]@{ Ok = $false; Message = $message; Org = $endpoint.Org; Project = $endpoint.Project }
     }
 }
 function Refresh-Grids { foreach ($gridName in 'StepGrid','RunGrid','SummaryGrid') { (Find-Control $gridName).Items.Refresh() } }
@@ -268,26 +502,57 @@ function Refresh-Grids { foreach ($gridName in 'StepGrid','RunGrid','SummaryGrid
     try {
         $window.Dispatcher.Invoke([action] {}, 'Render')
 
+        # A process name means Step 0 may run, and two of its three modes
+        # (FullAuto, and AssistedManual's project-missing sub-case) expect the
+        # target project not to exist yet. AllowMissingProject lets that 404
+        # through instead of hard-blocking Connect.
+        $processNameProvided = -not [string]::IsNullOrWhiteSpace((Find-Control ProcessNameBox).Text)
         $checks = @(
-            @{ Label = 'Source'; Url = (Find-Control SourceUrlBox).Text; Pat = ConvertTo-PlainText (Find-Control SourcePatBox).SecurePassword }
-            @{ Label = 'Target'; Url = (Find-Control TargetUrlBox).Text; Pat = ConvertTo-PlainText (Find-Control TargetPatBox).SecurePassword }
+            @{ Label = 'Source'; Url = (Find-Control SourceUrlBox).Text; Pat = ConvertTo-PlainText (Find-Control SourcePatBox).SecurePassword; AllowMissingProject = $false }
+            @{ Label = 'Target'; Url = (Find-Control TargetUrlBox).Text; Pat = ConvertTo-PlainText (Find-Control TargetPatBox).SecurePassword; AllowMissingProject = $processNameProvided }
         )
         foreach ($check in $checks) {
             $result = Test-AdoProjectAccess -ProjectUrl $check.Url -PlainPat $check.Pat -Label $check.Label
             if (-not $result.Ok) {
+                if ($check.AllowMissingProject -and $result.Status -eq 404) {
+                    $orgResult = Test-AdoOrgAccess -ProjectUrl $check.Url -PlainPat $check.Pat -Label $check.Label
+                    if (-not $orgResult.Ok) {
+                        [System.Windows.MessageBox]::Show($orgResult.Message, 'Cannot connect', 'OK', 'Warning') | Out-Null
+                        return
+                    }
+                    [System.Windows.MessageBox]::Show(
+                        "$($check.Label) project '$($orgResult.Project)' was not found yet in organization '$($orgResult.Org)' -- that's expected if Step 0 will create it, or if you'll create/switch it manually. Continuing.",
+                        'ADO Migration Launcher', 'OK', 'Information') | Out-Null
+                    continue
+                }
                 [System.Windows.MessageBox]::Show($result.Message, 'Cannot connect', 'OK', 'Warning') | Out-Null
                 return
             }
         }
+
+        # Update header with source and target org/project
+        $source = ConvertFrom-AdoProjectUrl -Url (Find-Control SourceUrlBox).Text -Role Source
+        $target = ConvertFrom-AdoProjectUrl -Url (Find-Control TargetUrlBox).Text -Role Target
+        (Find-Control HeaderSourceText).Text = "Source: $($source.Org) - $($source.Project)"
+        (Find-Control HeaderTargetText).Text = "Target: $($target.Org) - $($target.Project)"
+        (Find-Control HeaderStatus).Visibility = 'Visible'
+        $script:HasConnected = $true
+        Set-Screen choose
+    }
+    catch {
+        # This handler used to have no catch, only a finally -- an unexpected
+        # exception here (a bad URL format, an unreachable host, anything not
+        # already turned into a friendly message above) would propagate out of
+        # the event handler and, since the launcher normally runs with
+        # -WindowStyle Hidden, silently kill the whole process: the window
+        # just vanishes with no error shown at all. Catching here converts
+        # that into a visible, actionable message instead.
+        [System.Windows.MessageBox]::Show("An unexpected error occurred while connecting: $($_.Exception.Message)", 'ADO Migration Launcher', 'OK', 'Error') | Out-Null
     }
     finally {
         $button.Content = $originalContent
         $button.IsEnabled = $true
     }
-
-    (Find-Control HeaderStatus).Text = (Find-Control TargetUrlBox).Text
-    $script:HasConnected = $true
-    Set-Screen choose
 })
 (Find-Control BackButton).Add_Click({ Set-Screen connect })
 
@@ -316,15 +581,30 @@ foreach ($entry in $phaseTargets.GetEnumerator()) {
 (Find-Control SelectAllButton).Add_Click({ foreach ($step in $steps) { $step.Selected = $true }; Refresh-Grids })
 (Find-Control CloseButton).Add_Click({ $window.Close() })
 (Find-Control OpenLogsButton).Add_Click({ if ($script:RunDirectory -and (Test-Path -LiteralPath $script:RunDirectory)) { Start-Process explorer.exe -ArgumentList "`"$script:RunDirectory`"" } })
-(Find-Control RerunFailedButton).Add_Click({ foreach ($step in $steps) { $step.Selected = ($step.Status -eq 'Failed') }; Set-Screen choose })
+(Find-Control RerunFailedButton).Add_Click({
+    if ($script:LastRunHadExport) {
+        Reset-ConnectScreen
+        Set-Screen connect
+        return
+    }
+    foreach ($step in $steps) { $step.Selected = ($step.Status -in @('Failed', 'Degraded')) }
+    Set-Screen choose
+})
 (Find-Control CancelRemainingButton).Add_Click({ if ($script:RunnerProcess -and -not $script:RunnerProcess.HasExited) { $script:RunnerProcess.Kill() } })
+(Find-Control BackToChooseFromRunButton).Add_Click({ if (-not ($script:RunnerProcess -and -not $script:RunnerProcess.HasExited)) { Set-Screen choose } })
+(Find-Control BackToChooseFromDoneButton).Add_Click({ Set-Screen choose })
 
 $timer = [Windows.Threading.DispatcherTimer]::new()
 $timer.Interval = [TimeSpan]::FromSeconds(1)
 function Get-RunnerFailureReason {
     <#
         Pulls the last error the runner recorded so the UI can explain a failure the
-        per-step progress feed never saw.
+        per-step progress feed never saw. Tries the runner's own JSONL error log
+        first, then falls back to the raw console (stdout/stderr) capture -- the
+        JSONL log can legitimately be empty if the runner process died before, or
+        without, successfully logging through AdoUtils.Common (see the comment on
+        Write-RunnerCrashLog in ado-project-setup-runner.ps1), so the console
+        capture is the last line of defense for explaining a crash.
     #>
     param([string]$RunDirectory)
 
@@ -333,14 +613,42 @@ function Get-RunnerFailureReason {
 
     $errorLog = Get-ChildItem -LiteralPath $RunDirectory -Filter '*error log*.jsonl' -ErrorAction SilentlyContinue |
         Sort-Object LastWriteTime -Descending | Select-Object -First 1
-    if (-not $errorLog) { return $fallback }
+    if ($errorLog) {
+        $lastLine = @(Get-Content -LiteralPath $errorLog.FullName | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) |
+            Select-Object -Last 1
+        if ($lastLine) {
+            try {
+                $message = ($lastLine | ConvertFrom-Json).message
+                if (-not [string]::IsNullOrWhiteSpace($message)) { return [string]$message }
+            } catch { }
+        }
+    }
 
-    $lastLine = @(Get-Content -LiteralPath $errorLog.FullName | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) |
-        Select-Object -Last 1
-    if (-not $lastLine) { return $fallback }
+    $consoleLog = Join-Path $RunDirectory 'runner-console.log'
+    if (Test-Path -LiteralPath $consoleLog) {
+        $consoleLines = @(Get-Content -LiteralPath $consoleLog | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) |
+            Select-Object -Last 15
+        if ($consoleLines.Count) { return ($consoleLines -join [Environment]::NewLine) }
+    }
 
-    try { $message = ($lastLine | ConvertFrom-Json).message } catch { return $fallback }
-    if ([string]::IsNullOrWhiteSpace($message)) { $fallback } else { [string]$message }
+    $fallback
+}
+
+function Update-LogIndicators {
+    # Update RAG indicator properties on step objects (data-bound to Ellipse)
+    foreach ($step in $steps) {
+        $hasLog = -not [string]::IsNullOrWhiteSpace($step.Log)
+        switch ($step.Status) {
+            'Pending'   { $step.LogFill = 'Transparent'; $step.LogStroke = '#E3E8EC'; $step.LogCursor = 'Arrow' }
+            'Skipped'   { $step.LogFill = 'Transparent'; $step.LogStroke = '#E3E8EC'; $step.LogCursor = 'Arrow' }
+            'Running'   { $step.LogFill = '#90EE90'; $step.LogStroke = '#00b294'; $step.LogCursor = if ($hasLog) { 'Hand' } else { 'Arrow' } }
+            'Succeeded' { $step.LogFill = '#00b294'; $step.LogStroke = '#00b294'; $step.LogCursor = if ($hasLog) { 'Hand' } else { 'Arrow' } }
+            'Degraded'  { $step.LogFill = '#f59e0b'; $step.LogStroke = '#f59e0b'; $step.LogCursor = if ($hasLog) { 'Hand' } else { 'Arrow' } }
+            'Exported'  { $step.LogFill = '#3b82f6'; $step.LogStroke = '#3b82f6'; $step.LogCursor = if ($hasLog) { 'Hand' } else { 'Arrow' } }
+            'Failed'    { $step.LogFill = '#dc2626'; $step.LogStroke = '#dc2626'; $step.LogCursor = if ($hasLog) { 'Hand' } else { 'Arrow' } }
+        }
+    }
+    Refresh-Grids
 }
 
 $timer.Add_Tick({
@@ -358,6 +666,7 @@ $timer.Add_Tick({
         }
         $script:SeenProgressLines = $lines.Count
         Refresh-Grids
+        Update-LogIndicators
     }
     if ($script:RunnerProcess -and $script:RunnerProcess.HasExited) {
         $timer.Stop()
@@ -378,6 +687,9 @@ $timer.Add_Tick({
         }
 
         $failedCount = @($steps | Where-Object { $_.Selected -and $_.Status -eq 'Failed' }).Count
+        $degradedSteps = @($steps | Where-Object { $_.Selected -and $_.Status -eq 'Degraded' })
+        $exportedSteps = @($steps | Where-Object { $_.Selected -and $_.Status -eq 'Exported' })
+        $script:LastRunHadExport = $false
         if ($failedCount -gt 0 -or $exitCode -ne 0) {
             (Find-Control FinalBanner).Background = '#fbeeef'
             (Find-Control FinalBanner).BorderBrush = '#ecc5c8'
@@ -386,9 +698,33 @@ $timer.Add_Tick({
             $text = "$failedCount selected $plural failed. Review the log and rerun only the failed step."
             if ($reason) { $text = "$text`n`n$reason" }
             (Find-Control FinalMessage).Text = $text
+            (Find-Control RerunFailedButton).Content = 'Rerun failed step'
+        } elseif ($exportedSteps.Count -gt 0) {
+            # Not resumable in this run: no target-org calls were made at all, so
+            # there is no "rerun this step" -- the coordinator hands the exported
+            # file off and starts a brand-new run once the target project exists.
+            (Find-Control FinalBanner).Background = '#DDF2F7'
+            (Find-Control FinalBanner).BorderBrush = '#b9dcf7'
+            (Find-Control FinalMessage).Foreground = '#0f3a5c'
+            (Find-Control FinalMessage).Text = "Process exported: $($exportedSteps[0].Detail)"
+            (Find-Control RerunFailedButton).Content = 'Start New Run'
+            $script:LastRunHadExport = $true
+        } elseif ($degradedSteps.Count -gt 0) {
+            # Not a failure: the step stopped cleanly and is waiting on a manual,
+            # UI-only action in Azure DevOps before it can finish.
+            (Find-Control FinalBanner).Background = '#fff4e5'
+            (Find-Control FinalBanner).BorderBrush = '#f5d7a1'
+            (Find-Control FinalMessage).Foreground = '#7a4a00'
+            (Find-Control FinalMessage).Text = "Action needed: $($degradedSteps[0].Detail)"
+            (Find-Control RerunFailedButton).Content = 'Continue after manual step'
         } else {
+            (Find-Control FinalBanner).Background = '#eaf7ea'
+            (Find-Control FinalBanner).BorderBrush = '#c1e3c1'
+            (Find-Control FinalMessage).Foreground = '#114c11'
             (Find-Control FinalMessage).Text = 'All selected steps completed successfully.'
+            (Find-Control RerunFailedButton).Content = 'Rerun failed step'
         }
+        Update-LogIndicators
         Set-Screen done
     }
 })
@@ -398,6 +734,19 @@ $timer.Add_Tick({
     if (-not $selected.Count) {
         [System.Windows.MessageBox]::Show('Select at least one step to run.', 'ADO Migration Launcher', 'OK', 'Warning') | Out-Null
         return
+    }
+    # Validate that if process step is selected, a process name (and, for Full
+    # automation, a target project URL) is provided.
+    $processSelected = @($selected | Where-Object { $_.Id -eq 'process' }).Count -gt 0
+    if ($processSelected) {
+        if ([string]::IsNullOrWhiteSpace((Find-Control ProcessNameBox).Text)) {
+            [System.Windows.MessageBox]::Show('Process migration (Step 0) is selected but the process name is missing. Please provide a process name, or deselect Step 0.', 'ADO Migration Launcher', 'OK', 'Warning') | Out-Null
+            return
+        }
+        if ((Find-Control ModeFullAutoRadio).IsChecked -and [string]::IsNullOrWhiteSpace((Find-Control TargetUrlBox).Text)) {
+            [System.Windows.MessageBox]::Show('Full automation mode needs a target project URL to know what to create.', 'ADO Migration Launcher', 'OK', 'Warning') | Out-Null
+            return
+        }
     }
     # Clear only what is being rerun. A step that already succeeded in an earlier run
     # keeps its status and log link, so returning through the phase strip to run more
@@ -425,13 +774,44 @@ $timer.Add_Tick({
         '-ProgressPath',"`"$script:ProgressPath`"",
         '-NonInteractive'
     )
-    if (-not [string]::IsNullOrWhiteSpace((Find-Control TargetTeamBox).Text)) { $argList += @('-TargetTeam', "`"$((Find-Control TargetTeamBox).Text)`"") }
+    if (-not [string]::IsNullOrWhiteSpace((Find-Control ProcessNameBox).Text)) {
+        $argList += @('-ProcessName', "`"$((Find-Control ProcessNameBox).Text)`"")
+        $mode = if ((Find-Control ModeFullAutoRadio).IsChecked) { 'FullAuto' } elseif ((Find-Control ModeExportRadio).IsChecked) { 'ExportOnly' } else { 'AssistedManual' }
+        $argList += @('-ProcessMode', $mode)
+    }
+    # Capture the runner process's own console output (stdout/stderr) to a file.
+    # Without this, anything PowerShell itself prints when a script-level trap
+    # re-throws (or, worse, a crash severe enough to bypass the trap entirely)
+    # simply vanishes: CreateNoWindow=true with no redirection discards it. This
+    # is the only remaining record of a runner-process crash if its own JSONL
+    # error log turns out empty (see the comment on Write-RunnerCrashLog in
+    # ado-project-setup-runner.ps1 for why that can happen).
+    $runnerConsoleLogPath = Join-Path $script:RunDirectory 'runner-console.log'
+    # -SourceIdentifier takes a single string, not an array -- clear each one by
+    # name so a rerun within the same UI session (Run clicked more than once
+    # without closing the window) doesn't stack duplicate event handlers.
+    foreach ($sourceId in 'RunnerConsoleOut', 'RunnerConsoleErr') {
+        Get-EventSubscriber -SourceIdentifier $sourceId -ErrorAction SilentlyContinue | Unregister-Event
+    }
     $psi = [Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = 'powershell.exe'
     $psi.Arguments = $argList -join ' '
     $psi.UseShellExecute = $false
     $psi.CreateNoWindow = $true
-    $script:RunnerProcess = [Diagnostics.Process]::Start($psi)
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $script:RunnerProcess = [Diagnostics.Process]::new()
+    $script:RunnerProcess.StartInfo = $psi
+    $consoleLogAction = {
+        if (-not [string]::IsNullOrEmpty($EventArgs.Data)) {
+            Add-Content -LiteralPath $Event.MessageData -Value $EventArgs.Data -Encoding utf8
+        }
+    }
+    Register-ObjectEvent -InputObject $script:RunnerProcess -EventName OutputDataReceived -SourceIdentifier 'RunnerConsoleOut' -Action $consoleLogAction -MessageData $runnerConsoleLogPath | Out-Null
+    Register-ObjectEvent -InputObject $script:RunnerProcess -EventName ErrorDataReceived -SourceIdentifier 'RunnerConsoleErr' -Action $consoleLogAction -MessageData $runnerConsoleLogPath | Out-Null
+    $script:RunnerProcess.Start() | Out-Null
+    $script:RunnerProcess.BeginOutputReadLine()
+    $script:RunnerProcess.BeginErrorReadLine()
     $env:ADO_SOURCE_PAT = $null
     $env:ADO_TARGET_PAT = $null
     (Find-Control RunSubtitle).Text = "Do not close this window. Logs are written under $script:RunDirectory"

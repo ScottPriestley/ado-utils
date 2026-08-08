@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADO Migration Launcher</title>
+<style>
+  :root {
+    --navy: #0A2E4D;
+    --navy-deep: #072238;
+    --cyan: #1AA6C9;
+    --cyan-deep: #0E86A8;
+    --page-bg: #F2F5F8;
+    --card-bg: #FFFFFF;
+    --line: #E3E8EC;
+    --ink: #15232F;
+    --body-text: #485865;
+    --muted: #85949F;
+    --amber-bg: #FCEFD2; --amber-ic: #C98A1E;
+    --purple-bg: #ECE6F9; --purple-ic: #7C5FC4;
+    --cyan-bg: #DDF2F7; --cyan-ic: #0E86A8;
+    --font: "Segoe UI Variable", "Segoe UI", -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--page-bg); color: var(--ink); font-family: var(--font);
+    display: flex; flex-direction: column; min-height: 100vh; overflow: hidden;
+  }
+
+  header {
+    flex: 0 0 auto; height: 46px; background: var(--navy-deep);
+    display: flex; align-items: center; gap: 10px; padding: 0 clamp(18px, 3vw, 30px);
+  }
+  header .mark { font-family: Georgia, serif; font-style: italic; font-weight: 700; color: #fff; font-size: 16px; }
+  header .sep { color: rgba(255,255,255,.28); }
+  header .title { color: rgba(255,255,255,.82); font-size: 13px; font-weight: 500; }
+  header .badge {
+    margin-left: auto; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase;
+    color: #BFE7F2; background: rgba(26,166,201,.18); border: 1px solid rgba(26,166,201,.4);
+    padding: 3px 10px; border-radius: 20px;
+  }
+
+  main {
+    flex: 1 1 auto; min-height: 0; width: 100%; max-width: 1200px; margin: 0 auto;
+    padding: clamp(14px, 2.6vh, 22px) clamp(18px, 3vw, 30px);
+    display: flex; flex-direction: column; gap: clamp(14px, 2.4vh, 22px);
+  }
+
+  /* ---- hero ---- */
+  .hero {
+    flex: 0 0 auto; position: relative; overflow: hidden; border-radius: 16px;
+    background: var(--navy); min-height: clamp(210px, 30vh, 270px);
+    display: flex; align-items: center;
+    box-shadow: 0 10px 30px -14px rgba(10,46,77,.45);
+  }
+  .hero svg.wave { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .hero .content { position: relative; z-index: 1; padding: 0 clamp(24px, 4vw, 48px); max-width: 640px; }
+  .hero .brand { color: rgba(255,255,255,.75); font-family: Georgia, serif; font-style: italic; font-size: 14px; margin-bottom: 8px; }
+  .hero h1 {
+    color: #fff; font-size: clamp(26px, 3.4vw, 40px); font-weight: 700; margin: 0 0 10px;
+    line-height: 1.08; letter-spacing: -.01em; text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.82); font-size: 14px; line-height: 1.6; margin: 0 0 20px; max-width: 46ch;
+  }
+  .cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .cta {
+    display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+    font-size: 12.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    padding: 12px 20px; border-radius: 8px; transition: transform .12s ease, background .12s ease;
+  }
+  .cta.primary { background: #fff; color: var(--navy-deep); }
+  .cta.primary:hover { background: #EAF6FA; transform: translateY(-1px); }
+  .cta.secondary { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,.55); }
+  .cta.secondary:hover { border-color: #fff; transform: translateY(-1px); }
+  .cta .circ {
+    width: 16px; height: 16px; border-radius: 50%; display: inline-flex; align-items: center;
+    justify-content: center; border: 1.4px solid currentColor; font-size: 10px; flex: 0 0 auto;
+  }
+
+  /* ---- cards ---- */
+  .cards { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(12px, 1.6vw, 18px); }
+  .card {
+    background: var(--card-bg); border: 1px solid var(--line); border-radius: 14px;
+    padding: 18px 20px; display: flex; flex-direction: column; min-height: 0;
+    box-shadow: 0 2px 10px -6px rgba(21,35,47,.10);
+  }
+  .icon {
+    width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center;
+    justify-content: center; margin-bottom: 12px; flex: 0 0 auto;
+  }
+  .icon svg { width: 18px; height: 18px; }
+  .icon.amber { background: var(--amber-bg); color: var(--amber-ic); }
+  .icon.purple { background: var(--purple-bg); color: var(--purple-ic); }
+  .icon.cyan { background: var(--cyan-bg); color: var(--cyan-ic); }
+
+  .card h2 { font-size: 15px; font-weight: 700; margin: 0 0 10px; color: var(--ink); }
+
+  .card .hint-note {
+    margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line);
+    font-size: 11px; color: var(--muted); line-height: 1.5;
+  }
+
+  .pipeline-list {
+    columns: 2; column-gap: 16px; margin: 0; padding: 0; list-style: none; font-size: 12px; color: var(--body-text);
+  }
+  .pipeline-list li {
+    display: flex; align-items: baseline; gap: 6px; break-inside: avoid; padding: 3px 0; line-height: 1.4;
+  }
+  .pipeline-list .n { font-weight: 700; color: var(--cyan-ic); font-size: 10.5px; flex: 0 0 auto; }
+
+  ol.steps, ul.reqs {
+    margin: 0; padding-left: 16px; font-size: 12.4px; line-height: 1.68; color: var(--body-text);
+  }
+  ol.steps li + li, ul.reqs li + li { margin-top: 3px; }
+  code {
+    font-family: "Cascadia Mono", Consolas, monospace; font-size: 11px;
+    background: #EEF2F5; padding: 1px 6px; border-radius: 4px; color: var(--ink);
+  }
+
+  footer {
+    flex: 0 0 auto; text-align: center; padding: 2px 0 10px; font-size: 11.5px; color: var(--muted);
+  }
+  footer code { background: #E7ECEF; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="mark">HSO</span><span class="sep">|</span><span class="title">ADO Migration Launcher</span>
+  <span class="badge">Internal Tool</span>
+</header>
+
+<main>
+  <section class="hero">
+    <svg class="wave" viewBox="0 0 1200 300" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="waveGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#22B6D9"/>
+          <stop offset="1" stop-color="#0E86A8"/>
+        </linearGradient>
+      </defs>
+      <path d="M620,0 C760,55 660,140 800,190 C930,235 900,300 1060,300 L1200,300 L1200,0 Z" fill="url(#waveGrad)"/>
+      <path d="M700,0 C820,60 740,130 860,175 C980,220 970,300 1200,300 L1200,0 Z" fill="#ffffff" opacity=".08"/>
+    </svg>
+    <div class="content">
+      <div class="brand">HSO</div>
+      <h1>ADO Migration Launcher</h1>
+      <p>Migrates the process template, area &amp; iteration paths, work items, queries, dashboards, and wiki content from a source project into a target project &mdash; in order, with a log.</p>
+      <div class="cta-row">
+        <a class="cta primary" href="ado-migrate://open">Open the launcher <span class="circ">&rarr;</span></a>
+        <a class="cta secondary" href="ado-migrate://open">Check my setup <span class="circ">&rarr;</span></a>
+      </div>
+    </div>
+  </section>
+
+  <div class="cards">
+    <div class="card">
+      <div class="icon amber">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      </div>
+      <h2>Migration pipeline</h2>
+      <ul class="pipeline-list">
+        <li><span class="n">01</span>Process</li>
+        <li><span class="n">02</span>Default area</li>
+        <li><span class="n">03</span>Iterations</li>
+        <li><span class="n">04</span>Area paths</li>
+        <li><span class="n">05</span>Work items</li>
+        <li><span class="n">06</span>Queries</li>
+        <li><span class="n">07</span>Dashboards</li>
+        <li><span class="n">08</span>Wiki</li>
+      </ul>
+      <p class="hint-note">You choose which steps run. Selected steps always run in this order, and the run stops on first failure.</p>
+    </div>
+
+    <div class="card">
+      <div class="icon purple">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+      </div>
+      <h2>First time on this PC</h2>
+      <ol class="steps">
+        <li>Sync the script folders with OneDrive.</li>
+        <li>Open the synced <code>ADO Migration Launcher</code> folder.</li>
+        <li>Right-click <code>Setup.cmd</code> &rarr; <strong>Run as administrator</strong>.</li>
+        <li>Reopen your browser, then use <strong>Check my setup</strong>.</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <div class="icon cyan">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+      <h2>What you'll need</h2>
+      <ul class="reqs">
+        <li><strong>Source</strong> project URL + a read-access PAT.</li>
+        <li><strong>Target</strong> project URL + a read &amp; write PAT.</li>
+        <li>Collection permission to create a process &amp; a new project.</li>
+      </ul>
+      <p class="hint-note">PATs are used only for the current session &mdash; never saved to disk or stored.</p>
+    </div>
+  </div>
+</main>
+
+<footer>Bookmark this page &middot; logs write to <code>Documents\AdoMigrationLogs</code> on your PC</footer>
+
+</body>
+</html>
