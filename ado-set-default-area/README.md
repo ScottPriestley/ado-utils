@@ -1,6 +1,14 @@
+<div align="center">
+
 # Azure DevOps Default Area Configuration
 
-A focused PowerShell script that sets a team's default Area Path in a target project, with sub-areas included.
+**A focused PowerShell script that sets a team's default Area Path in a target project, with sub-areas included.**
+
+![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B%20%7C%207%2B-5391FE?style=flat-square&logo=powershell&logoColor=white)
+![Platform](https://img.shields.io/badge/Platform-Windows-0078D4?style=flat-square)
+![Azure DevOps](https://img.shields.io/badge/Azure%20DevOps-0078D4?style=flat-square&logo=azuredevops&logoColor=white)
+
+</div>
 
 ## Using the tool
 
@@ -8,12 +16,24 @@ A focused PowerShell script that sets a team's default Area Path in a target pro
 
 **When you'd use it:** After creating or migrating an Area Path hierarchy into a project, you need the team's default area pointed at the right node (instead of the project root) so new work items land in the correct area automatically.
 
+```mermaid
+graph LR
+    A[Existing Area Path] --> B[ado-set-default-area.ps1]
+    B --> C[Team default area updated]
+
+    style A fill:#718096,color:#fff
+    style B fill:#718096,color:#fff
+    style C fill:#4a5568,color:#fff
+```
+
+> [!WARNING]
+> The area path must already exist for the team — this script does not create areas. Use the [Area Path import tool](../ado-import-area-paths/README.md) first if it doesn't.
+
 **What to have ready before starting:**
 
 - The target project's URL (easiest), or the organization and project names.
 - Team Administrator or Project Administrator access on the target team.
 - A PAT with read/write access to work items and permission to modify team area settings.
-- The area path must already exist for the team — this script does not create areas (use the [Area Path import tool](../ado-import-area-paths/README.md) first if it doesn't).
 
 **How to run it:**
 
@@ -28,15 +48,16 @@ A focused PowerShell script that sets a team's default Area Path in a target pro
   -ProjectUrl 'https://dev.azure.com/contoso/Target%20Project'
 ```
 
-If you just give it the project URL, the script figures out the organization and project on its own, defaults the team to `<Project Name> Team`, and defaults the area path to the project name — so in the simplest case that's the only input you need.
+> [!TIP]
+> If you just give it the project URL, the script figures out the organization and project on its own, defaults the team to `<Project Name> Team`, and defaults the area path to the project name — so in the simplest case that's the only input you need.
 
 **What to expect as output:** The script prints what it's doing and confirms the update by reading the setting back after making the change. It writes a run log as well. Nothing else in Azure DevOps is touched.
 
-**What it will NOT do:**
-
-- It will not create the Area Path if it doesn't already exist for the team — it only points the default at an existing, already-associated area.
-- It will not change any other team setting (iterations, backlog configuration, boards, etc.).
-- It does not claim to have validated the change through any means other than reading the setting back once after a real update.
+> [!NOTE]
+> **What it will NOT do:**
+> - It will not create the Area Path if it doesn't already exist for the team — it only points the default at an existing, already-associated area.
+> - It will not change any other team setting (iterations, backlog configuration, boards, etc.).
+> - It does not claim to have validated the change through any means other than reading the setting back once after a real update.
 
 ## Technical reference
 
@@ -73,6 +94,8 @@ The script uses the same precedence as the other repo scripts:
 
 ### Safety notes
 
-- Use `-WhatIf` first to preview changes.
+> [!TIP]
+> Use `-WhatIf` first to preview changes.
+
 - The script does not create missing area paths; it only updates an already-associated team area.
 - No live Azure DevOps validation is claimed by offline tests.

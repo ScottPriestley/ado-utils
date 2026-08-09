@@ -1,12 +1,59 @@
+<div align="center">
+
 # Azure DevOps Query Test Artifact Cleanup
 
+**Reviews Test Management artifacts returned by one saved query, then deletes only what you've explicitly reviewed and confirmed.**
+
+![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B%20%7C%207%2B-5391FE?style=flat-square&logo=powershell&logoColor=white)
+![Platform](https://img.shields.io/badge/Platform-Windows-0078D4?style=flat-square)
+![Azure DevOps](https://img.shields.io/badge/Azure%20DevOps-0078D4?style=flat-square&logo=azuredevops&logoColor=white)
+![Destructive](https://img.shields.io/badge/Action-Destructive%20(confirm%20required)-b7791f?style=flat-square)
+
+</div>
+
 `ado-delete-query-test-scripts.ps1` discovers Test Management artifacts returned by one saved query, writes a review manifest, and deletes reviewed Test Management artifacts only when apply safeguards are explicitly satisfied.
+
+## Table of Contents
+
+- [Using the tool](#using-the-tool)
+- [Technical reference](#technical-reference)
+  - [Scripts, capabilities, and exclusions](#scripts-capabilities-and-exclusions)
+  - [Prerequisites](#prerequisites)
+  - [Authentication and minimum PAT scopes](#authentication-and-minimum-pat-scopes)
+  - [Safety and rerun behavior](#safety-and-rerun-behavior)
+  - [Quick start](#quick-start)
+  - [Parameters and precedence](#parameters-and-precedence)
+  - [Input formats](#input-formats)
+  - [Outputs and logs](#outputs-and-logs)
+  - [Detailed workflow and behavior](#detailed-workflow-and-behavior)
+  - [Verification checklist](#verification-checklist)
+  - [Troubleshooting](#troubleshooting)
+  - [Limitations](#limitations)
+  - [Security](#security)
+  - [Related workflows](#related-workflows)
+
+---
 
 ## Using the tool
 
 **What it does:** Runs one saved query in Azure DevOps, works out which of the returned items are Test Management artifacts (Test Cases, Test Suites, Test Plans), and writes them to a CSV file so you can review them. It will not delete anything from Azure DevOps until you run it a second time with an explicit "apply" flag and type back an exact confirmation phrase the script shows you.
 
 **When you'd use it:** Cleaning up test artifacts left behind after test-copy experiments, trial migrations, or any exercise that created disposable Test Cases/Suites/Plans you now want removed — driven by a single saved query that returns exactly those items.
+
+```mermaid
+graph LR
+    A[Saved Query] --> B["Review Manifest (CSV)"]
+    B --> C{Confirm}
+    C -->|typed phrase matches| D[Delete]
+
+    style A fill:#718096,color:#fff
+    style B fill:#718096,color:#fff
+    style C fill:#718096,color:#fff
+    style D fill:#b7791f,color:#fff
+```
+
+> [!WARNING]
+> Nothing is ever deleted on the first run. Discovery only ever writes a review file. Deletion only happens on a second, separate run where you pass `-Apply` **and** re-type an exact confirmation phrase that the script generates for that specific manifest. If the query results have changed since you reviewed the manifest, the apply run refuses to proceed rather than delete something you didn't review. There is no undo, recycle bin, or rollback — once an apply run succeeds, the deletion is final in Azure DevOps.
 
 **Before you start, have ready:**
 - The Azure DevOps organization and project name.
@@ -30,8 +77,6 @@
      -ManifestPath './review.csv' `
      -Apply
    ```
-
-**The single most important thing to understand:** nothing is ever deleted on the first run. Discovery only ever writes a review file. Deletion only happens on a second, separate run where you pass `-Apply` **and** re-type an exact confirmation phrase that the script generates for that specific manifest. If the query results have changed since you reviewed the manifest, the apply run will refuse to proceed rather than delete something you didn't review.
 
 **What to expect as output:**
 - A review manifest CSV — the list of artifacts that would be deleted, for you to check.
@@ -70,7 +115,8 @@ Minimum scopes are Work Items Read and Test Management Read for discovery, with 
 
 ### Safety and rerun behavior
 
-No deletion happens without `-Apply`. Apply mode requires a manifest, validates that the current query result set still matches the reviewed manifest expectations, requires the exact confirmation phrase, tracks prior successful deletes, and targets Test Management API objects only. Test Plan and Suite deletion can cascade inside Azure DevOps.
+> [!WARNING]
+> No deletion happens without `-Apply`. Apply mode requires a manifest, validates that the current query result set still matches the reviewed manifest expectations, requires the exact confirmation phrase, tracks prior successful deletes, and targets Test Management API objects only. Test Plan and Suite deletion can cascade inside Azure DevOps.
 
 Discovery mode may refuse ambiguous relationship results unless `-AllowRelationshipResults` is set. Title-based mapping is disabled unless `-AllowTitleResolution` is supplied. There is no `-WhatIf`; discovery without `-Apply` is the preview/review step.
 
@@ -100,6 +146,9 @@ Apply after review:
 
 ### Parameters and precedence
 
+<details>
+<summary><strong>Full parameter reference</strong> — every parameter this script accepts</summary>
+
 | Parameter | Description |
 | --- | --- |
 | `QueryUrl` | Saved query URL to inspect. Defaults to a checked-in `spriestley/TestBed` query URL in the script; always pass an explicit value for any other query. |
@@ -119,6 +168,8 @@ Apply after review:
 
 PAT precedence is `-PromptForPat` when supplied, otherwise SecureString parameter -> `ADO_PAT` -> hidden prompt.
 
+</details>
+
 ### Input formats
 
 `QueryUrl` must be a `dev.azure.com` saved-query URL containing a GUID query ID. The script's checked-in default (`https://dev.azure.com/spriestley/TestBed/_queries/query/8d85e2d9-900c-485f-9b10-58430e66f827/`) is environment-specific and must be overridden for any other environment. The manifest is CSV generated by discovery mode; do not hand-build or reuse it for a different query or result set.
@@ -127,15 +178,28 @@ PAT precedence is `-PromptForPat` when supplied, otherwise SecureString paramete
 
 Discovery writes the review manifest CSV and can write an unresolved CSV. Apply mode can write delete-results CSV and records previously successful deletes. `LogPath` is a legacy text log.
 
+<details>
+<summary><strong>JSONL log schema</strong> — shared per-run success/error log format</summary>
+
 Every run creates `ado-delete-query-test-scripts-success log-<run-id>.jsonl` and `ado-delete-query-test-scripts-error log-<run-id>.jsonl` in `LogDirectory` or local `logs`, UTF-8 without BOM. Records include `timestampUtc`, `level`, `script`, `runId`, `operation`, `outcome`, `target`, `message`, `errorType`, and `statusCode`; secrets are redacted.
 
+</details>
+
 ### Detailed workflow and behavior
+
+<details>
+<summary>Step-by-step script behavior</summary>
 
 The script resolves the query, validates result shape, reads returned work items, filters allowed types, resolves Test Management IDs, and writes a review manifest. Apply mode re-resolves current data, validates the manifest, confirms the exact phrase, skips already-recorded successes, and calls Test Management delete APIs for reviewed artifacts.
 
 Partial failures are logged and fail the run so the manifest/results can be reviewed before another apply attempt.
 
+</details>
+
 ### Verification checklist
+
+<details>
+<summary>Before and after a live run</summary>
 
 - Run `pwsh -NoProfile -File ./tests/run-offline-checks.ps1`.
 - Confirm the query returns only intended test artifacts.
@@ -145,7 +209,12 @@ Partial failures are logged and fail the run so the manifest/results can be revi
 
 Offline checks make no live calls and cannot prove a delete target is safe.
 
+</details>
+
 ### Troubleshooting
+
+<details>
+<summary>Common errors and what they mean</summary>
 
 - Relationship query refused: use a flat query or deliberately pass `-AllowRelationshipResults`.
 - Unresolved Test Plan/Suite: inspect titles/IDs and only enable title resolution when ambiguity is acceptable.
@@ -153,13 +222,16 @@ Offline checks make no live calls and cannot prove a delete target is safe.
 - Apply mismatch: rerun discovery and review the new manifest before deleting.
 - `401`/`403`: verify PAT scopes and Test Management permissions.
 
+</details>
+
 ### Limitations
 
 This is a guarded cleanup tool, not a recycle-bin or rollback system. It cannot delete arbitrary WIT records, cannot guarantee cascade side effects are desirable, and does not validate business ownership beyond the reviewed manifest.
 
 ### Security
 
-Use a short-lived PAT only for the reviewed cleanup window. Protect manifests, delete results, and logs because they contain artifact IDs, titles, and project/query details. Never embed PATs in scripts or saved manifests.
+> [!WARNING]
+> Use a short-lived PAT only for the reviewed cleanup window. Protect manifests, delete results, and logs because they contain artifact IDs, titles, and project/query details. Never embed PATs in scripts or saved manifests.
 
 ### Related workflows
 

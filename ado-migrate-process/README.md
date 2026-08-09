@@ -1,10 +1,51 @@
+<div align="center">
+
 # Azure DevOps Process Migration
 
-`ado-migrate-process.ps1` migrates an entire Azure DevOps inherited process from one organization to another, including all work item types, fields, picklists, states, rules, and layout configurations.
+**Migrates an entire Azure DevOps inherited process — work item types, fields, picklists, states, rules, and layout — from one organization to another.**
+
+![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B%20%7C%207%2B-5391FE?style=flat-square&logo=powershell&logoColor=white)
+![Platform](https://img.shields.io/badge/Platform-Windows-0078D4?style=flat-square)
+![Azure DevOps](https://img.shields.io/badge/Azure%20DevOps-0078D4?style=flat-square&logo=azuredevops&logoColor=white)
+
+</div>
+
+## Table of Contents
+
+- [Using the tool](#using-the-tool)
+- [Technical reference](#technical-reference)
+  - [Scripts, capabilities, and exclusions](#scripts-capabilities-and-exclusions)
+  - [Three process-migration modes (-ProcessMode)](#three-process-migration-modes--processmode)
+  - [Prerequisites](#prerequisites)
+  - [Authentication and minimum PAT scopes](#authentication-and-minimum-pat-scopes)
+  - [Safety and rerun behavior](#safety-and-rerun-behavior)
+  - [Quick start](#quick-start)
+  - [Parameters and precedence](#parameters-and-precedence)
+  - [Input formats](#input-formats)
+  - [Outputs and logs](#outputs-and-logs)
+  - [Detailed workflow and behavior](#detailed-workflow-and-behavior)
+  - [Verification checklist](#verification-checklist)
+  - [Troubleshooting](#troubleshooting)
+  - [Limitations](#limitations)
+  - [Security](#security)
+
+---
 
 ## Using the tool
 
 **What it does.** This script copies a custom ("inherited") Azure DevOps process — the work item types, fields, picklists, states, rules, and form layouts that make it up — from a source organization to a target organization. It's a metadata copy, not a full clone: it does not migrate actual work items, projects, permissions, or backlog behavior settings.
+
+```mermaid
+graph LR
+    A["Source Org<br/>(Process)"] --> B[ado-migrate-process]
+    B --> C["Target Org<br/>(Process)"]
+    B -. "ExportOnly mode" .-> D[Local JSON Export]
+
+    style A fill:#4a5568,color:#fff
+    style C fill:#4a5568,color:#fff
+    style B fill:#718096,color:#fff
+    style D fill:#718096,color:#fff
+```
 
 **When you'd use it.** You're standing up a new Azure DevOps organization (or a new process within one) and want it to start with the same custom process definition as an existing one, instead of rebuilding it by hand.
 
@@ -34,12 +75,13 @@ Run this from a PowerShell prompt in the script's folder. If you don't supply PA
 
 **What to expect.** The script prints progress as it works — what it created, what it skipped because it already existed, and any warnings about things it couldn't fully translate (for example, a rule that depends on something not present in the target). At the end you get a summary count of what was migrated. It also writes log files you can review later. Nothing is deleted at any point, in either organization.
 
-**What it will NOT do:**
-- It will not copy actual work items, projects, or process permissions.
-- It will not switch an existing project onto a new process for you (only FullAuto creates a *new* project already on the right process; existing projects need the manual UI step described above).
-- It will not preserve every nuance of complex rules or custom UI extensions — those are flagged as warnings for you to handle by hand.
-- It has no "undo" — there's no dry-run or rollback. Try it against a nonproduction organization first.
-- It will not tell you the target process behaves identically to the source; you still need to spot-check it (see the verification checklist in the technical section).
+> [!WARNING]
+> **What it will NOT do:**
+> - It will not copy actual work items, projects, or process permissions.
+> - It will not switch an existing project onto a new process for you (only FullAuto creates a *new* project already on the right process; existing projects need the manual UI step described above).
+> - It will not preserve every nuance of complex rules or custom UI extensions — those are flagged as warnings for you to handle by hand.
+> - It has no "undo" — there's no dry-run or rollback. Try it against a nonproduction organization first.
+> - It will not tell you the target process behaves identically to the source; you still need to spot-check it (see the [verification checklist](#verification-checklist) in the technical section).
 
 ---
 
@@ -59,6 +101,9 @@ process > Projects tab). It *does*, however, support creating a **brand-new**
 project already on a given process via the API. Real engagements vary in how
 much API access the customer grants, so `-ProcessMode` selects one of three
 behaviors:
+
+<details>
+<summary><strong>Full mode reference</strong> — AssistedManual, FullAuto, ExportOnly behavior and exit codes</summary>
 
 - **`AssistedManual`** (default): creates/verifies the process via API, then
   checks `-TargetProject`. If the project doesn't exist yet, or exists but is
@@ -86,6 +131,11 @@ behaviors:
   requested (the parameter set doesn't change per mode) but are not used for
   anything in this mode.
 
+</details>
+
+> [!NOTE]
+> `AssistedManual` and `FullAuto` can pause mid-run rather than fail: exit code `3` means "waiting on a manual UI step, rerun after you've done it." `ExportOnly` always exits `4` — there is nothing to rerun until the target admin has recreated the process on their end.
+
 ### Prerequisites
 
 - Windows PowerShell 5.1 or PowerShell 7+.
@@ -101,9 +151,15 @@ behaviors:
 
 The script issues GET/POST/PATCH/PUT operations and no DELETE. It reuses many name/reference matches, patches field settings, and warns about failures rather than stopping. Reruns are intended to converge on supported metadata, but not every object is deeply compared and rule/layout reconciliation is best-effort; review warnings and target content after every run.
 
-There is no `-WhatIf`, preview, rollback, or transaction. Use a nonproduction target organization first.
+> [!WARNING]
+> There is no `-WhatIf`, preview, rollback, or transaction. Use a nonproduction target organization first.
+
+<details>
+<summary><strong>Why <code>Set-StrictMode -Off</code> is explicit</strong> — a launcher-only failure mode this avoids</summary>
 
 The script explicitly sets `Set-StrictMode -Off` at the top rather than relying on PowerShell's own default. `Set-StrictMode` is inherited from the caller's scope, and `ado-project-setup-runner.ps1` (the [ado-project-setup](../ado-project-setup/README.md) launcher) sets `-Version Latest` at its own script scope before invoking this script in the same process; without the explicit override here, this script would silently run under StrictMode when launched through the launcher but not when run standalone, producing launcher-only failures that could not be reproduced from a plain PowerShell prompt or a static read of the code. The explicit `-Off` makes this script's behavior identical regardless of how it is invoked.
+
+</details>
 
 ### Quick start
 
@@ -112,6 +168,9 @@ The script explicitly sets `Set-StrictMode -Off` at the top rather than relying 
   -SourceOrganization 'source-org' -SourceProcess 'My Custom Process' `
   -TargetOrganization 'target-org' -TargetProcess 'My Custom Process Copy'
 ```
+
+<details>
+<summary>Unattended and export-only examples</summary>
 
 Unattended:
 
@@ -130,7 +189,12 @@ Export-only, no target organization access needed:
   -ProcessMode ExportOnly -LogDirectory './run-logs' -NonInteractive
 ```
 
+</details>
+
 ### Parameters and precedence
+
+<details>
+<summary><strong>Full parameter reference</strong></summary>
 
 | Parameter | Description |
 | --- | --- |
@@ -145,6 +209,8 @@ Export-only, no target organization access needed:
 
 Explicit non-secret parameters precede prompts. PAT precedence is SecureString → environment → prompt. No same-organization PAT-reuse question exists in the current code; supply the same SecureString explicitly to both parameters if migrating within one organization.
 
+</details>
+
 ### Input formats
 
 Names are plain PowerShell strings and are matched against live organization/process metadata. Organization accepts `contoso`, `https://dev.azure.com/contoso`, or legacy organization URL form. The script has no input CSV/JSON workbook; source process APIs are authoritative.
@@ -157,11 +223,19 @@ Each run creates UTF-8-without-BOM JSONL files named `<script-base>-success log-
 
 ### Detailed workflow and behavior
 
+<details>
+<summary>Step-by-step behavior</summary>
+
 The script resolves source/target organizations and source process, then creates or reuses the target process. It enumerates and creates picklists, then organization-level fields. For each work item type in the source process, it creates or updates the WIT in the target, attaches or patches fields, creates custom states, hides inherited states that were hidden in source, creates rules where dependencies exist, and adds missing layout controls.
 
 Warnings are expected for unsupported extension controls, target-only content, or rule dependencies that cannot be translated. A final success means the implemented calls completed; it is not a full semantic comparison of process behavior.
 
+</details>
+
 ### Verification checklist
+
+<details>
+<summary>Before and after a live run</summary>
 
 - Run both offline repository verification commands.
 - Confirm source and target organization/process names before execution.
@@ -178,7 +252,12 @@ Warnings are expected for unsupported extension controls, target-only content, o
 
 Offline checks make no live calls and cannot prove process permissions, UI rendering, or rule semantics.
 
+</details>
+
 ### Troubleshooting
+
+<details>
+<summary>Common errors and what they mean</summary>
 
 - Target organization doesn't allow process creation: verify your permissions or ask an administrator to create an empty inherited process first.
 - Field/picklist creation forbidden: verify target PAT scope and collection-level process permissions.
@@ -187,10 +266,13 @@ Offline checks make no live calls and cannot prove process permissions, UI rende
 - WIT creation failed: the target process may already have a conflicting WIT; check manually.
 - `401`/`403`: verify PAT organization/expiry/scope and the user's process administration permission.
 
+</details>
+
 ### Limitations
 
 This is a selective best-effort process migration, not a full clone. It lacks rollback/dry run, does not migrate behaviors or extension controls, and does not prove semantic equivalence. The target process is created from a default parent (Agile preferred) if it doesn't exist, which may differ from the source process's parent. Concurrent changes and target customizations can require manual resolution. No live validation is claimed.
 
 ### Security
 
-PATs are handled as SecureString parameters and are not written to disk or console. All log output redacts authorization headers and PAT values. Environment variables (`ADO_SOURCE_PAT`, `ADO_TARGET_PAT`) are marked sensitive when discovered. Follow your organization's credential management policies.
+> [!WARNING]
+> PATs are handled as SecureString parameters and are not written to disk or console. All log output redacts authorization headers and PAT values. Environment variables (`ADO_SOURCE_PAT`, `ADO_TARGET_PAT`) are marked sensitive when discovered. Follow your organization's credential management policies.

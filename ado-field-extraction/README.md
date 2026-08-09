@@ -1,12 +1,51 @@
+<div align="center">
+
 # Azure DevOps Process Field Extraction
 
-Two read-only PowerShell scripts that list an organization's processes and export the fields attached to every work item type in one process.
+**Read-only PowerShell scripts that list an organization's processes and export the fields attached to every work item type in one process.**
+
+![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B%20%7C%207%2B-5391FE?style=flat-square&logo=powershell&logoColor=white)
+![Platform](https://img.shields.io/badge/Platform-Windows-0078D4?style=flat-square)
+![Azure DevOps](https://img.shields.io/badge/Azure%20DevOps-0078D4?style=flat-square&logo=azuredevops&logoColor=white)
+![Read-only](https://img.shields.io/badge/Mode-Read--only-4a5568?style=flat-square)
+
+</div>
+
+## Table of Contents
+
+- [Using the tool](#using-the-tool)
+- [Technical reference](#technical-reference)
+  - [Scripts, capabilities, and exclusions](#scripts-capabilities-and-exclusions)
+  - [Prerequisites](#prerequisites)
+  - [Authentication and minimum PAT scopes](#authentication-and-minimum-pat-scopes)
+  - [Safety and rerun behavior](#safety-and-rerun-behavior)
+  - [Parameters and precedence](#parameters-and-precedence)
+  - [Input formats](#input-formats)
+  - [Outputs and logs](#outputs-and-logs)
+  - [Detailed workflow and behavior](#detailed-workflow-and-behavior)
+  - [Verification checklist](#verification-checklist)
+  - [Troubleshooting](#troubleshooting)
+  - [Limitations](#limitations)
+  - [Security](#security)
+  - [Related workflows](#related-workflows)
+
+---
 
 ## Using the tool
 
 **What it does:** Looks at an Azure DevOps organization and tells you, first, what processes (like Agile, Scrum, or a custom inherited process) exist and their IDs, and second, for a chosen process, exactly which fields are attached to each of its work item types.
 
 **When you'd use it:** Before migrating or redesigning a project, you need to know exactly what fields each work item type actually has — this gives you that inventory as a spreadsheet you can review, share, or use as a checklist while setting up a target project.
+
+```mermaid
+graph LR
+    A[Azure DevOps Process] --> B[ado-process-fields.ps1]
+    B --> C[CSV Field Inventory]
+
+    style A fill:#4a5568,color:#fff
+    style B fill:#718096,color:#fff
+    style C fill:#4a5568,color:#fff
+```
 
 **What to have ready before starting:**
 
@@ -29,12 +68,12 @@ Two read-only PowerShell scripts that list an organization's processes and expor
 
 **What to expect as output:** The first script prints a table of process names and IDs to the console — nothing is saved. The second script prints a similar table and also writes a CSV file listing every work item type together with each field attached to it (name, reference name, type, whether it's required, read-only, or inherited). Both scripts also write their own run logs.
 
-**What it will NOT do:**
-
-- It will not change anything in Azure DevOps — both scripts only read data.
-- It will not export field rules, states, form layouts, picklist values, or permissions — just the field-to-work-item-type attachment list.
-- It will not include fields that exist in the organization but aren't attached to any work item type in the chosen process.
-- It will not give you a point-in-time guaranteed-consistent snapshot if someone edits the process while the export is running.
+> [!NOTE]
+> **What it will NOT do:**
+> - It will not change anything in Azure DevOps — both scripts only read data.
+> - It will not export field rules, states, form layouts, picklist values, or permissions — just the field-to-work-item-type attachment list.
+> - It will not include fields that exist in the organization but aren't attached to any work item type in the chosen process.
+> - It will not give you a point-in-time guaranteed-consistent snapshot if someone edits the process while the export is running.
 
 ## Technical reference
 
@@ -61,6 +100,9 @@ Azure DevOps calls are GET-only. Rerunning the list is harmless. Field export re
 
 ### Parameters and precedence
 
+<details>
+<summary><strong>Parameters and precedence</strong> — flags for both scripts</summary>
+
 | Script | Parameters |
 | --- | --- |
 | Organization listing | `Organization`, `Pat`, `LogDirectory`, `NonInteractive`. |
@@ -69,6 +111,8 @@ Azure DevOps calls are GET-only. Rerunning the list is harmless. Field export re
 Organization accepts `contoso`, `https://dev.azure.com/contoso`, or `https://contoso.visualstudio.com`. Explicit parameters precede prompts; PAT precedence is SecureString → environment → prompt.
 
 For unattended execution, supply `-Pat $securePat -NonInteractive` or set `ADO_SOURCE_PAT` for the process.
+
+</details>
 
 ### Input formats
 
@@ -86,6 +130,9 @@ The listing normalizes the organization, calls the processes endpoint, and forma
 
 ### Verification checklist
 
+<details>
+<summary>Before and after a run</summary>
+
 - Run the offline checks in PowerShell 7 and Windows PowerShell 5.1.
 - Confirm the chosen process ID/name in the listing output.
 - Compare the exported WIT count and representative fields with the Azure DevOps process UI.
@@ -93,12 +140,19 @@ The listing normalizes the organization, calls the processes endpoint, and forma
 
 Offline checks verify local contracts only and do not make live calls or prove the exported process is complete at a later time.
 
+</details>
+
 ### Troubleshooting
+
+<details>
+<summary>Common errors and what they mean</summary>
 
 - Empty/unknown process: rerun the listing and pass its exact `typeId`.
 - `401`/`403`: verify organization, PAT expiry/scopes, and process-view permission.
 - Output error: ensure the parent directory exists and the CSV is not locked.
 - Missing field: confirm it is attached to at least one WIT in the selected process.
+
+</details>
 
 ### Limitations
 
@@ -106,7 +160,8 @@ The CSV is a WIT-field attachment inventory, not a full process backup. It omits
 
 ### Security
 
-Use a short-lived read-only PAT. Protect the CSV and logs because process names, custom field names, and reference names can reveal internal design. Never place PAT text in scripts or source control.
+> [!WARNING]
+> Use a short-lived read-only PAT. Protect the CSV and logs because process names, custom field names, and reference names can reveal internal design. Never place PAT text in scripts or source control.
 
 ### Related workflows
 

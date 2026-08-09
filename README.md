@@ -1,12 +1,47 @@
+<div align="center">
+
 # ADO Utils
 
-PowerShell utilities for auditing and migrating selected Azure DevOps data. The repository favors explicit inputs, additive operations, resumable state, per-run JSONL logs, and offline verification; it is not a complete Azure DevOps project-cloning product.
+**PowerShell utilities for auditing and migrating selected Azure DevOps data — explicit inputs, additive operations, resumable state, and offline verification.**
+
+![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B%20%7C%207%2B-5391FE?style=flat-square&logo=powershell&logoColor=white)
+![Platform](https://img.shields.io/badge/Platform-Windows-0078D4?style=flat-square)
+![Azure DevOps](https://img.shields.io/badge/Azure%20DevOps-0078D4?style=flat-square&logo=azuredevops&logoColor=white)
+
+</div>
+
+This repository favors explicit inputs, additive operations, resumable state, per-run JSONL logs, and offline verification; it is **not** a complete Azure DevOps project-cloning product.
+
+## Table of Contents
+
+- [Using this repo](#using-this-repo)
+  - [Which tool do I want?](#which-tool-do-i-want)
+  - [Before you run anything](#before-you-run-anything)
+  - [What none of these tools do](#what-none-of-these-tools-do)
+- [Recommended workflow order](#recommended-workflow-order)
+- [Technical reference](#technical-reference)
+  - [Repository workflows and exclusions](#repository-workflows-and-exclusions)
+  - [Prerequisites](#prerequisites)
+  - [Authentication and minimum PAT scopes](#authentication-and-minimum-pat-scopes)
+  - [Safety and rerun behavior](#safety-and-rerun-behavior)
+  - [Quick start](#quick-start)
+  - [Parameters and precedence](#parameters-and-precedence)
+  - [Input formats](#input-formats)
+  - [Outputs and logs](#outputs-and-logs)
+  - [Detailed workflow and behavior](#detailed-workflow-and-behavior)
+  - [Verification checklist](#verification-checklist)
+  - [Troubleshooting](#troubleshooting)
+  - [Limitations](#limitations)
+  - [Security](#security)
+  - [Related workflows](#related-workflows)
+
+---
 
 ## Using this repo
 
 This is a collection of separate, single-purpose PowerShell tools. Each one moves or reports on one kind of Azure DevOps data — work items, a test plan, a wiki, area/iteration paths, and so on — between two projects (or within one). None of them clone an entire project end to end, and none of them touch permissions, history, or attachments unless a tool's own README says otherwise.
 
-**Which tool do I want?**
+### Which tool do I want?
 
 | I want to... | Use |
 | --- | --- |
@@ -26,25 +61,58 @@ This is a collection of separate, single-purpose PowerShell tools. Each one move
 | Copy an inherited process template to another organization | [ado-migrate-process](ado-migrate-process/README.md) |
 | Copy one work item type (fields, layout, states) between processes | [ado-migrate-workitemtype](ado-migrate-workitemtype/README.md) |
 
-If you're setting up a brand-new target project from an existing source project, start with **ado-project-setup** — it's a guided launcher that runs several of the tools above in the right order. If you only need one specific thing copied or exported, go straight to that tool's folder.
+> [!TIP]
+> If you're setting up a brand-new target project from an existing source project, start with **ado-project-setup** — it's a guided launcher that runs several of the tools above in the right order. If you only need one specific thing copied or exported, go straight to that tool's folder.
 
-**Before you run anything**, you will generally need:
+### Before you run anything
+
+You will generally need:
 
 - The organization and project name (or full URL) for the source, and for the target if you're copying data somewhere.
 - A Personal Access Token (PAT) — a kind of Azure DevOps password used by scripts instead of your own login — with the right permissions for the job. Each tool's own README lists exactly what access its PAT needs.
 - Permission in the target project to create the kind of object you're copying (work items, test plans, wiki pages, etc.).
 
-Every tool logs what it did to a folder of log files, and most either skip or safely reuse anything that already exists in the target rather than duplicating it. None of them silently delete data — the one tool that deletes anything (`ado-delete-query-test-scripts`) requires you to review a list first and type an exact confirmation phrase before anything is removed.
+Every tool logs what it did to a folder of log files, and most either skip or safely reuse anything that already exists in the target rather than duplicating it.
 
-**What none of these tools do:** migrate user permissions, copy work item history/revisions or attachments, copy test run results, remap identities across organizations, or provide a one-click rollback. If you need those things, plan for manual follow-up — see each tool's README for its specific exclusions.
+> [!WARNING]
+> None of these tools silently delete data. The one tool that deletes anything (`ado-delete-query-test-scripts`) requires you to review a list first and type an exact confirmation phrase before anything is removed.
+
+### What none of these tools do
+
+Migrate user permissions, copy work item history/revisions or attachments, copy test run results, remap identities across organizations, or provide a one-click rollback. If you need those things, plan for manual follow-up — see each tool's README for its specific exclusions.
+
+## Recommended workflow order
+
+For a broader project migration, run the tools in this order. Later steps depend on state that earlier steps establish (custom fields/types, classification paths, and so on).
+
+```mermaid
+graph LR
+    A[Project setup] --> B["Process / work item type"]
+    B --> C["Area & Iteration paths"]
+    C --> D["Work items & queries"]
+    D --> E[Dashboards]
+    E --> F[Wiki]
+
+    style A fill:#4a5568,color:#fff
+    style B fill:#718096,color:#fff
+    style C fill:#718096,color:#fff
+    style D fill:#718096,color:#fff
+    style E fill:#718096,color:#fff
+    style F fill:#4a5568,color:#fff
+```
+
+Wiki migration runs last because page links can refer to final project structures. `ado-project-setup` runs most of this sequence for you through a guided UI; see [Related workflows](#related-workflows) for the detailed rationale.
 
 ---
 
 ## Technical reference
 
-The sections below are the detailed, script-level reference: the full workflow index, PAT scopes, parameters, input/output formats, rerun behavior, verification steps, and troubleshooting. This is written for the person running or maintaining the scripts directly, not for a first-time non-technical user (see "Using this repo" above for that).
+The sections below are the detailed, script-level reference: the full workflow index, PAT scopes, parameters, input/output formats, rerun behavior, verification steps, and troubleshooting. This is written for the person running or maintaining the scripts directly, not for a first-time non-technical user (see [Using this repo](#using-this-repo) above for that).
 
 ### Repository workflows and exclusions
+
+<details>
+<summary><strong>Full workflow and exclusions reference</strong> — capability and exclusions for every script folder</summary>
 
 Each top-level script lives in its own folder with a dedicated README:
 
@@ -73,6 +141,8 @@ Other folder workflows:
 
 Repository root is intentionally kept lean: shared module plus this index README, with all script entry points organized under their own folders.
 
+</details>
+
 ### Prerequisites
 
 - Windows PowerShell 5.1 or PowerShell 7+.
@@ -83,7 +153,10 @@ Repository root is intentionally kept lean: shared module plus this index README
 
 ### Authentication and minimum PAT scopes
 
-PAT resolution is consistent unless a folder README states an exception: a supplied `SecureString` parameter wins, otherwise the role-specific environment variable is read, otherwise a hidden prompt is used. The variables are `ADO_PAT`, `ADO_SOURCE_PAT`, and `ADO_TARGET_PAT`. `ado-extract-discussions/ado-extract-discussions.ps1` prompts for a fresh PAT when `-Pat` is omitted and does not read `ADO_PAT`. `ado-delete-query-test-scripts/ado-delete-query-test-scripts.ps1 -PromptForPat` intentionally ignores `-Pat` and the normal parameter path and forces the hidden prompt. `-NonInteractive` turns every missing interactive input into an error.
+PAT resolution is consistent unless a folder README states an exception: a supplied `SecureString` parameter wins, otherwise the role-specific environment variable is read, otherwise a hidden prompt is used. The variables are `ADO_PAT`, `ADO_SOURCE_PAT`, and `ADO_TARGET_PAT`.
+
+> [!NOTE]
+> `ado-extract-discussions/ado-extract-discussions.ps1` prompts for a fresh PAT when `-Pat` is omitted and does not read `ADO_PAT`. `ado-delete-query-test-scripts/ado-delete-query-test-scripts.ps1 -PromptForPat` intentionally ignores `-Pat` and the normal parameter path and forces the hidden prompt. `-NonInteractive` turns every missing interactive input into an error.
 
 The exact shared prompts are:
 
@@ -97,6 +170,9 @@ Target Azure DevOps PAT (input hidden)
 ```
 
 Root URL inputs use the literal prompts `Source URL`, `Source Query URL`, `Target URL`, `Target Project URL`, and `Enter the Azure DevOps Project URL (e.g. https://dev.azure.com/contoso/ProjectName)` as applicable. `AdoUtils.Common.psm1` owns the shared project URL parsing contract for scripts that accept full project URLs. PATs are converted to authorization headers in memory, registered for log redaction, and neither cached nor written back to environment variables. Do not put PATs in plain-text command arguments.
+
+<details>
+<summary><strong>PAT scopes reference</strong> — minimum source/target PAT scope per workflow</summary>
 
 | Workflow | Source/read PAT | Target/write PAT |
 | --- | --- | --- |
@@ -113,9 +189,12 @@ Root URL inputs use the literal prompts `Source URL`, `Source Query URL`, `Targe
 | Work item type migration | Process and Work Items: Read | Process and Work Items: Read & write |
 | Project setup launcher | Work Items, Process (Step 0), Team dashboards, Code/Wiki, Test Management (Step 8), Project/team metadata: Read | Work Items, Process (Step 0), Code/Wiki, Test Management (Step 8): Read & write; Team dashboards: Manage; Team Settings: update permission |
 
+</details>
+
 ### Safety and rerun behavior
 
-No script performs an implicit delete. The only delete workflow requires `ado-delete-query-test-scripts/ado-delete-query-test-scripts.ps1 -Apply`, an explicit reviewed manifest, a current result-set match, and an exact confirmation phrase; Test Plan/Suite deletion can cascade inside Azure DevOps.
+> [!WARNING]
+> The only delete workflow requires `ado-delete-query-test-scripts/ado-delete-query-test-scripts.ps1 -Apply`, an explicit reviewed manifest, a current result-set match, and an exact confirmation phrase; Test Plan/Suite deletion can cascade inside Azure DevOps. No other script performs an implicit delete.
 
 Most migration workflows create missing objects and reuse or skip matches. That does not make every rerun consequence-free: some workflows patch matching objects, the wiki tools update non-identical pages, query/work-item copy updates IDs recorded in its state file, and process migration applies best-effort patches. Conflicting target content is either refused, skipped, or reported according to the folder README. Keep state and manifests with the run they belong to.
 
@@ -135,7 +214,8 @@ $pat = Read-Host 'Azure DevOps PAT (input hidden)' -AsSecureString
   -NonInteractive
 ```
 
-Examples for the other script folders:
+<details>
+<summary>Examples for the other script folders</summary>
 
 ```powershell
 ./ado-copy-query-workitems/ado-copy-query-workitems.ps1 `
@@ -161,13 +241,16 @@ Examples for the other script folders:
   -SourcePat $sourcePat -TargetPat $targetPat -NonInteractive
 ```
 
-For a broader project migration, use this order: process/WIT foundation, Area and Iteration Paths, dashboard export/query/import, then wiki content. Run dashboard step 4 only as the documented path-repair branch.
+For a broader project migration, use the order shown in [Recommended workflow order](#recommended-workflow-order): process/WIT foundation, Area and Iteration Paths, dashboard export/query/import, then wiki content. Run dashboard step 4 only as the documented path-repair branch.
+
+</details>
 
 ### Parameters and precedence
 
 All 19 entry scripts expose `-LogDirectory` and `-NonInteractive`; all PAT parameters are `SecureString`. Common values use parameter -> environment -> prompt precedence for PATs and parameter -> prompt for required non-secret values.
 
-Script-folder-specific parameters:
+<details>
+<summary><strong>Full parameter reference</strong> — script-folder-specific parameters for every entry script</summary>
 
 | Script | Parameters |
 | --- | --- |
@@ -181,6 +264,8 @@ Script-folder-specific parameters:
 | `ado-project-setup/ado-project-setup-runner.ps1` | `SourceProjectUrl`, `TargetProjectUrl`, `Steps` (default: all except process migration), `ProcessName`, `ProcessMode`, `DefaultAreaPath`, `SourceWikiName`, `TargetWikiName`, `RunRoot`, `ProgressPath`, `SourcePat`, `TargetPat`, `NonInteractive`. Wraps other entry scripts in-process rather than exposing `LogPath`/`StatePath` directly; see its own README for run-root and state-file layout. |
 
 `LogPath` parameters control legacy human-readable script logs where present; they do not replace the shared JSONL logs controlled by `LogDirectory`.
+
+</details>
 
 ### Input formats
 
@@ -202,7 +287,8 @@ Every entry run immediately creates two unique UTF-8-without-BOM JSON Lines file
 
 Non-error records go to the success log; error records go to the error log. Each line is one JSON object with `timestampUtc`, `level`, `script`, `runId`, `operation`, `outcome`, `target`, `message`, `errorType`, and `statusCode`. Both files exist even when one remains empty. Registered PATs, authorization values, and common secret query parameters are redacted.
 
-Entry-point auxiliary outputs are:
+<details>
+<summary>Entry-point auxiliary outputs</summary>
 
 - Query/work-item copy: state JSON, optional text log, a `*.failures.json` summary, and console summary JSON.
 - Test Management copy: state JSON, optional text log, and console summary JSON. The state maps source plan IDs, suite IDs, Test Case work item IDs, and suite-case memberships to target artifacts for reruns.
@@ -210,7 +296,12 @@ Entry-point auxiliary outputs are:
 - Discussion export: a uniquely timestamped `AdoWorkItemDiscussions-<queryId>-<timestamp>.csv` beside the script per run, appended one completed work item at a time within that run.
 - Query migration: `migration-state.json`, `source-queries.json`, `field-schema.json`, plus legacy `success.log` and `error.log` in `-OutputDirectory`.
 
+</details>
+
 ### Detailed workflow and behavior
+
+<details>
+<summary>Per-script step-by-step behavior</summary>
 
 `ado-copy-test-management/ado-copy-test-management.ps1` reads selected or all source Test Plans, creates target plans, recreates suite hierarchy, creates Test Case work items, patches rich-text fields without HTML conversion, and links mapped cases into mapped suites. The default copied rich-text fields are `System.Description` and `Microsoft.VSTS.TCM.Steps`; `AdditionalFieldReferenceNames` can include custom rich-text fields. State is saved after every successful artifact creation. If the source Test Plan REST API returns the Azure DevOps `TF400409` web-execution license error, or a Test Plan service `TF200016`/project-visibility error after the Core project lookup has resolved the project, the script falls back to Work Item Tracking discovery for Test Plan/Test Suite/Test Case work items and reconstructs a best-effort graph from their work-item links. If no suite-case membership is visible through available APIs, `-CopyStandaloneTestCasesWhenSuitesUnavailable` copies visible source Test Case work items as standalone target Test Cases without suite links. If source point configuration IDs cannot be applied to the target suite, the script retries suite membership using target defaults and logs a warning.
 
@@ -222,7 +313,12 @@ Entry-point auxiliary outputs are:
 
 `ado-migrate-query/ado-migrate-query.ps1` reads each configured query, optionally uses checked-in fallback WIQL for three known default IDs, rewrites source-project literals and unsupported custom Boolean predicates, creates missing folders/query, freshly reads a created query, and records its target ID. A state hit is verified by target ID. An existing identical query is recorded and skipped; differing WIQL is never overwritten.
 
+</details>
+
 ### Verification checklist
+
+<details>
+<summary>Before and after a live run</summary>
 
 Before a live run:
 
@@ -238,7 +334,12 @@ After a live run:
 
 The repository's offline checks use mocks/static assertions and make no live Azure DevOps calls. They prove local contracts and representative branches, not live service permissions or end-to-end correctness.
 
+</details>
+
 ### Troubleshooting
+
+<details>
+<summary>Common errors and what they mean</summary>
 
 - Missing input under `-NonInteractive`: supply the parameter or appropriate PAT environment variable.
 - `401`: verify PAT organization, expiry, and scope. `403`: verify both PAT scope and the identity's project/process permission.
@@ -247,13 +348,16 @@ The repository's offline checks use mocks/static assertions and make no live Azu
 - Locked discussion CSV: close the file; export retries file-sharing failures before terminating.
 - Dashboard, wiki, path, and process-specific errors: use the linked folder README.
 
+</details>
+
 ### Limitations
 
 These utilities do not provide transactional rollback, a universal dry run, automatic permission migration, or full-fidelity project cloning. API behavior, extensions, custom processes, identities, cross-project links, and concurrent edits can require manual follow-up. Offline verification never contacts Azure DevOps, and this documentation does not claim a live validation run.
 
 ### Security
 
-Use short-lived least-privilege PATs. Prefer `SecureString` parameters or process-scoped environment variables, clear environment variables after use, never commit credentials, and protect logs/exports/state because they can contain project names, IDs, work-item text, WIQL, and wiki content even after PAT redaction. Redaction is defense in depth, not permission to log arbitrary secrets.
+> [!WARNING]
+> Use short-lived least-privilege PATs. Prefer `SecureString` parameters or process-scoped environment variables, clear environment variables after use, never commit credentials, and protect logs/exports/state because they can contain project names, IDs, work-item text, WIQL, and wiki content even after PAT redaction. Redaction is defense in depth, not permission to log arbitrary secrets.
 
 ### Related workflows
 

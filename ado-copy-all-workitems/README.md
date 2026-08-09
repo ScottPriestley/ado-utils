@@ -1,15 +1,58 @@
+<div align="center">
+
 # Azure DevOps Copy All Work Items
 
-`ado-copy-all-workitems.ps1` copies every work item in a source project into a
-target project, preserving rich-text field content exactly.
+**Copies every work item in a source project into a target project, preserving rich-text field content exactly, with no write access to the source required.**
+
+![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B%20%7C%207%2B-5391FE?style=flat-square&logo=powershell&logoColor=white)
+![Platform](https://img.shields.io/badge/Platform-Windows-0078D4?style=flat-square)
+![Azure DevOps](https://img.shields.io/badge/Azure%20DevOps-0078D4?style=flat-square&logo=azuredevops&logoColor=white)
+![Source Access](https://img.shields.io/badge/Source%20Access-Read--only-718096?style=flat-square)
+
+</div>
+
+## Table of Contents
+
+- [Using the tool](#using-the-tool)
+- [Technical reference](#technical-reference)
+  - [Scripts, capabilities, and exclusions](#scripts-capabilities-and-exclusions)
+  - [Relationship to ado-copy-query-workitems](#relationship-to-ado-copy-query-workitems)
+  - [Prerequisites](#prerequisites)
+  - [Authentication and minimum PAT scopes](#authentication-and-minimum-pat-scopes)
+  - [Formatting fidelity](#formatting-fidelity)
+  - [Classification paths](#classification-paths)
+  - [Targeted retry on create failure](#targeted-retry-on-create-failure)
+  - [Parent/child link recreation (second pass)](#parentchild-link-recreation-second-pass)
+  - [Work item types missing from the target](#work-item-types-missing-from-the-target)
+  - [Board fields](#board-fields)
+  - [Identity fields](#identity-fields)
+  - [Safety and rerun behavior](#safety-and-rerun-behavior)
+  - [Quick start](#quick-start)
+  - [Parameters and precedence](#parameters-and-precedence)
+  - [Outputs](#outputs)
+  - [Scale](#scale)
+  - [Verification checklist](#verification-checklist)
+
+---
 
 ## Using the tool
+
+```mermaid
+graph LR
+    A[Source Project] -->|WIQL discovery| B[ado-copy-all-workitems]
+    B -->|create pass, then link pass| C[Target Project]
+
+    style A fill:#4a5568,color:#fff
+    style B fill:#718096,color:#fff
+    style C fill:#4a5568,color:#fff
+```
 
 **What it does:** Finds every work item in a source project and re-creates each one in a target project, keeping rich-text fields (like descriptions and repro steps) exactly as they appear in the source. Once every item is created, it makes a second pass to reconnect parent/child relationships between the copied items.
 
 **When to use it:** You're standing up a target project from an entire source project — not just a subset. If you only want a deliberately chosen set of items (say, the results of one saved query), use `ado-copy-query-workitems` instead — this script is the whole-project counterpart to that one, and needs no write access to the source project at all (nothing is ever created in the source).
 
-**What it will NOT do:** It does not copy work item history/revisions, attachments, comments, or any relationship other than parent/child (other link types are not recreated). Fields whose value is a person (like "Assigned To") are skipped by default, because the same person may not exist in the target organization — you can turn this on with a switch if the same people exist in both places. Kanban board fields tied to the source project's boards are dropped since they wouldn't mean anything in the target. Nothing is ever deleted, and there's no rollback.
+> [!WARNING]
+> **What it will NOT do:** It does not copy work item history/revisions, attachments, comments, or any relationship other than parent/child (other link types are not recreated). Fields whose value is a person (like "Assigned To") are skipped by default, because the same person may not exist in the target organization — you can turn this on with a switch if the same people exist in both places. Kanban board fields tied to the source project's boards are dropped since they wouldn't mean anything in the target. Nothing is ever deleted, and there's no rollback.
 
 **Before you start, have ready:**
 - The source project URL and the target project URL.
@@ -40,7 +83,8 @@ target project, preserving rich-text field content exactly.
 - If any items or links failed outright, a separate failures file listing exactly what didn't come across, so you know what to check or fix before rerunning.
 - If the source project uses a work item type the target doesn't have, the run will call that out by name at the end rather than failing silently — you'd set that type up in the target and rerun to pick up the items that were skipped.
 
-There's no preview/dry-run mode — running it does the copy.
+> [!NOTE]
+> There's no preview/dry-run mode — running it does the copy.
 
 ## Technical reference
 
@@ -82,9 +126,8 @@ Rich-text fields such as `System.Description` and
 API. No HTML parsing, rewriting, or sanitising occurs, so source formatting is
 preserved.
 
-Attachments and inline images hosted in the source project are **not** copied.
-An inline image whose `src` points at a source attachment URL keeps that URL and
-will render only for viewers with source project access.
+> [!NOTE]
+> Attachments and inline images hosted in the source project are **not** copied. An inline image whose `src` points at a source attachment URL keeps that URL and will render only for viewers with source project access.
 
 ### Classification paths
 
@@ -93,6 +136,9 @@ target project root: `Source\Team A\Web` becomes `Target\Team A\Web`. Supply
 `-PreserveClassificationPaths` to send them unchanged instead.
 
 ### Targeted retry on create failure
+
+<details>
+<summary><strong>Retry logic</strong> — how a failed create is diagnosed and retried before giving up</summary>
 
 If a work item create fails for a reason other than a missing work item type
 (see below), the script inspects the error text before giving up rather than
@@ -116,7 +162,12 @@ the error log along with the original failure reason. A work item that fails
 every attempt is recorded in `*.failures.json` and puts the run in a
 partial-failure outcome.
 
+</details>
+
 ### Parent/child link recreation (second pass)
+
+<details>
+<summary><strong>Link recreation logic</strong> — ordering, already-exists handling, and the TF51541 retry</summary>
 
 Items are created first, in id order, before any link is recreated, because a
 parent may not exist yet when its child is created. After all creates in a
@@ -143,12 +194,12 @@ between the two target items.
 The run prints how many links were recreated and, separately, how many were
 already present.
 
+</details>
+
 ### Work item types missing from the target
 
-A work item type the target process does not define cannot be created. The first
-item of such a type produces a 404, after which every remaining item of that type
-is skipped without another API call rather than collecting hundreds of identical
-failures.
+> [!WARNING]
+> A work item type the target process does not define cannot be created. The first item of such a type produces a 404, after which every remaining item of that type is skipped without another API call rather than collecting hundreds of identical failures.
 
 The run ends by naming the missing types and the number of items affected, and
 exits with a partial-failure result. Migrate the target process first (see
@@ -165,11 +216,8 @@ They carry no content worth migrating and are excluded.
 
 ### Identity fields
 
-Fields whose value is an identity, such as `System.AssignedTo`, are skipped by
-default and reported at the end of the run. A source identity that does not
-exist in the target organization causes the create to fail outright, and most
-target projects have different membership. Supply `-CopyIdentityFields` when the
-same identities exist in both organizations.
+> [!NOTE]
+> Fields whose value is an identity, such as `System.AssignedTo`, are skipped by default and reported at the end of the run. A source identity that does not exist in the target organization causes the create to fail outright, and most target projects have different membership. Supply `-CopyIdentityFields` when the same identities exist in both organizations.
 
 ### Safety and rerun behavior
 
@@ -194,6 +242,9 @@ There is no `-WhatIf` or remote dry run.
 
 ### Parameters and precedence
 
+<details>
+<summary><strong>Parameter reference</strong> — every parameter this script accepts</summary>
+
 | Parameter | Description |
 | --- | --- |
 | `SourceProjectUrl`, `TargetProjectUrl` | Preferred inputs. Must identify `https://dev.azure.com/{org}/{project}`. |
@@ -203,6 +254,8 @@ There is no `-WhatIf` or remote dry run.
 | `CopyIdentityFields` | Also copy identity-valued fields. |
 | `PreserveClassificationPaths` | Send Area and Iteration Paths unchanged. |
 | `LogDirectory`, `NonInteractive` | Common to every entry script. |
+
+</details>
 
 ### Outputs
 

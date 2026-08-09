@@ -1,14 +1,57 @@
+<div align="center">
+
 # Azure DevOps Query Work Item Copy
 
-`ado-copy-query-workitems.ps1` copies one saved Azure DevOps query, the work items returned by that query, supported fields, and supported query relationships into a target project. The workflow is additive and stateful; it is a focused copy tool, not a complete project clone.
+**Copies one saved Azure DevOps query, the work items it returns, supported fields, and supported query relationships into a target project.**
+
+![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B%20%7C%207%2B-5391FE?style=flat-square&logo=powershell&logoColor=white)
+![Platform](https://img.shields.io/badge/Platform-Windows-0078D4?style=flat-square)
+![Azure DevOps](https://img.shields.io/badge/Azure%20DevOps-0078D4?style=flat-square&logo=azuredevops&logoColor=white)
+![Scope](https://img.shields.io/badge/Scope-Query--based-718096?style=flat-square)
+
+</div>
+
+The workflow is additive and stateful; it is a focused copy tool, not a complete project clone.
+
+## Table of Contents
+
+- [Using the tool](#using-the-tool)
+- [Technical reference](#technical-reference)
+  - [Scripts, capabilities, and exclusions](#scripts-capabilities-and-exclusions)
+  - [Prerequisites](#prerequisites)
+  - [Authentication and minimum PAT scopes](#authentication-and-minimum-pat-scopes)
+  - [Safety and rerun behavior](#safety-and-rerun-behavior)
+  - [Quick start](#quick-start)
+  - [Parameters and precedence](#parameters-and-precedence)
+  - [Input formats](#input-formats)
+  - [Outputs and logs](#outputs-and-logs)
+  - [Detailed workflow and behavior](#detailed-workflow-and-behavior)
+  - [Verification checklist](#verification-checklist)
+  - [Troubleshooting](#troubleshooting)
+  - [Limitations](#limitations)
+  - [Security](#security)
+  - [Related workflows](#related-workflows)
+
+---
 
 ## Using the tool
+
+```mermaid
+graph LR
+    A[Saved Query in Source] --> B[ado-copy-query-workitems]
+    B --> C[Copied Query + Work Items in Target]
+
+    style A fill:#4a5568,color:#fff
+    style B fill:#718096,color:#fff
+    style C fill:#4a5568,color:#fff
+```
 
 **What it does:** Takes one saved Azure DevOps query, copies the query itself into the target project, runs it, and copies the work items it returns — along with their supported fields and relationships — into the target project as new (or updated) work items.
 
 **When to use it:** You want a specific, deliberately-scoped set of work items moved to a target project — for example, "everything in this release" or "all open bugs matching this filter" — rather than the whole project. If you want to copy an entire project's work items instead of a query's results, use `ado-copy-all-workitems` instead (see that tool's README).
 
-**What it will NOT do:** It does not copy history, comments, attachments, identities (who's assigned, who created what), permissions, or every possible field or relationship type — some relationship types and external links are intentionally out of scope. It's not a full-fidelity clone and there's no rollback.
+> [!WARNING]
+> **What it will NOT do:** It does not copy history, comments, attachments, identities (who's assigned, who created what), permissions, or every possible field or relationship type — some relationship types and external links are intentionally out of scope. It's not a full-fidelity clone and there's no rollback.
 
 **Before you start, have ready:**
 - The URL of the saved query in the source project (you can copy this straight from the browser address bar when viewing the query in Azure DevOps).
@@ -38,7 +81,8 @@
 - A log folder with a success log and an error log.
 - If some items or relationships couldn't be copied, a separate failures file listing exactly what didn't make it over, so you can review and decide what to do about it. This isn't unusual on a first run — it typically points to a target field, path, or work item type that needs to be set up first.
 
-There's no preview/dry-run mode for this tool — running it does the copy.
+> [!NOTE]
+> There's no preview/dry-run mode for this tool — running it does the copy.
 
 ## Technical reference
 
@@ -66,7 +110,10 @@ Minimum scopes are Work Items Read for source and Work Items Read & write for ta
 
 ### Safety and rerun behavior
 
-The script does not delete anything. It saves source-to-target work item IDs in `StatePath` after successful item creation and reuses those IDs on rerun. A recorded target work item can be patched with the current supported source fields. Query folders are created as needed, identical queries are reused, and differing target query content may be patched by this workflow.
+The script does not delete anything. It saves source-to-target work item IDs in `StatePath` after successful item creation and reuses those IDs on rerun.
+
+> [!NOTE]
+> A recorded target work item can be patched with the current supported source fields. Query folders are created as needed, identical queries are reused, and differing target query content may be patched by this workflow.
 
 Individual item or relation failures are collected in a failure summary and cause a terminating partial-failure result. Keep the state file with the run; do not mix it with another source query.
 
@@ -97,6 +144,9 @@ From this folder:
 
 ### Parameters and precedence
 
+<details>
+<summary><strong>Parameter reference</strong> — every parameter this script accepts</summary>
+
 | Parameter | Description |
 | --- | --- |
 | `SourceQueryUrl` | Saved query URL. Prompts as `Source Query URL` when omitted. |
@@ -108,6 +158,8 @@ From this folder:
 | `PreserveClassificationPaths` | Keeps source Area/Iteration paths instead of rewriting them to the target project root. |
 | `LogDirectory` | Shared JSONL log directory; defaults to `logs` beside the script. |
 | `NonInteractive` | Rejects every missing interactive input. |
+
+</details>
 
 PAT precedence is SecureString parameter -> environment variable -> hidden prompt. Non-secret inputs use parameter -> prompt.
 
@@ -123,9 +175,14 @@ Every run creates UTF-8-without-BOM JSONL files named `ado-copy-query-workitems-
 
 ### Detailed workflow and behavior
 
+<details>
+<summary>Step-by-step behavior</summary>
+
 The script validates URLs, resolves source and target project identity, loads state, reads source query metadata/WIQL, creates any missing target query folders, and creates or updates the target query. It executes the source query, reads returned work items in batches, copies supported fields into target work items, records mappings immediately, and then attempts supported relation recreation between mapped items.
 
 Field copying favors fields present in the target process and skips unsupported/system fields. Classification values are rewritten to the target root unless preservation is explicitly requested.
+
+</details>
 
 ### Verification checklist
 
@@ -139,18 +196,25 @@ Offline checks do not contact Azure DevOps and do not prove a live migration's s
 
 ### Troubleshooting
 
+<details>
+<summary>Common errors and what they mean</summary>
+
 - `401`/`403`: verify PAT organization, expiry, Work Items scope, and project permissions.
 - Missing field/type/path: prepare the target process or classification paths, then rerun with the same state.
 - Partial relation failures: inspect the failure JSON; some source relation types or external links are intentionally out of scope.
 - Differing target query: review the target query path and WIQL before rerunning.
 
+</details>
+
 ### Limitations
 
-No history, comments, attachments, identities, permissions, external links, complete field parity, rollback, or universal dry run are provided. Existing mapped target work items may be patched, so reruns require review.
+> [!NOTE]
+> No history, comments, attachments, identities, permissions, external links, complete field parity, rollback, or universal dry run are provided. Existing mapped target work items may be patched, so reruns require review.
 
 ### Security
 
-Use short-lived least-privilege PATs. Protect state, logs, summaries, and copied query data because they can contain work item text, paths, IDs, and WIQL. Never put PAT text in command history or source control.
+> [!WARNING]
+> Use short-lived least-privilege PATs. Protect state, logs, summaries, and copied query data because they can contain work item text, paths, IDs, and WIQL. Never put PAT text in command history or source control.
 
 ### Related workflows
 

@@ -1,12 +1,63 @@
+<div align="center">
+
 # Azure DevOps Dashboard Migration
 
+**Four ordered PowerShell scripts that move team dashboards — widgets, settings, and the queries they depend on — from one Azure DevOps project to another.**
+
+![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B%20%7C%207%2B-5391FE?style=flat-square&logo=powershell&logoColor=white)
+![Platform](https://img.shields.io/badge/Platform-Windows-0078D4?style=flat-square)
+![Azure DevOps](https://img.shields.io/badge/Azure%20DevOps-0078D4?style=flat-square&logo=azuredevops&logoColor=white)
+
+</div>
+
 Four ordered PowerShell scripts that move team dashboards from one Azure DevOps organization/project to another: export from source, recreate the Shared Queries the dashboards depend on, import the dashboards into the target, and (only if needed) patch in missing Area/Iteration nodes that the exported queries reference.
+
+## Table of Contents
+
+- [Using the tool](#using-the-tool)
+- [Technical reference](#technical-reference)
+  - [Scripts, capabilities, and exclusions](#scripts-capabilities-and-exclusions)
+  - [Prerequisites](#prerequisites)
+  - [Authentication and minimum PAT scopes](#authentication-and-minimum-pat-scopes)
+  - [Safety and rerun behavior](#safety-and-rerun-behavior)
+  - [Parameters and precedence](#parameters-and-precedence)
+  - [Input formats](#input-formats)
+  - [Outputs and logs](#outputs-and-logs)
+  - [Detailed workflow and behavior](#detailed-workflow-and-behavior)
+  - [Verification checklist](#verification-checklist)
+  - [Troubleshooting](#troubleshooting)
+  - [Limitations](#limitations)
+  - [Security](#security)
+  - [Related workflows](#related-workflows)
+
+---
 
 ## Using the tool
 
 **What it does:** Copies team dashboards — the widgets, their settings, and the Shared Queries they point to — from a source project to a target project. It does this in four steps, run in order, because dashboards depend on queries, and queries depend on Area/Iteration paths existing in the target.
 
 **When you'd use it:** You're standing up a new Azure DevOps project (a reorg, a tenant move, a template rollout) and want the team's existing dashboards to show up in the new project instead of being rebuilt widget-by-widget by hand.
+
+```mermaid
+sequenceDiagram
+    participant Src as Source Project
+    participant E as 01 Export
+    participant Q as 02 Migrate Queries
+    participant I as 03 Import Dashboards
+    participant N as 04 Create Classification Nodes
+    participant Tgt as Target Project
+
+    Src->>E: dashboards, widgets, queries
+    E->>Q: export/ (queries.json, mapping.json)
+    Q->>Tgt: recreate Shared Queries
+    alt query skipped: missing Area/Iteration
+        Q->>N: queries-skipped.txt
+        N->>Tgt: create missing nodes
+        N->>Q: rerun step 2
+    end
+    Q->>I: querymap.json
+    I->>Tgt: create dashboards
+```
 
 **The four steps, in plain language:**
 
@@ -32,7 +83,8 @@ Four ordered PowerShell scripts that move team dashboards from one Azure DevOps 
 ./03-import-dashboards.ps1 -TargetOrg 'target-org' -TargetProject 'Target Project' -TargetTeam 'Target Team' -ExportDir './export'
 ```
 
-If step 2 reports skipped queries because of a missing Area/Iteration path, run step 4 and then re-run step 2 before moving on to step 3:
+> [!NOTE]
+> If step 2 reports skipped queries because of a missing Area/Iteration path, run step 4 and then re-run step 2 before moving on to step 3:
 
 ```powershell
 ./04-create-classification-nodes.ps1 -TargetOrg 'target-org' -TargetProject 'Target Project' -ExportDir './export' -WhatIfOnly
@@ -85,6 +137,9 @@ Step 1 is read-only against Azure DevOps but replaces its named export artifacts
 
 ### Parameters and precedence
 
+<details>
+<summary><strong>Full parameter reference</strong> — parameters for each of the four scripts</summary>
+
 | Script | Parameters |
 | --- | --- |
 | Step 1 | `Org`, `Project`, `OutDir` (default `./export`), `SourcePat`, `LogDirectory`, `NonInteractive`. |
@@ -93,6 +148,8 @@ Step 1 is read-only against Azure DevOps but replaces its named export artifacts
 | Step 4 | `TargetOrg`, `TargetProject`, `ExportDir` (default `./export`), `SourceProjectName`, `WhatIfOnly`, `TargetPat`, common logging switches. Blank source project is read from `mapping.json`. |
 
 All PATs follow SecureString → environment → prompt. `LogDirectory` defaults to `logs` beside the current entry script.
+
+</details>
 
 ### Input formats
 
@@ -104,7 +161,8 @@ Step 1 accepts organization names/full Azure DevOps URLs and a project name/ID. 
 
 The shared run contract writes UTF-8-without-BOM JSONL files named `<script-base>-success log-<run-id>.jsonl` and `<script-base>-error log-<run-id>.jsonl`, under `LogDirectory` or `logs` beside each script. Every record contains `timestampUtc`, `level`, `script`, `runId`, `operation`, `outcome`, `target`, `message`, `errorType`, and `statusCode`; sensitive authorization values are redacted.
 
-Workflow artifacts under `OutDir`/`ExportDir`:
+<details>
+<summary><strong>Workflow artifact layout</strong> — files written under <code>OutDir</code>/<code>ExportDir</code></summary>
 
 ```text
 export/
@@ -120,7 +178,12 @@ export/
 
 `inventory.md` is generated by step 1; there is no separate iteration workbook generated or promised by this workflow.
 
+</details>
+
 ### Detailed workflow and behavior
+
+<details>
+<summary>Step-by-step script behavior</summary>
 
 Step 1 walks source teams/dashboards, writes raw dashboard records, extracts widget GUIDs, resolves live Shared Queries, and can recover drifted query IDs by unambiguous embedded-name matching. `inventory.md` flags unresolved/ambiguous references, marketplace widgets, and Test Plan/Suite charts. Review it before writes.
 
@@ -130,7 +193,12 @@ Step 3 validates mapping identity, builds substitutions for source URL/project/t
 
 Step 4 parses AreaPath/IterationPath literals from WIQL, rejects cross-project roots, checks nodes before writes, creates missing nodes parent-first unless `WhatIfOnly`, and freshly GETs each created node. Preview reports proposed nodes and records a preview outcome; it does not claim post-write verification.
 
+</details>
+
 ### Verification checklist
+
+<details>
+<summary>Before and after a live run</summary>
 
 - Run both offline commands from the repository root.
 - Confirm `inventory.md` has no unexplained unresolved or ambiguous query references.
@@ -141,7 +209,12 @@ Step 4 parses AreaPath/IterationPath literals from WIQL, rejects cross-project r
 
 Offline checks use local assertions/mocks and make no live Azure DevOps calls.
 
+</details>
+
 ### Troubleshooting
+
+<details>
+<summary>Common errors and what they mean</summary>
 
 - Missing process field/type/state: migrate the inherited-process content, then rerun step 2.
 - Missing Area/Iteration literal: prefer the full [Area](../ado-import-area-paths/README.md) and [Iteration](../ado-import-iterations/README.md) workflows; otherwise use step 4 and rerun step 2.
@@ -150,13 +223,16 @@ Offline checks use local assertions/mocks and make no live Azure DevOps calls.
 - Existing dashboard: it is intentionally skipped; inspect it or use a suffix.
 - Unknown widget GUID/extension: install/configure the extension or map the external Test Management object manually.
 
+</details>
+
 ### Limitations
 
 The workflow does not migrate dashboard permissions, extension installation/configuration, Test Plans/Suites, a complete classification tree, iteration dates, or guaranteed widget rendering. Query reuse and dashboard-name skip checks are not full content equivalence checks. No live validation is claimed by the repository's offline suite.
 
 ### Security
 
-Use short-lived least-privilege PATs and protect the export directory: dashboard settings, WIQL, organization/project/team names, and GUIDs can be sensitive. Do not add PATs to `mapping.json`, shell history, logs, or source control.
+> [!WARNING]
+> Use short-lived least-privilege PATs and protect the export directory: dashboard settings, WIQL, organization/project/team names, and GUIDs can be sensitive. Do not add PATs to `mapping.json`, shell history, logs, or source control.
 
 ### Related workflows
 

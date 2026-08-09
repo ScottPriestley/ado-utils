@@ -1,10 +1,49 @@
+<div align="center">
+
 # Azure DevOps Work Item Type Migration
 
-`ado-migrate-workitemtype.ps1` migrates one inherited-process work item type (WIT), selected supporting metadata, and form placement between processes in the same or different organizations.
+**Migrates one inherited-process work item type — fields, states, best-effort rules, and form placement — between processes in the same or different organizations.**
+
+![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B%20%7C%207%2B-5391FE?style=flat-square&logo=powershell&logoColor=white)
+![Platform](https://img.shields.io/badge/Platform-Windows-0078D4?style=flat-square)
+![Azure DevOps](https://img.shields.io/badge/Azure%20DevOps-0078D4?style=flat-square&logo=azuredevops&logoColor=white)
+
+</div>
+
+## Table of Contents
+
+- [Using the tool](#using-the-tool)
+- [Technical reference](#technical-reference)
+  - [Scripts, capabilities, and exclusions](#scripts-capabilities-and-exclusions)
+  - [Prerequisites](#prerequisites)
+  - [Authentication and minimum PAT scopes](#authentication-and-minimum-pat-scopes)
+  - [Safety and rerun behavior](#safety-and-rerun-behavior)
+  - [Quick start](#quick-start)
+  - [Parameters and precedence](#parameters-and-precedence)
+  - [Input formats](#input-formats)
+  - [Outputs and logs](#outputs-and-logs)
+  - [Detailed workflow and behavior](#detailed-workflow-and-behavior)
+  - [Verification checklist](#verification-checklist)
+  - [Troubleshooting](#troubleshooting)
+  - [Limitations](#limitations)
+  - [Security](#security)
+  - [Related workflows](#related-workflows)
+
+---
 
 ## Using the tool
 
 **What it does.** This script copies a single work item type — say, a custom "Business Process" type — from one inherited process to another, including its fields, picklists, states, best-effort rules, and where those fields sit on the form. It's narrower than the full process migration tool: instead of copying an entire process, it copies one work item type out of a source process into a target process.
+
+```mermaid
+graph LR
+    A["Source Process<br/>(WIT)"] --> B[ado-migrate-workitemtype]
+    B --> C["Target Process<br/>(WIT)"]
+
+    style A fill:#4a5568,color:#fff
+    style C fill:#4a5568,color:#fff
+    style B fill:#718096,color:#fff
+```
 
 **When you'd use it.** You've already got a target process set up (or you're adding a new type to an existing one) and just need to bring over one specific work item type from another process, rather than migrating the whole process.
 
@@ -29,12 +68,16 @@ Run this from a PowerShell prompt in the script's folder. If you don't pass PATs
 
 **What to expect.** The script prints progress as it goes — fields, picklists, states, rules, and layout controls it created, reused, or skipped, plus warnings for anything it couldn't fully translate (such as a rule referencing something that doesn't exist in the target). At the end you get a summary count. It also writes log files for later review. Nothing is deleted in either organization.
 
-**What it will NOT do:**
-- It will not migrate the rest of the process — only the one work item type you name.
-- It will not migrate actual work items, projects, or process permissions.
-- It will not migrate backlog behavior assignments or custom UI extension controls.
-- It has no undo — no dry-run or rollback. Try it against a nonproduction process first.
-- It will not confirm the target behaves identically to the source; plan to spot-check the result (see the verification checklist in the technical section).
+> [!WARNING]
+> **What it will NOT do:**
+> - It will not migrate the rest of the process — only the one work item type you name.
+> - It will not migrate actual work items, projects, or process permissions.
+> - It will not migrate backlog behavior assignments or custom UI extension controls.
+> - It has no undo — no dry-run or rollback. Try it against a nonproduction process first.
+> - It will not confirm the target behaves identically to the source; plan to spot-check the result (see the [verification checklist](#verification-checklist) in the technical section).
+
+> [!IMPORTANT]
+> This tool modifies the **target process** directly — new fields, states, rules, and layout controls are added to whatever work item type already exists there (or a newly created one). Run against a nonproduction process first if you're unsure what will be created.
 
 ---
 
@@ -42,9 +85,14 @@ Run this from a PowerShell prompt in the script's folder. If you don't pass PATs
 
 ### Scripts, capabilities, and exclusions
 
+<details>
+<summary><strong>Capability and exclusions</strong></summary>
+
 The script creates or derives the WIT, reuses/creates picklists and organization fields, attaches/patches WIT field settings, creates custom states, hides inherited states hidden at source, creates best-effort rules, and creates missing layout pages/groups/controls.
 
 It does not migrate backlog behavior assignments, extension-contribution controls, general system-process content, process permissions, projects, work items, or deletions. Rules whose identities/fields/states cannot be reconciled are warned/skipped.
+
+</details>
 
 ### Prerequisites
 
@@ -61,7 +109,8 @@ It does not migrate backlog behavior assignments, extension-contribution control
 
 The script issues GET/POST/PATCH/PUT operations and no DELETE. It reuses many name/reference matches, patches field settings, and warns about target-only states rather than removing them. Reruns are intended to converge on supported metadata, but not every object is deeply compared and rule/layout reconciliation is best-effort; review warnings and target content after every run.
 
-There is no `-WhatIf`, preview, rollback, or transaction. Use a nonproduction inherited process first.
+> [!WARNING]
+> There is no `-WhatIf`, preview, rollback, or transaction. Use a nonproduction inherited process first.
 
 ### Quick start
 
@@ -72,7 +121,8 @@ There is no `-WhatIf`, preview, rollback, or transaction. Use a nonproduction in
   -TargetOrganization 'target-org' -TargetProcess 'Target Inherited Process'
 ```
 
-Unattended:
+<details>
+<summary>Unattended example</summary>
 
 ```powershell
 ./ado-migrate-workitemtype.ps1 `
@@ -82,7 +132,12 @@ Unattended:
   -LogDirectory './run-logs' -NonInteractive
 ```
 
+</details>
+
 ### Parameters and precedence
+
+<details>
+<summary><strong>Full parameter reference</strong></summary>
 
 | Parameter | Description |
 | --- | --- |
@@ -94,6 +149,8 @@ Unattended:
 | `NonInteractive` | Rejects all missing interactive input. |
 
 Explicit non-secret parameters precede prompts. PAT precedence is SecureString → environment → prompt. No same-organization PAT-reuse question exists in the current code; supply the same SecureString explicitly to both parameters if appropriate.
+
+</details>
 
 ### Input formats
 
@@ -107,11 +164,19 @@ Each run creates UTF-8-without-BOM JSONL files named `<script-base>-success log-
 
 ### Detailed workflow and behavior
 
+<details>
+<summary>Step-by-step behavior</summary>
+
 The script resolves source/target processes and source WIT, verifies the target process is customizable, and creates/derives or reuses the target WIT. It enumerates source fields, recreates/reuses picklists and organization fields, then attaches or patches WIT field attributes. It reconciles custom/hidden states, translates and creates rules where dependencies exist, and creates missing layout containers/controls for migrated fields.
 
 Warnings are expected for unsupported extension controls, target-only content, or rule dependencies that cannot be translated. A final success means the implemented calls completed; it is not a full semantic comparison of process behavior.
 
+</details>
+
 ### Verification checklist
+
+<details>
+<summary>Before and after a live run</summary>
 
 - Run both offline repository verification commands.
 - Confirm source and target process/WIT names and target inheritance before execution.
@@ -122,7 +187,12 @@ Warnings are expected for unsupported extension controls, target-only content, o
 
 Offline checks make no live calls and cannot prove process permissions, UI rendering, or rule semantics.
 
+</details>
+
 ### Troubleshooting
+
+<details>
+<summary>Common errors and what they mean</summary>
 
 - Target system process: create/select an inherited process.
 - Field/picklist creation forbidden: verify target PAT scope and collection-level process permissions.
@@ -130,13 +200,16 @@ Offline checks make no live calls and cannot prove process permissions, UI rende
 - Layout warning: extension controls are unsupported; configure them manually.
 - `401`/`403`: verify PAT organization/expiry/scope and the user's process administration permission.
 
+</details>
+
 ### Limitations
 
 This is a selective best-effort WIT migration, not a process clone. It lacks rollback/dry run, does not migrate behaviors or extension controls, and does not prove semantic equivalence. Concurrent changes and target customizations can require manual resolution. No live validation is claimed.
 
 ### Security
 
-Use short-lived least-privilege PATs. Process definitions can expose internal business rules, field names, identities, and groups; protect logs and console captures. Never put PATs in source control or plain-text parameters.
+> [!WARNING]
+> Use short-lived least-privilege PATs. Process definitions can expose internal business rules, field names, identities, and groups; protect logs and console captures. Never put PATs in source control or plain-text parameters.
 
 ### Related workflows
 

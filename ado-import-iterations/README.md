@@ -1,6 +1,34 @@
+<div align="center">
+
 # Azure DevOps Iteration Path Import and Migration
 
-Two additive PowerShell scripts that create missing Iteration Path nodes (and their sprint dates) — either from an Excel workbook you provide, or copied from another project's live tree.
+**Additive PowerShell scripts that create missing Iteration Path nodes (and their sprint dates) — either from an Excel workbook you provide, or copied from another project's live tree.**
+
+![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B%20%7C%207%2B-5391FE?style=flat-square&logo=powershell&logoColor=white)
+![Platform](https://img.shields.io/badge/Platform-Windows-0078D4?style=flat-square)
+![Azure DevOps](https://img.shields.io/badge/Azure%20DevOps-0078D4?style=flat-square&logo=azuredevops&logoColor=white)
+
+</div>
+
+## Table of Contents
+
+- [Using the tool](#using-the-tool)
+- [Technical reference](#technical-reference)
+  - [Scripts, capabilities, and exclusions](#scripts-capabilities-and-exclusions)
+  - [Prerequisites](#prerequisites)
+  - [Authentication and minimum PAT scopes](#authentication-and-minimum-pat-scopes)
+  - [Safety and rerun behavior](#safety-and-rerun-behavior)
+  - [Parameters and precedence](#parameters-and-precedence)
+  - [Input formats](#input-formats)
+  - [Outputs and logs](#outputs-and-logs)
+  - [Detailed workflow and behavior](#detailed-workflow-and-behavior)
+  - [Verification checklist](#verification-checklist)
+  - [Troubleshooting](#troubleshooting)
+  - [Limitations](#limitations)
+  - [Security](#security)
+  - [Related workflows](#related-workflows)
+
+---
 
 ## Using the tool
 
@@ -11,7 +39,22 @@ There are two ways to use it:
 - **Import from Excel** — you supply a workbook listing the iterations you want (with optional start/finish dates), and the script creates whatever is missing in the target project. By default it just previews; you explicitly tell it to apply the changes.
 - **Migrate from another project** — the script reads the live Iteration Path tree (and dates) from a source project and recreates the missing branches, with their dates, in a target project.
 
-**Note:** This repository does not ship a ready-made iteration workbook or template — you supply your own `.xlsx` file matching the format described below.
+```mermaid
+graph LR
+    A[Excel workbook] --> C[ado-import-iterations.ps1]
+    B[Source project tree] --> D[ado-migrate-iterations.ps1]
+    C --> E[Target Iteration Paths]
+    D --> E
+
+    style A fill:#718096,color:#fff
+    style B fill:#718096,color:#fff
+    style C fill:#718096,color:#fff
+    style D fill:#718096,color:#fff
+    style E fill:#4a5568,color:#fff
+```
+
+> [!NOTE]
+> This repository does not ship a ready-made iteration workbook or template — you supply your own `.xlsx` file matching the format described below.
 
 **When you'd use it:** Setting up a new project and want its sprint/release calendar to match an existing plan (from a workbook or from another live project) without manually creating each iteration in Project Settings.
 
@@ -42,18 +85,24 @@ Your workbook's `Iterations` sheet needs these column headers somewhere in row A
   -SourcePat $sourcePat -TargetPat $targetPat -NonInteractive
 ```
 
+> [!TIP]
+> The importer previews by default — nothing is created until you add `-Apply`. Review the console output first.
+
 **What to expect as output:** Console progress showing which iterations were created (with dates, if supplied) and which were already present and skipped. Each run also writes a log file. No workbook or transformed hierarchy file is produced.
 
-**What it will NOT do:**
-
-- It will not update dates or any other detail on an iteration that already exists — existing nodes are left alone entirely.
-- It will not delete or rename anything, and migration won't touch iterations that only exist in the target.
-- It will not configure a team's sprint selections or capacity — that's a separate step in Azure DevOps.
-- It does not read Excel formulas or serial date values — dates must be plain text in the documented format.
+> [!NOTE]
+> **What it will NOT do:**
+> - It will not update dates or any other detail on an iteration that already exists — existing nodes are left alone entirely.
+> - It will not delete or rename anything, and migration won't touch iterations that only exist in the target.
+> - It will not configure a team's sprint selections or capacity — that's a separate step in Azure DevOps.
+> - It does not read Excel formulas or serial date values — dates must be plain text in the documented format.
 
 ## Technical reference
 
 ### Scripts, capabilities, and exclusions
+
+<details>
+<summary><strong>Scripts, capabilities, and exclusions</strong> — capability and exclusions per script</summary>
 
 | Script | Capability | Exclusions |
 | --- | --- | --- |
@@ -61,6 +110,8 @@ Your workbook's `Iterations` sheet needs these column headers somewhere in row A
 | `ado-migrate-iterations.ps1` | Copies missing relative paths and source start/finish dates into a target project. | Does not update existing target dates, delete target-only nodes, or configure team sprint selections/capacity. |
 
 The repository does **not** contain an iteration workbook/template. Supply your own `.xlsx` matching the schema below; filenames shown in examples are illustrative only.
+
+</details>
 
 ### Prerequisites
 
@@ -81,12 +132,17 @@ Migration performs a fresh path-presence read-back only after real writes. Under
 
 ### Parameters and precedence
 
+<details>
+<summary><strong>Parameters and precedence</strong> — flags for both scripts</summary>
+
 | Script | Parameters |
 | --- | --- |
 | Import | Mandatory `Organization`, `Project`, `ExcelFile`; `Apply`, unsupported `UpdateExisting`, `Pat`, `LogDirectory`, `NonInteractive`; common `WhatIf`/`Confirm`. |
 | Migration | `SourceOrganization`, `SourceProject`, `SourcePat`, `TargetOrganization`, `TargetProject`, `TargetPat`, `LogDirectory`, `NonInteractive`; common `WhatIf`/`Confirm`. |
 
 Explicit values win; PAT precedence is SecureString → environment → hidden prompt. `UpdateExisting` always terminates before credentials/network activity because updating dates is not implemented safely.
+
+</details>
 
 ### Input formats
 
@@ -109,11 +165,19 @@ Every run creates UTF-8-without-BOM JSONL files named `<script-base>-success log
 
 ### Detailed workflow and behavior
 
+<details>
+<summary>Per-script step-by-step behavior</summary>
+
 Import reads/validates the worksheet, obtains the live iteration tree, expands implied parents, and orders missing nodes by depth. With `Apply` and `ShouldProcess` approval, it POSTs each node and assigns documented dates when that path has a source row. Existing leaves are reported as skipped.
 
 Migration flattens source/target trees, maps source-relative paths below the target root, copies source date attributes on newly created nodes, and re-reads the target after writes. Its verification checks path presence; it does not compare dates on existing nodes or team sprint configuration.
 
+</details>
+
 ### Verification checklist
+
+<details>
+<summary>Before and after a live run</summary>
 
 - Run both offline verification commands.
 - Confirm there is no claimed checked-in template; inspect your workbook sheet/header/date text.
@@ -123,7 +187,12 @@ Migration flattens source/target trees, maps source-relative paths below the tar
 
 Offline checks use local/static coverage without live Azure DevOps calls.
 
+</details>
+
 ### Troubleshooting
+
+<details>
+<summary>Common errors and what they mean</summary>
 
 - Worksheet/header missing: use exact `Iterations` and the four documented headers in A–D.
 - Date invalid: store text as `yyyy-MM-dd`; avoid formulas or locale-formatted serial cells.
@@ -131,13 +200,16 @@ Offline checks use local/static coverage without live Azure DevOps calls.
 - `401`/`403`: verify PAT scopes and classification-node permission.
 - Read-back failure: inspect live target state/concurrent changes, then rerun; already-created paths will be skipped.
 
+</details>
+
 ### Limitations
 
 No workbook is supplied. Existing dates are never reconciled. Team iteration settings, capacities, permissions, work-item assignments, deletes, and renames are out of scope. Path-presence read-back and offline tests do not prove complete sprint configuration or live service correctness.
 
 ### Security
 
-Use least-privilege short-lived PATs. Workbooks and logs can disclose release calendars and project structure; store them securely and never embed credentials.
+> [!WARNING]
+> Use least-privilege short-lived PATs. Workbooks and logs can disclose release calendars and project structure; store them securely and never embed credentials.
 
 ### Related workflows
 

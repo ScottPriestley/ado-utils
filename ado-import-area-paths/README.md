@@ -1,6 +1,34 @@
+<div align="center">
+
 # Azure DevOps Area Path Import and Migration
 
-Two additive PowerShell scripts that create missing Area Path nodes — either from a CSV you provide, or copied from another project's live tree.
+**Additive PowerShell scripts that create missing Area Path nodes — either from a CSV you provide, or copied from another project's live tree.**
+
+![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B%20%7C%207%2B-5391FE?style=flat-square&logo=powershell&logoColor=white)
+![Platform](https://img.shields.io/badge/Platform-Windows-0078D4?style=flat-square)
+![Azure DevOps](https://img.shields.io/badge/Azure%20DevOps-0078D4?style=flat-square&logo=azuredevops&logoColor=white)
+
+</div>
+
+## Table of Contents
+
+- [Using the tool](#using-the-tool)
+- [Technical reference](#technical-reference)
+  - [Scripts, capabilities, and exclusions](#scripts-capabilities-and-exclusions)
+  - [Prerequisites](#prerequisites)
+  - [Authentication and minimum PAT scopes](#authentication-and-minimum-pat-scopes)
+  - [Safety and rerun behavior](#safety-and-rerun-behavior)
+  - [Parameters and precedence](#parameters-and-precedence)
+  - [Input formats](#input-formats)
+  - [Outputs and logs](#outputs-and-logs)
+  - [Detailed workflow and behavior](#detailed-workflow-and-behavior)
+  - [Verification checklist](#verification-checklist)
+  - [Troubleshooting](#troubleshooting)
+  - [Limitations](#limitations)
+  - [Security](#security)
+  - [Related workflows](#related-workflows)
+
+---
 
 ## Using the tool
 
@@ -12,6 +40,20 @@ There are two ways to use it:
 - **Migrate from another project** — the script reads the live Area Path tree from a source project and recreates the missing branches in a target project.
 
 **When you'd use it:** Setting up a new project and want its Area Paths to match an existing structure (from a template CSV or from another live project) without manually clicking through Project Settings one node at a time.
+
+```mermaid
+graph LR
+    A[CSV file] --> C[ado-import-area-paths.ps1]
+    B[Source project tree] --> D[ado-migrate-area-paths.ps1]
+    C --> E[Target Area Paths]
+    D --> E
+
+    style A fill:#718096,color:#fff
+    style B fill:#718096,color:#fff
+    style C fill:#718096,color:#fff
+    style D fill:#718096,color:#fff
+    style E fill:#4a5568,color:#fff
+```
 
 **What to have ready before starting:**
 
@@ -47,23 +89,31 @@ Ledger,Finance\Ledger,Finance,2
   -SourcePat $sourcePat -TargetPat $targetPat -NonInteractive
 ```
 
+> [!TIP]
+> Run with `-WhatIf` first. It reports exactly what would be created without writing anything, so you can catch a root mismatch or unexpected node before it happens.
+
 **What to expect as output:** Console progress showing which areas were created and which already existed and were skipped. Each run also writes a log file recording what happened. No new file or transformed spreadsheet is produced.
 
-**What it will NOT do:**
-
-- It will not update, rename, move, or delete any existing Area Path node — only add ones that are missing.
-- It will not migrate team assignments, security settings, or work items tied to those areas.
-- It will not copy target-only nodes back to the source, or touch anything outside the Area Path tree.
-- Previewing a run does not prove the target already matches — it only reports what would be created.
+> [!NOTE]
+> **What it will NOT do:**
+> - It will not update, rename, move, or delete any existing Area Path node — only add ones that are missing.
+> - It will not migrate team assignments, security settings, or work items tied to those areas.
+> - It will not copy target-only nodes back to the source, or touch anything outside the Area Path tree.
+> - Previewing a run does not prove the target already matches — it only reports what would be created.
 
 ## Technical reference
 
 ### Scripts, capabilities, and exclusions
 
+<details>
+<summary><strong>Scripts, capabilities, and exclusions</strong> — capability and exclusions per script</summary>
+
 | Script | Capability | Exclusions |
 | --- | --- | --- |
 | `ado-import-area-paths.ps1` | Validates a CSV hierarchy and creates missing nodes parent-first. | Does not update, move, rename, delete, or assign teams to existing nodes. |
 | `ado-migrate-area-paths.ps1` | Reads a source tree and creates its missing relative paths in a target project. | Does not migrate team assignments, security, work items, or target-only nodes. |
+
+</details>
 
 ### Prerequisites
 
@@ -84,12 +134,17 @@ Both support `-WhatIf`/`-Confirm`. Under `-WhatIf`, proposed writes are reported
 
 ### Parameters and precedence
 
+<details>
+<summary><strong>Parameters and precedence</strong> — flags for both scripts</summary>
+
 | Script | Parameters |
 | --- | --- |
 | Import | Mandatory `Organization`, `Project`, `CsvFile`; optional `Pat`, `LogDirectory`, `NonInteractive`; common `WhatIf`/`Confirm`. |
 | Migration | `SourceOrganization`, `SourceProject`, `SourcePat`, `TargetOrganization`, `TargetProject`, `TargetPat`, `LogDirectory`, `NonInteractive`; common `WhatIf`/`Confirm`. Missing non-secret values prompt. |
 
 Explicit parameters win. PAT precedence is SecureString → role environment variable → hidden prompt. `LogDirectory` defaults to `logs` beside the script.
+
+</details>
 
 ### Input formats
 
@@ -112,11 +167,19 @@ Each JSONL record contains `timestampUtc`, `level`, `script`, `runId`, `operatio
 
 ### Detailed workflow and behavior
 
+<details>
+<summary>Per-script step-by-step behavior</summary>
+
 Import validates its local file, reads the live root/tree, validates the declared root against it, expands requested parents, sorts by depth, checks each relative path, and POSTs only missing nodes approved by `ShouldProcess`. Migration flattens both live trees, maps source-relative paths under the target root, and applies missing nodes parent-first.
 
 After actual writes, each script freshly reads the target tree and throws if any requested/source relative path is absent. This check verifies path presence only—not security, team mappings, or other metadata.
 
+</details>
+
 ### Verification checklist
+
+<details>
+<summary>Before and after a live run</summary>
 
 - Run both repository offline commands.
 - Preview and review every proposed path.
@@ -126,7 +189,12 @@ After actual writes, each script freshly reads the target tree and throws if any
 
 Offline tests make no live calls; they verify preview/read-back code paths and local contracts, not service permissions or a real hierarchy.
 
+</details>
+
 ### Troubleshooting
+
+<details>
+<summary>Common errors and what they mean</summary>
 
 - Root mismatch: change the CSV level-0 row to the live project root.
 - Parent/name error: use relative `AreaPath` values and a parent path consistent with the path segments.
@@ -134,13 +202,16 @@ Offline tests make no live calls; they verify preview/read-back code paths and l
 - Preview shows nothing: nodes may already exist; existing metadata is not compared.
 - Read-back failure: inspect the error log and live tree, correct the permission/concurrency issue, then rerun.
 
+</details>
+
 ### Limitations
 
 Only node paths are migrated. Existing nodes are not reconciled, and team assignments, permissions, default area settings, work-item classification values, and deletes are out of scope. The read-back is scoped to presence, and no live validation is claimed.
 
 ### Security
 
-Use least-privilege short-lived PATs and protect CSV/log data. Never embed PATs in CSV, commands, scripts, or source control.
+> [!WARNING]
+> Use least-privilege short-lived PATs and protect CSV/log data. Never embed PATs in CSV, commands, scripts, or source control.
 
 ### Related workflows
 

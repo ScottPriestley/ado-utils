@@ -1,12 +1,58 @@
+<div align="center">
+
 # Azure DevOps Saved Query Migration
 
-`ado-migrate-query.ps1` copies a configured set of saved Azure DevOps queries from one project to another, rewrites project references, and records source-to-target query IDs. It is a query-definition migration helper, not a work item copy tool.
+**Copies a configured set of saved queries from one Azure DevOps project to another, rewriting project references — a query-definition migration helper, not a work item copy tool.**
+
+![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B%20%7C%207%2B-5391FE?style=flat-square&logo=powershell&logoColor=white)
+![Platform](https://img.shields.io/badge/Platform-Windows-0078D4?style=flat-square)
+![Azure DevOps](https://img.shields.io/badge/Azure%20DevOps-0078D4?style=flat-square&logo=azuredevops&logoColor=white)
+
+</div>
+
+`ado-migrate-query.ps1` copies a configured set of saved Azure DevOps queries from one project to another, rewrites project references, and records source-to-target query IDs.
+
+## Table of Contents
+
+- [Using the tool](#using-the-tool)
+- [Technical reference](#technical-reference)
+  - [Scripts, capabilities, and exclusions](#scripts-capabilities-and-exclusions)
+  - [Prerequisites](#prerequisites)
+  - [Authentication and minimum PAT scopes](#authentication-and-minimum-pat-scopes)
+  - [Safety and rerun behavior](#safety-and-rerun-behavior)
+  - [Quick start](#quick-start)
+  - [Parameters and precedence](#parameters-and-precedence)
+  - [Input formats](#input-formats)
+  - [Outputs and logs](#outputs-and-logs)
+  - [Detailed workflow and behavior](#detailed-workflow-and-behavior)
+  - [Verification checklist](#verification-checklist)
+  - [Troubleshooting](#troubleshooting)
+  - [Limitations](#limitations)
+  - [Security](#security)
+  - [Related workflows](#related-workflows)
+
+---
 
 ## Using the tool
 
 **What it does:** Reads a set of saved queries (their WIQL definitions) from a source Azure DevOps project and recreates them in a target project — rewriting the project name inside the query text and adjusting a few specific query constructs that don't carry over as-is. It records which source query became which target query so reruns can pick up where they left off.
 
 **When you'd use it:** Setting up a new/target Azure DevOps project and you want the same saved queries (Shared Queries) to exist there, without recreating them by hand.
+
+```mermaid
+graph LR
+    A[Source Project Queries] --> B[ado-migrate-query.ps1]
+    B --> C["Rewritten WIQL"]
+    C --> D[Target Project Queries]
+
+    style A fill:#718096,color:#fff
+    style B fill:#4a5568,color:#fff
+    style C fill:#718096,color:#fff
+    style D fill:#4a5568,color:#fff
+```
+
+> [!WARNING]
+> The script's checked-in default query IDs (and org/project values) are specific to one environment (`spriestley/TestBed`) and are very unlikely to be right for yours. Review and override them with `-QueryIds` and explicit org/project parameters before any live run.
 
 **Before you start, have ready:**
 - Source and target organization names and project names.
@@ -46,7 +92,8 @@
 | --- | --- | --- |
 | `ado-migrate-query.ps1` | Reads configured source query IDs, rewrites source-project literals and selected unsupported Boolean predicates, creates missing target folders/queries, and records target IDs. | Does not overwrite differing target WIQL, migrate query permissions/favorites, copy work items, or prepare target fields/types/classification paths. |
 
-The checked-in default org/project/query values are environment-specific examples and must be reviewed before live use.
+> [!NOTE]
+> The checked-in default org/project/query values are environment-specific examples and must be reviewed before live use.
 
 ### Prerequisites
 
@@ -81,7 +128,8 @@ There is no `-WhatIf` or remote dry run. Reruns are stateful but still require r
   -NonInteractive
 ```
 
-From this folder:
+<details>
+<summary>Running from this folder directly</summary>
 
 ```powershell
 ./ado-migrate-query.ps1 `
@@ -90,7 +138,12 @@ From this folder:
   -SourcePat $sourcePat -TargetPat $targetPat
 ```
 
+</details>
+
 ### Parameters and precedence
+
+<details>
+<summary><strong>Full parameter reference</strong> — every parameter this script accepts</summary>
 
 | Parameter | Description |
 | --- | --- |
@@ -104,6 +157,8 @@ From this folder:
 | `NonInteractive` | Rejects missing input. |
 
 PAT precedence is SecureString parameter -> environment variable -> hidden prompt. Organization values accept bare names or Azure DevOps organization URLs.
+
+</details>
 
 ### Input formats
 
@@ -121,15 +176,28 @@ success.log
 error.log
 ```
 
+<details>
+<summary><strong>Log file details</strong> — legacy text logs plus shared JSONL schema</summary>
+
 The legacy `success.log` and `error.log` are human-readable per-query logs. The shared logger also creates `ado-migrate-query-success log-<run-id>.jsonl` and `ado-migrate-query-error log-<run-id>.jsonl` under `LogDirectory` or local `logs`, UTF-8 without BOM. JSONL records include `timestampUtc`, `level`, `script`, `runId`, `operation`, `outcome`, `target`, `message`, `errorType`, and `statusCode`.
 
+</details>
+
 ### Detailed workflow and behavior
+
+<details>
+<summary>Step-by-step script behavior</summary>
 
 The script resolves endpoints and PATs, creates `OutputDirectory`, loads migration state, reads target fields/schema, and processes each source query ID. It can use checked-in fallback WIQL for three known default IDs when source query lookup needs that branch. It rewrites source project names and selected unsupported custom Boolean predicates, creates missing folders, creates missing queries, reads newly created target queries back, and records the target ID.
 
 If a target query already exists with identical WIQL, it is recorded and skipped. Differing target WIQL is refused and logged instead of overwritten.
 
+</details>
+
 ### Verification checklist
+
+<details>
+<summary>Before and after a live run</summary>
 
 - Run `pwsh -NoProfile -File ./tests/run-offline-checks.ps1`.
 - Review `QueryIds`, org/project defaults, and target root folder before any live run.
@@ -139,12 +207,19 @@ If a target query already exists with identical WIQL, it is recorded and skipped
 
 Offline checks make no live calls and do not prove query results are semantically equivalent.
 
+</details>
+
 ### Troubleshooting
+
+<details>
+<summary>Common errors and what they mean</summary>
 
 - Differing target WIQL: inspect and decide manually; the script will not overwrite it.
 - Missing field/type/path: prepare target process/classification paths and rerun.
 - State references missing target ID: remove only the affected state entry after review, then rerun.
 - `401`/`403`: verify source/target PAT scope, organization, and project permissions.
+
+</details>
 
 ### Limitations
 
