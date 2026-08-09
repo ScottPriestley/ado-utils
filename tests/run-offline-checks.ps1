@@ -67,7 +67,7 @@ $entryScripts = @(
         Sort-Object FullName
 )
 
-Assert-Condition ($entryScripts.Count -eq 25) "Expected 25 runnable PowerShell entry scripts in this worktree, found $($entryScripts.Count)."
+Assert-Condition ($entryScripts.Count -eq 36) "Expected 36 runnable PowerShell entry scripts in this worktree, found $($entryScripts.Count)."
 
 foreach ($scriptFile in $entryScripts) {
     $tokens = $null
