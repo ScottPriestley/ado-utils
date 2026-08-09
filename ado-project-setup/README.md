@@ -11,7 +11,9 @@
 
 </div>
 
-`ado-project-setup` wraps the other scripts in this repo (area/iteration paths, work items, queries, dashboards, wiki, test management, and optionally process migration) behind a single WPF UI, so a person doing the migration clicks through a few screens instead of running each script by hand.
+`ado-project-setup` wraps the other scripts in this repo (area/iteration paths, work items, queries, dashboards, wiki, test management, and optionally process migration) behind a single guided flow, so a person doing the migration clicks through a few screens instead of running each script by hand. There are two ways to run it, covered separately below: an **Azure Pipeline** (recommended — centrally versioned, no local install) and a **legacy WPF desktop app** (kept working as a fallback).
+
+The pipeline runs from a self-contained copy of just the scripts it needs, at [`../ado-migration`](../ado-migration) — a duplicate of the runner, the shared module, and the wrapped step scripts, kept in sync by hand with their originals at the repo root. The repo root copies are unchanged and remain the ones an admin runs individually by hand; see [Pipeline (recommended)](#pipeline-recommended) below for why the two trees exist and how to keep them in sync.
 
 This README has two parts:
 
@@ -39,8 +41,9 @@ This README has two parts:
   - [Logs and outputs](#logs-and-outputs)
   - [Resume state (work items and test management)](#resume-state-work-items-and-test-management)
   - [Crash handling and log integrity](#crash-handling-and-log-integrity)
-  - [Protocol installation](#protocol-installation)
-  - [Bookmark HTML](#bookmark-html)
+  - [Pipeline (recommended)](#pipeline-recommended)
+  - [Protocol installation (legacy)](#protocol-installation-legacy)
+  - [Bookmark HTML (legacy)](#bookmark-html-legacy)
   - [Direct script invocation (bypassing the UI)](#direct-script-invocation-bypassing-the-ui)
   - [Safety and rerun behavior](#safety-and-rerun-behavior)
   - [Process mismatch is the most common source of partial results](#process-mismatch-is-the-most-common-source-of-partial-results)
@@ -79,13 +82,15 @@ The target project normally needs to already exist and be on the process templat
 
 ### Opening the launcher
 
-The tool is opened through a link, not by running a script directly. Someone with access to a Windows PowerShell session first needs to register the `ado-migrate://` link type on your machine (a one-time setup step — ask whoever maintains this tool if that hasn't been done yet). Once that's done, clicking a link such as:
+**Recommended: the Azure Pipeline.** Open the bookmarked (or Teams-pinned) link to the pipeline's run page, click **Run pipeline**, fill in the target project URL and paste the target PAT into the masked field, and go — no local install, no per-machine setup. See [Pipeline (recommended)](#pipeline-recommended) in the Technical Reference for the full parameter list, where logs land, and how to register the pipeline against a template project.
+
+**Legacy fallback: the WPF desktop app.** The tool can still be opened through a link that launches a local Windows app instead. Someone with access to a Windows PowerShell session first needs to register the `ado-migrate://` link type on your machine (a one-time setup step — ask whoever maintains this tool if that hasn't been done yet). Once that's done, clicking a link such as:
 
 ```
 ado-migrate://open
 ```
 
-— for example, from the bookmarkable landing page (`launch.html` in this folder) — opens the launcher window directly. No console window appears.
+— for example, from the bookmarkable landing page (`launch.html` in this folder) — opens the launcher window directly. No console window appears. See [Protocol installation (legacy)](#protocol-installation-legacy) and [Bookmark HTML (legacy)](#bookmark-html-legacy) for setup details.
 
 ### Step 1: Connect
 
@@ -164,16 +169,17 @@ Every run creates a timestamped folder under your Documents folder containing a 
 ### Scripts, capabilities, and exclusions
 
 <details>
-<summary><strong>Script reference</strong> — the four files that make up this tool</summary>
+<summary><strong>Script reference</strong> — the files that make up this tool</summary>
 
 | Script | Capability | Exclusions |
 | --- | --- | --- |
-| `ado-project-setup-ui.ps1` | Local WPF interface launched directly or through `ado-migrate://open`. | Does not store PATs or host the bookmark page. |
-| `ado-project-setup-runner.ps1` | Runs selected setup steps in the prescribed order and writes PC-facing logs. | Does not create the target project (unless Step 0's "Full automation" mode is used), migrate permissions, or provide rollback. |
-| `install-ado-migrate-protocol.ps1` | Registers the Windows `ado-migrate://` protocol to open the local UI. | Does not deploy the final HTML/script hosting location. |
-| `launch.html` | Static bookmarkable landing page with the `ado-migrate://open` launch link, styled to match the WPF UI. | Does not collect PATs or run anything itself. |
+| `azure-pipelines.yml` | Pipeline definition for the recommended, centrally-run path. Duplicated at `../ado-migration/ado-project-setup/azure-pipelines.yml`, with each copy's script paths pointing at its own tree. See [Pipeline (recommended)](#pipeline-recommended). | Does not store PATs; target PAT is a queue-time-only secret. |
+| `ado-project-setup-runner.ps1` | Runs selected setup steps in the prescribed order and writes PC-facing logs. Duplicated byte-for-byte at `../ado-migration/ado-project-setup/ado-project-setup-runner.ps1` for the pipeline to run from. | Does not create the target project (unless Step 0's "Full automation" mode is used), migrate permissions, or provide rollback. |
+| `ado-project-setup-ui.ps1` | Local WPF interface launched directly or through `ado-migrate://open`. | Legacy path, superseded by the Azure Pipeline; kept as a manual fallback. Does not store PATs or host the bookmark page. |
+| `install-ado-migrate-protocol.ps1` | Registers the Windows `ado-migrate://` protocol to open the local UI. | Legacy path, superseded by the Azure Pipeline; kept as a manual fallback. Does not deploy the final HTML/script hosting location. |
+| `launch.html` | Static bookmarkable landing page with the `ado-migrate://open` launch link, styled to match the WPF UI. | Legacy path, superseded by the Azure Pipeline; kept as a manual fallback. Does not collect PATs or run anything itself. |
 
-The final home for the HTML and scripts must be determined and locked before Production. Prototype locations are development-only.
+The final home for `launch.html` and the legacy scripts, if kept long-term, must be determined and locked before Production. Prototype locations are development-only. The pipeline path has no equivalent open question — its home is `../ado-migration`, checked out from the mirrored Azure Repos copy of this repo (see [Pipeline (recommended)](#pipeline-recommended)).
 
 </details>
 
@@ -310,7 +316,111 @@ If the runner process itself crashes (rather than a wrapped step failing normall
 > [!WARNING]
 > Do not commit generated run folders, logs, state files, or exports.
 
-### Protocol installation
+### Pipeline (recommended)
+
+The pipeline exists to solve two problems the WPF/OneDrive-sync model had: script version drift across coordinators' machines, and no central audit trail of who ran what against which customer org. It runs centrally from Azure DevOps, versioned in this repo, so every run always executes exactly one known copy of the scripts.
+
+<details>
+<summary><strong>Why there are two copies of the scripts</strong> — <code>../ado-migration</code> vs. the repo root</summary>
+
+This repo root stays exactly as it's always been: every script here can be run individually by hand (see [Direct script invocation](#direct-script-invocation-bypassing-the-ui)), and nothing here was moved or deleted for the pipeline to exist — including `azure-pipelines.yml` itself, which exists at the repo root too, not only under `ado-migration/`.
+
+[`../ado-migration`](../ado-migration) is a second, self-contained copy of only the files the automated sequence needs: `AdoUtils.Common.psm1`, `ado-project-setup-runner.ps1`, `azure-pipelines.yml`, and the nine wrapped step scripts (`ado-migrate-process`, `ado-set-default-area`, `ado-import-iterations`, `ado-import-area-paths`, `ado-copy-all-workitems`, the three `ado-dashboard-migration` scripts, `ado-migrate-wiki`, `ado-copy-test-management`). The folder nesting inside `ado-migration/` mirrors the repo root exactly, so the runner's existing relative-path logic (`Join-Path $PSScriptRoot '../ado-migrate-process/...'`) works there completely unmodified.
+
+**These are two independent, fully working copies, not a shared reference** — each tree can run this tool's automation on its own. Updating a script at the repo root does not automatically update its `ado-migration/` counterpart. After changing any of the files listed above, re-copy the changed ones into `ado-migration/` before the next pipeline run needs them:
+
+```bash
+cp AdoUtils.Common.psm1 ado-migration/AdoUtils.Common.psm1
+cp ado-project-setup/ado-project-setup-runner.ps1 ado-migration/ado-project-setup/ado-project-setup-runner.ps1
+cp ado-migrate-process/ado-migrate-process.ps1 ado-migration/ado-migrate-process/ado-migrate-process.ps1
+cp ado-set-default-area/ado-set-default-area.ps1 ado-migration/ado-set-default-area/ado-set-default-area.ps1
+cp ado-import-iterations/ado-migrate-iterations.ps1 ado-migration/ado-import-iterations/ado-migrate-iterations.ps1
+cp ado-import-area-paths/ado-migrate-area-paths.ps1 ado-migration/ado-import-area-paths/ado-migrate-area-paths.ps1
+cp ado-copy-all-workitems/ado-copy-all-workitems.ps1 ado-migration/ado-copy-all-workitems/ado-copy-all-workitems.ps1
+cp ado-dashboard-migration/01-export-dashboards.ps1 ado-migration/ado-dashboard-migration/01-export-dashboards.ps1
+cp ado-dashboard-migration/02-migrate-queries.ps1 ado-migration/ado-dashboard-migration/02-migrate-queries.ps1
+cp ado-dashboard-migration/03-import-dashboards.ps1 ado-migration/ado-dashboard-migration/03-import-dashboards.ps1
+cp ado-migrate-wiki/ado-migrate-wiki.ps1 ado-migration/ado-migrate-wiki/ado-migrate-wiki.ps1
+cp ado-copy-test-management/ado-copy-test-management.ps1 ado-migration/ado-copy-test-management/ado-copy-test-management.ps1
+```
+
+`azure-pipelines.yml` is **not** in that plain-`cp` list on purpose: the two copies are byte-identical except for two path references (the `AdoUtils.Common.psm1` import and the runner invocation), which point at each copy's own tree — `./AdoUtils.Common.psm1` / `./ado-project-setup/ado-project-setup-runner.ps1` at the repo root, `./ado-migration/AdoUtils.Common.psm1` / `./ado-migration/ado-project-setup/ado-project-setup-runner.ps1` under `ado-migration/`. When one changes in any other way (a new parameter, a new stage), port the change by hand and keep each copy's two path references as they are.
+
+`tests/run-offline-checks.ps1` recurses the whole repo, so it validates both copies automatically — its hardcoded entry-script count (36) already accounts for the 11 duplicated `.ps1` files in `ado-migration/`. If a script is ever added to or removed from the pipeline's file list above, that count needs updating too.
+
+</details>
+
+<details>
+<summary><strong>Mirroring this repo into Azure Repos</strong> — Azure Pipelines needs a native Azure Repos Git source</summary>
+
+This repo's authoritative home is GitHub. Azure Pipelines needs an Azure Repos Git source, so a mirror is kept manually — no GitHub Actions workflow, nothing automated to maintain.
+
+**Seed the mirror (once):** in the template project → Repos → New repository → name it `ado-utils`, leave it empty (no README). From a local clone of this repo:
+
+```bash
+git remote add azure https://dev.azure.com/<org>/<project>/_git/ado-utils
+git push azure --all
+git push azure --tags
+```
+
+**Keep it in sync:** after pushing changes to `main` on GitHub (including any `ado-migration/` re-sync from above), run `git push azure main` from a clone with both remotes configured. Nobody commits directly into the Azure Repos copy — GitHub stays the only place these scripts are actually edited.
+
+</details>
+
+<details>
+<summary><strong>Registering the pipeline against a template project</strong></summary>
+
+An Azure DevOps Pipeline is project-scoped, so this repeats once per template project — see the design plan for the full "one pipeline per template project, one shared YAML file" rationale.
+
+1. Template project → **Pipelines** → **New pipeline** → **Azure Repos Git** → select the mirrored repo.
+2. **Existing Azure Pipelines YAML file** → branch `main` → path `/ado-migration/ado-project-setup/azure-pipelines.yml` → Continue.
+3. On the review screen, use the Run dropdown → **Save** (register without queuing a run yet).
+4. Rename the pipeline to something stable (e.g. `ado-project-setup`).
+5. Edit → **Variables**: set `sourceProjectUrl`'s default to this template's known source project URL; add `TargetPat` as secret + "Settable at queue time," left blank.
+6. Edit → **Variables** → **Variable groups** → link `ado-project-setup-source-credentials` (create it once under **Pipelines → Library** if it doesn't exist yet — a secret `SourcePat` variable, authorized for reuse across this org's pipelines).
+7. Save.
+8. Pipeline's "..." menu → **Security** → grant **Queue builds** to the coordinator group only, not the whole project.
+9. Copy the pipeline's URL (`?definitionId=...`) — this is what gets bookmarked or pinned as a Teams tab.
+10. Test-run against a sandbox project before handing the link to coordinators.
+
+</details>
+
+<details>
+<summary><strong>Parameters and variables</strong></summary>
+
+| Name | Kind | Default | Notes |
+| --- | --- | --- | --- |
+| `targetProjectUrl` | parameter (string) | — | The new customer's project URL. |
+| `processName` | parameter (string) | `''` | Required only if the Process step is selected. |
+| `processMode` | parameter (string) | `FullAuto` | `FullAuto`, `AssistedManual`, or `ExportOnly` — see the three scenarios below. |
+| `stepProcess` … `stepTestManagement` | parameter (boolean, one per catalog step) | Same defaults as the WPF UI: steps 1–5 checked, 0/6/7/8 opt-in | Runner still re-sorts whatever's selected into fixed catalog order regardless of check order. |
+| `defaultAreaPath`, `sourceWikiName`, `targetWikiName` | parameter (string) | `''` | Optional overrides; blank means auto-detect, same as today. |
+| `sourceProjectUrl` | variable | set per pipeline registration | Not a parameter on purpose — its default lives on the Pipeline resource, so every template's registration can pre-fill its own source URL from one shared YAML file. |
+| `SourcePat` | secret variable, from the `ado-project-setup-source-credentials` variable group | — | Set up once, reused by every registration. |
+| `TargetPat` | secret, queue-time-settable variable, set per registration | — | Pasted in fresh each run, never stored — same trust model as the WPF password field. |
+
+</details>
+
+**Where results land:** the run publishes a pipeline artifact (`setup-run-<BuildId>`) containing the same per-step logs, `progress.jsonl`, and `summary.json` the WPF UI writes locally today. Check `summary.json`'s `finalStatus` for the real outcome — the runner exits `0` for `action-required`/`exported` by design (they're clean stops, not failures), so the pipeline explicitly surfaces those instead of leaving a plain green checkmark that hides them.
+
+<details>
+<summary><strong>The three <code>processMode</code> scenarios under the pipeline</strong></summary>
+
+All three function identically to the WPF UI; only scenario 2's handoff step differs:
+
+1. **Full automated migration (`FullAuto`)** — the pipeline's default. Creates the process and the target project via API, then runs whichever other steps are selected.
+2. **Export a JSON process file for the customer's ADO admin (`ExportOnly`)** — still writes the file into the run's log directory, which is inside the published artifact. The only change from today: download it from the run's Artifacts tab instead of a local folder, then hand it off exactly as before.
+3. **Migrate only from Step 1 onward, step-by-step or all at once** — leave `stepProcess` unchecked; check one step per run for granular control, or all of steps 1–8 in one run. Independent of `processMode`.
+
+</details>
+
+> [!NOTE]
+> Resume state for the work-items and test-management steps is restored/saved via a pipeline `Cache@2` task keyed to `targetProjectUrl`, since a hosted agent doesn't persist a local disk between runs. A cache miss (a brand-new target, which is the normal case) just starts clean.
+
+### Protocol installation (legacy)
+
+> [!NOTE]
+> This is part of the legacy WPF path, superseded by the pipeline above. Kept working as a fallback, not required for new setups.
 
 From an elevated PowerShell session, for the supported browser path:
 
@@ -337,7 +447,10 @@ The registered command uses `-NoProfile -ExecutionPolicy Bypass -WindowStyle Hid
 > [!NOTE]
 > Use `-Scope CurrentUser` only for development; browser behavior may not honor HKCU-only protocol registration.
 
-### Bookmark HTML
+### Bookmark HTML (legacy)
+
+> [!NOTE]
+> This is part of the legacy WPF path, superseded by the pipeline above. Kept working as a fallback, not required for new setups.
 
 `launch.html` in this folder is the current bookmarkable landing page (a modernized SharePoint-style page with a hero panel and icon-badge cards, matching the WPF UI's cyan/navy brand styling). It can be hosted wherever IT approves before release; its production location is still to be determined and locked before release. At minimum it must contain a launch link such as:
 

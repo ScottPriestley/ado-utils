@@ -1,0 +1,207 @@
+# Centrally-run replacement for the local WPF launcher (ado-project-setup-ui.ps1).
+# Queued manually by a project coordinator -- never on a push -- against a
+# customer's brand-new Azure DevOps org. See ado-project-setup/README.md's
+# "Pipeline" section for how to register this against a template project, and
+# /root/.claude/plans/one-pipeline-per-project-golden-wigderson.md for the
+# design this implements.
+
+trigger: none
+pr: none
+
+pool:
+  vmImage: ubuntu-latest
+
+parameters:
+  - name: targetProjectUrl
+    displayName: 'Target project URL (https://dev.azure.com/{org}/{project})'
+    type: string
+
+  - name: processName
+    displayName: 'Process name (required only if the Process step is selected)'
+    type: string
+    default: ''
+
+  - name: processMode
+    displayName: 'Process mode (used only if the Process step is selected)'
+    type: string
+    default: FullAuto
+    values:
+      - FullAuto
+      - AssistedManual
+      - ExportOnly
+
+  - name: stepProcess
+    displayName: '0. Migrate Process Template'
+    type: boolean
+    default: false
+  - name: stepTeamConfig
+    displayName: '1. Set target team default area'
+    type: boolean
+    default: true
+  - name: stepIterations
+    displayName: '2. Copy Iteration Paths'
+    type: boolean
+    default: true
+  - name: stepAreas
+    displayName: '3. Copy Area Paths'
+    type: boolean
+    default: true
+  - name: stepWorkItems
+    displayName: '4. Copy all Work Items'
+    type: boolean
+    default: true
+  - name: stepQueries
+    displayName: '5. Copy Shared Queries'
+    type: boolean
+    default: true
+  - name: stepDashboards
+    displayName: '6. Copy Dashboards'
+    type: boolean
+    default: false
+  - name: stepWiki
+    displayName: '7. Copy Wiki'
+    type: boolean
+    default: false
+  - name: stepTestManagement
+    displayName: '8. Copy Test Plans, Suites & Test Cases'
+    type: boolean
+    default: false
+
+  - name: defaultAreaPath
+    displayName: 'Default area path override (blank = target project name)'
+    type: string
+    default: ''
+  - name: sourceWikiName
+    displayName: 'Source wiki name override (blank = auto-detect)'
+    type: string
+    default: ''
+  - name: targetWikiName
+    displayName: 'Target wiki name override (blank = auto-detect)'
+    type: string
+    default: ''
+
+variables:
+  # This registration's default source project URL. Set per pipeline
+  # registration (Edit > Variables), not here -- every template project's
+  # registration shares this one YAML file but points at its own source.
+  - name: sourceProjectUrl
+    value: ''
+  # Holds the source PAT as a secret variable (SourcePat), authorized once
+  # for reuse across every template project's registration in this org. See
+  # ado-project-setup/README.md's Pipeline section for how to create it.
+  - group: ado-project-setup-source-credentials
+
+stages:
+  - stage: PreFlight
+    displayName: 'Pre-flight checks'
+    jobs:
+      - job: Validate
+        displayName: 'Offline checks + credential/URL validation'
+        steps:
+          - pwsh: ./tests/run-offline-checks.ps1
+            displayName: 'Offline checks (network-free, no credentials)'
+
+          - pwsh: |
+              Import-Module ./AdoUtils.Common.psm1 -Force
+              $sourcePat = ConvertTo-AdoSecureString -PlainText $env:ADO_SOURCE_PAT
+              $targetPat = ConvertTo-AdoSecureString -PlainText $env:ADO_TARGET_PAT
+
+              $sourceCheck = Test-AdoProjectAccess -ProjectUrl '$(sourceProjectUrl)' -Pat $sourcePat -Label 'Source'
+              if (-not $sourceCheck.Ok) {
+                Write-Host "##vso[task.logissue type=error]$($sourceCheck.Message)"
+                throw $sourceCheck.Message
+              }
+
+              $targetProjectUrl = '${{ parameters.targetProjectUrl }}'
+              $processName = '${{ parameters.processName }}'
+              $targetCheck = Test-AdoProjectAccess -ProjectUrl $targetProjectUrl -Pat $targetPat -Label 'Target'
+              if (-not $targetCheck.Ok) {
+                # A 404 with a process name supplied is expected when Step 0 (FullAuto
+                # or AssistedManual) hasn't created the target project yet -- fall back
+                # to an org-level check instead of failing pre-flight outright, matching
+                # the same tolerance the WPF Connect screen used.
+                if ($targetCheck.Status -eq 404 -and -not [string]::IsNullOrWhiteSpace($processName)) {
+                  $orgCheck = Test-AdoOrgAccess -ProjectUrl $targetProjectUrl -Pat $targetPat -Label 'Target'
+                  if (-not $orgCheck.Ok) {
+                    Write-Host "##vso[task.logissue type=error]$($orgCheck.Message)"
+                    throw $orgCheck.Message
+                  }
+                } else {
+                  Write-Host "##vso[task.logissue type=error]$($targetCheck.Message)"
+                  throw $targetCheck.Message
+                }
+              }
+
+              Write-Host 'Pre-flight checks passed.'
+            displayName: 'Validate source/target PAT + URL'
+            env:
+              ADO_SOURCE_PAT: $(SourcePat)
+              ADO_TARGET_PAT: $(TargetPat)
+
+  - stage: Run
+    displayName: 'Run project setup'
+    dependsOn: PreFlight
+    jobs:
+      - job: ProjectSetup
+        displayName: 'Execute selected steps'
+        steps:
+          - task: Cache@2
+            displayName: 'Restore/save resume state for this target'
+            inputs:
+              key: 'ado-setup-state | "${{ parameters.targetProjectUrl }}"'
+              path: '$(Pipeline.Workspace)/state'
+
+          - pwsh: |
+              $steps = [System.Collections.Generic.List[string]]::new()
+              if ('${{ parameters.stepProcess }}' -eq 'True') { $steps.Add('process') }
+              if ('${{ parameters.stepTeamConfig }}' -eq 'True') { $steps.Add('team-config') }
+              if ('${{ parameters.stepIterations }}' -eq 'True') { $steps.Add('iterations') }
+              if ('${{ parameters.stepAreas }}' -eq 'True') { $steps.Add('areas') }
+              if ('${{ parameters.stepWorkItems }}' -eq 'True') { $steps.Add('work-items') }
+              if ('${{ parameters.stepQueries }}' -eq 'True') { $steps.Add('queries') }
+              if ('${{ parameters.stepDashboards }}' -eq 'True') { $steps.Add('dashboards') }
+              if ('${{ parameters.stepWiki }}' -eq 'True') { $steps.Add('wiki') }
+              if ('${{ parameters.stepTestManagement }}' -eq 'True') { $steps.Add('test-management') }
+              if ($steps.Count -eq 0) { throw 'At least one step must be selected.' }
+
+              ./ado-project-setup/ado-project-setup-runner.ps1 `
+                -SourceProjectUrl '$(sourceProjectUrl)' `
+                -TargetProjectUrl '${{ parameters.targetProjectUrl }}' `
+                -Steps ($steps -join ',') `
+                -ProcessName '${{ parameters.processName }}' `
+                -ProcessMode '${{ parameters.processMode }}' `
+                -DefaultAreaPath '${{ parameters.defaultAreaPath }}' `
+                -SourceWikiName '${{ parameters.sourceWikiName }}' `
+                -TargetWikiName '${{ parameters.targetWikiName }}' `
+                -RunRoot '$(Pipeline.Workspace)/run' `
+                -StateRoot '$(Pipeline.Workspace)/state' `
+                -NonInteractive
+            displayName: 'Run project setup'
+            env:
+              ADO_SOURCE_PAT: $(SourcePat)
+              ADO_TARGET_PAT: $(TargetPat)
+
+          - pwsh: |
+              $summaryPath = '$(Pipeline.Workspace)/run/summary.json'
+              if (-not (Test-Path -LiteralPath $summaryPath)) {
+                Write-Host "##vso[task.logissue type=warning]No summary.json found at $summaryPath -- the run may have crashed before writing one."
+                exit 0
+              }
+              $summary = Get-Content -LiteralPath $summaryPath -Raw | ConvertFrom-Json
+              Write-Host "Final status: $($summary.finalStatus)"
+              if ($summary.finalStatus -in @('action-required', 'exported')) {
+                # The runner exits 0 for these on purpose (they're clean stops, not
+                # failures), so the pipeline's own pass/fail coloring alone would hide
+                # them -- surface explicitly instead of a plain green checkmark.
+                Write-Host "##vso[task.logissue type=warning]Run finished as '$($summary.finalStatus)' -- see the published artifact for details."
+                Write-Host "##vso[task.complete result=SucceededWithIssues;]"
+              }
+            displayName: 'Surface degraded/exported result'
+            condition: always()
+
+          - task: PublishPipelineArtifact@1
+            displayName: 'Publish run logs and summary'
+            condition: always()
+            inputs:
+              targetPath: '$(Pipeline.Workspace)/run'
+              artifact: 'setup-run-$(Build.BuildId)'
