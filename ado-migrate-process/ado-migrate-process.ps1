@@ -35,6 +35,34 @@
     .\ado-migrate-process.ps1 -SourceOrganization 'source-org' -SourceProcess 'My Process' `
         -TargetOrganization 'target-org'
     # Prompts only for the two PATs and target process name.
+
+.EXAMPLE
+    .\ado-migrate-process.ps1 -SourceOrganization 'source-org' -SourceProcess 'My Process' `
+        -TargetOrganization 'target-org' -TargetProcess 'My Process' `
+        -TargetProject 'MyProject' -ProcessMode AssistedManual
+    # Migrates the process and checks whether the target project already uses
+    # it; Azure DevOps has no REST API to switch an existing project's process
+    # (or create one against an existing project), so the script prints manual
+    # instructions and exits 3 if a person still needs to create or switch
+    # 'MyProject'. Rerun the same command once that's done. This is the
+    # default mode when -ProcessMode is omitted.
+
+.EXAMPLE
+    .\ado-migrate-process.ps1 -SourceOrganization 'source-org' -SourceProcess 'My Process' `
+        -TargetOrganization 'target-org' -TargetProcess 'My Process' `
+        -TargetProject 'MyProject' -ProcessMode FullAuto
+    # Migrates the process, creates a brand-new project named 'MyProject' via
+    # the REST API already on that process (private visibility, Git version
+    # control), then migrates WITs/fields/states/rules/layout onto it in the
+    # same run. Only use this when the customer has granted API access to
+    # create projects in their target organization.
+
+.EXAMPLE
+    .\ado-migrate-process.ps1 -SourceOrganization 'source-org' -SourceProcess 'My Process' `
+        -ProcessMode ExportOnly
+    # Makes no API calls to a target organization at all. Reads the source
+    # process definition and writes it to a JSON file under -LogDirectory for
+    # hand-off to the customer's own Azure DevOps admin.
 #>
 [CmdletBinding()]
 param(
@@ -44,15 +72,38 @@ param(
     [string]$TargetOrganization,
     [string]$TargetProcess,
     [SecureString]$TargetPat,
+    [string]$TargetProject,
     [string]$LogDirectory,
-    [switch]$NonInteractive
+    [switch]$NonInteractive,
+    # FullAuto: create the process AND a brand-new target project via API, then
+    #   continue straight into migration in this run (requires -TargetProject).
+    # AssistedManual (default): create the process via API, then stop for a
+    #   person to create or switch the target project, and rerun.
+    # ExportOnly: make zero API calls to the target org; write the source
+    #   process definition to a local JSON file instead.
+    [ValidateSet('FullAuto', 'AssistedManual', 'ExportOnly')]
+    [string]$ProcessMode = 'AssistedManual'
 )
 
 $ErrorActionPreference = 'Stop'
+# Explicit, not incidental: Set-StrictMode is scope-inherited from whatever
+# calls this script. Run standalone it's Off (PowerShell's default); run
+# through ado-project-setup-runner.ps1 (which sets -Version Latest) it's
+# silently ON in this script too, via `& $command` creating a child scope of
+# the runner's. That mismatch is why "$hideUri cannot be retrieved because it
+# has not been set" only ever reproduced through the launcher, never in a
+# standalone run or a static read of this file. Fixing it here makes this
+# script's behavior the same regardless of caller.
+Set-StrictMode -Off
 $commonModulePath = Join-Path (Split-Path -Parent $PSScriptRoot) 'AdoUtils.Common.psm1'
 Import-Module $commonModulePath -Force
 $adoRun = Initialize-AdoScriptRun -ScriptPath $PSCommandPath -LogDirectory $LogDirectory -NonInteractive:$NonInteractive
-trap { Complete-AdoScriptRun -Outcome failed -ErrorRecord $_ -Operation 'migrate-process'; throw }
+trap {
+    $location = if ($_.InvocationInfo) { " at line $($_.InvocationInfo.ScriptLineNumber): $($_.InvocationInfo.Line.Trim())" } else { '' }
+    $detail = "$($_.Exception.Message)$location"
+    Complete-AdoScriptRun -Outcome failed -ErrorRecord $_ -Operation 'migrate-process' -Message $detail
+    throw
+}
 
 # ---------------------------------------------------------------- helpers ---
 
@@ -118,7 +169,7 @@ function Invoke-Ado {
         $params.ContentType = 'application/json; charset=utf-8'
     }
     try {
-        $resp = Invoke-WebRequest -UseBasicParsing @params
+        $resp = Invoke-WebRequest @params
         if ($resp.Content) { return $resp.Content | ConvertFrom-Json }
         return $null
     }
@@ -138,6 +189,240 @@ function Write-Step([string]$Message) { Write-Host "`n== $Message ==" -Foregroun
 function Write-Ok([string]$Message)   { Write-Host "   [OK]   $Message" -ForegroundColor Green }
 function Write-Skip([string]$Message) { Write-Host "   [SKIP] $Message" -ForegroundColor DarkGray }
 function Write-Warn2([string]$Message){ Write-Host "   [WARN] $Message" -ForegroundColor Yellow }
+
+# Exit codes used to tell a calling launcher "stopped cleanly, not a failure" --
+# distinct from 0 (fully done) and a thrown error (genuinely failed). See
+# ado-project-setup-runner.ps1's 'process' case.
+# 3 = AssistedManual paused: a person needs to create/switch the target
+#     project, then rerun this same step to finish.
+# 4 = ExportOnly finished: the process definition was written to a file and no
+#     target-org calls were made at all; there is nothing to rerun in this
+#     session -- a fresh run happens later once the target project exists.
+$script:ExitCodeActionRequired = 3
+$script:ExitCodeExported = 4
+
+function New-AdoProject {
+    <#
+    Creates a brand-new Azure DevOps project already on the given process
+    (Mode FullAuto only -- there is no API to change an EXISTING project's
+    process, only to create a new one already on the desired process).
+    Polls the resulting async operation until it succeeds, fails, or times out.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$OrgUrl,
+        [Parameter(Mandatory)][hashtable]$Headers,
+        [Parameter(Mandatory)][string]$ProjectName,
+        [Parameter(Mandatory)][string]$ProcessTypeId,
+        [string]$Visibility = 'private',
+        [string]$SourceControlType = 'Git',
+        [int]$PollIntervalSeconds = 5,
+        [int]$PollTimeoutSeconds = 300
+    )
+    $createBody = @{
+        name = $ProjectName
+        visibility = $Visibility
+        capabilities = @{
+            versioncontrol  = @{ sourceControlType = $SourceControlType }
+            processTemplate = @{ templateTypeId = $ProcessTypeId }
+        }
+    }
+    $createUri = "$OrgUrl/_apis/projects?api-version=7.2-preview.4"
+    $operation = Invoke-Ado -Method POST -Uri $createUri -Headers $Headers -Body $createBody
+
+    $opUri = "$OrgUrl/_apis/operations/$($operation.id)?api-version=7.1"
+    $elapsed = 0
+    $opStatus = $operation
+    while ($opStatus.status -notin @('succeeded', 'failed', 'cancelled')) {
+        if ($elapsed -ge $PollTimeoutSeconds) {
+            throw "Timed out waiting for project '$ProjectName' creation to complete (last status: $($opStatus.status))."
+        }
+        Start-Sleep -Seconds $PollIntervalSeconds
+        $elapsed += $PollIntervalSeconds
+        $opStatus = Invoke-Ado -Uri $opUri -Headers $Headers
+    }
+    if ($opStatus.status -ne 'succeeded') {
+        throw "Project '$ProjectName' creation ended with status '$($opStatus.status)'. $(Get-Prop $opStatus 'resultMessage' '')"
+    }
+    Write-AdoRunLog -Level info -Operation create-project -Outcome created -Target $ProjectName -Message "Process: $ProcessTypeId; visibility: $Visibility; source control: $SourceControlType"
+    $opStatus
+}
+
+function Export-AdoProcessDefinition {
+    <#
+    Reads the full source process definition -- the same data the migration
+    loop below already reads from source before POSTing it to target -- and
+    serializes it to one JSON file instead (Mode ExportOnly). No target-org
+    calls are made. The shape mirrors the actual create/update request bodies
+    this script builds (createWitBody/stateBody/ruleBody/controlBody) rather
+    than a loose summary, so a future "import from file" mode could replay it
+    with minimal transformation.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$SourceOrgUrl,
+        [Parameter(Mandatory)][hashtable]$SourceHeaders,
+        [Parameter(Mandatory)]$SourceProcess,
+        [Parameter(Mandatory)][string]$SourceProcessId,
+        [Parameter(Mandatory)][string]$LogDirectory,
+        [Parameter(Mandatory)][string]$ProcessName
+    )
+    Write-Step "Reading source process definition for export"
+
+    $witsUri = "$SourceOrgUrl/_apis/work/processes/$SourceProcessId/workitemtypes?`$expand=all&$vProc"
+    $wits = (Invoke-Ado -Uri $witsUri -Headers $SourceHeaders).value
+    Write-Ok "Read $($wits.Count) work item types"
+
+    $picklistsUri = "$SourceOrgUrl/_apis/work/processes/lists?$vLists"
+    $picklists = (Invoke-Ado -Uri $picklistsUri -Headers $SourceHeaders).value | Where-Object { -not $_.isSuggested }
+    Write-Ok "Read $(@($picklists).Count) picklists"
+
+    $fieldsUri = "$SourceOrgUrl/_apis/wit/fields?$vFields"
+    $fields = (Invoke-Ado -Uri $fieldsUri -Headers $SourceHeaders).value | Where-Object {
+        (Get-Prop $_ 'isIdentity' $false) -eq $false -and (Get-Prop $_ 'type') -ne 'html'
+    }
+    Write-Ok "Read $(@($fields).Count) organization-level fields"
+
+    $witDetails = @()
+    foreach ($wit in $wits) {
+        $witFieldsUri = "$SourceOrgUrl/_apis/work/processes/$SourceProcessId/workitemtypes/$($wit.referenceName)/fields?$vProc"
+        $statesUri    = "$SourceOrgUrl/_apis/work/processes/$SourceProcessId/workitemtypes/$($wit.referenceName)/states?$vStates"
+        $rulesUri     = "$SourceOrgUrl/_apis/work/processes/$SourceProcessId/workitemtypes/$($wit.referenceName)/rules?$vProc"
+
+        $layout = $null
+        if ((Get-Prop $wit 'customizationType') -ne 'system') {
+            $layoutUri = "$SourceOrgUrl/_apis/work/processes/$SourceProcessId/workitemtypes/$($wit.referenceName)/layout?$vLayout"
+            try { $layout = Invoke-Ado -Uri $layoutUri -Headers $SourceHeaders } catch { $layout = $null }
+        }
+
+        $witDetails += [ordered]@{
+            referenceName      = $wit.referenceName
+            name               = $wit.name
+            description        = Get-Prop $wit 'description' ''
+            color              = Get-Prop $wit 'color' ''
+            icon               = Get-Prop $wit 'icon' ''
+            inherits           = Get-Prop $wit 'inherits' $null
+            customizationType  = Get-Prop $wit 'customizationType' ''
+            fields             = (Invoke-Ado -Uri $witFieldsUri -Headers $SourceHeaders).value
+            states             = (Invoke-Ado -Uri $statesUri -Headers $SourceHeaders).value
+            rules              = (Invoke-Ado -Uri $rulesUri -Headers $SourceHeaders).value
+            layout             = $layout
+        }
+    }
+    Write-Ok "Read field/state/rule/layout detail for $($witDetails.Count) work item types"
+
+    $export = [ordered]@{
+        schemaVersion      = 1
+        exportedUtc        = [DateTime]::UtcNow.ToString('o')
+        sourceProcess      = [ordered]@{
+            name              = $SourceProcess.name
+            typeId            = $SourceProcessId
+            customizationType = Get-Prop $SourceProcess 'customizationType' ''
+        }
+        picklists          = $picklists
+        organizationFields = $fields
+        workItemTypes      = $witDetails
+    }
+
+    $safeName = ($ProcessName -replace '[\\/:*?"<>|]', '_')
+    $fileName = 'process-export-{0}-{1}.json' -f $safeName, (Get-Date -Format 'yyyyMMdd-HHmmss')
+    [IO.Directory]::CreateDirectory($LogDirectory) | Out-Null
+    $exportPath = Join-Path $LogDirectory $fileName
+    ($export | ConvertTo-Json -Depth 20) | Set-Content -LiteralPath $exportPath -Encoding utf8
+    $exportPath
+}
+
+function Complete-AdoActionRequired {
+    <#
+    Prints a numbered manual-step banner, logs it, marks the run as a clean
+    (non-failure) stop, and exits with the AssistedManual sentinel (3).
+    #>
+    param(
+        [Parameter(Mandatory)][string]$HeaderLine,
+        [Parameter(Mandatory)][string[]]$InstructionLines,
+        [Parameter(Mandatory)][string]$LogMessage,
+        [Parameter(Mandatory)][string]$CompletionMessage,
+        [Parameter(Mandatory)][string]$Target
+    )
+    Write-Host ''
+    Write-Host '=================================================================' -ForegroundColor Yellow
+    Write-Host " $HeaderLine" -ForegroundColor Yellow
+    Write-Host '=================================================================' -ForegroundColor Yellow
+    foreach ($line in $InstructionLines) {
+        if ([string]::IsNullOrEmpty($line)) { Write-Host '' } else { Write-Host " $line" -ForegroundColor Yellow }
+    }
+    Write-Host '=================================================================' -ForegroundColor Yellow
+    Write-AdoRunLog -Level warning -Operation check-project-process -Outcome action-required -Target $Target -Message $LogMessage
+    Complete-AdoScriptRun -Outcome succeeded -Operation 'migrate-process' -Target $Target -Message $CompletionMessage
+    exit $script:ExitCodeActionRequired
+}
+
+function Resolve-AdoAssistedManualProject {
+    <#
+    The AssistedManual check-and-stop logic: is the target project missing,
+    on the wrong process, or already correct? Exits the script (via
+    Complete-AdoActionRequired) for the first two cases; returns normally
+    (falling through to migration) for the last. Also used by FullAuto as a
+    forgiving fallback when the target project already exists (e.g. a rerun
+    after a prior partial FullAuto run).
+    #>
+    param(
+        [Parameter(Mandatory)][string]$ProjectsUri,
+        [Parameter(Mandatory)][hashtable]$Headers,
+        [Parameter(Mandatory)]$TgtProcess,
+        [Parameter(Mandatory)][string]$TgtProcessId,
+        [Parameter(Mandatory)][string]$TargetProject
+    )
+    $targetProjectObj = $null
+    try {
+        $targetProjectObj = Invoke-Ado -Uri $ProjectsUri -Headers $Headers -AllowNotFound
+    } catch {
+        Write-Warn2 "Failed to check target project process: $_"
+        Write-AdoRunLog -Level warning -Operation check-project-process -Outcome failed -Target $TargetProject -Message $_.Exception.Message
+        return
+    }
+
+    if ($null -eq $targetProjectObj) {
+        Complete-AdoActionRequired -Target $TargetProject `
+            -HeaderLine 'ACTION NEEDED -- one manual step, then run this again' `
+            -InstructionLines @(
+                "The process '$($TgtProcess.name)' now exists in the target organization.",
+                "Project '$TargetProject' does not exist yet, and only a person can create it",
+                '(Azure DevOps does not allow project creation on this process over the API',
+                'in this mode):',
+                '',
+                "  1. In Azure DevOps, create a new project named '$TargetProject'",
+                "  2. When prompted for a process, choose '$($TgtProcess.name)'",
+                '',
+                'Once that is done, run this step again to migrate work item types,',
+                'fields, states, rules, and layout onto the new project.'
+            ) `
+            -LogMessage "Process '$($TgtProcess.name)' created; project '$TargetProject' does not exist yet. Create it manually, then rerun." `
+            -CompletionMessage "Process '$($TgtProcess.name)' created. Waiting for '$TargetProject' to be created manually before WITs/fields/states are migrated."
+        return
+    }
+
+    $currentProcessId = $targetProjectObj.capabilities.processTemplate.templateTypeId
+    if ($currentProcessId -eq $TgtProcessId) {
+        Write-Skip "Project '$TargetProject' already uses process '$($TgtProcess.name)'"
+        return
+    }
+
+    Complete-AdoActionRequired -Target $TargetProject `
+        -HeaderLine 'ACTION NEEDED -- one manual step, then run this again' `
+        -InstructionLines @(
+            "The process '$($TgtProcess.name)' now exists in the target organization.",
+            "Project '$TargetProject' is still using a different process, and only",
+            'a person can switch it (Azure DevOps does not allow this over the API):',
+            '',
+            '  1. In Azure DevOps, go to Organization Settings > Process',
+            "  2. Select the process '$($TgtProcess.name)'",
+            "  3. Open its Projects tab and add '$TargetProject'",
+            '',
+            'Once that is done, run this step again to migrate work item types,',
+            'fields, states, rules, and layout onto the new process.'
+        ) `
+        -LogMessage "Process '$($TgtProcess.name)' created; project still on process ID $currentProcessId. Switch it manually, then rerun." `
+        -CompletionMessage "Process '$($TgtProcess.name)' created. Waiting for '$TargetProject' to be switched to it manually before WITs/fields/states are migrated."
+}
 
 # API versions (process customization APIs are still -preview)
 $vProc   = 'api-version=7.1-preview.2'   # processes, work item types, WIT fields, rules
@@ -178,6 +463,24 @@ $srcProcessId = $srcProcess.typeId
 Write-Ok "Found source process: $($srcProcess.name) (ID: $srcProcessId, Type: $($srcProcess.customizationType))"
 Write-AdoRunLog -Level info -Operation fetch-source-process -Outcome found -Target $srcProcess.name -Message "Process ID: $srcProcessId"
 
+# ---------------------------------------------------------------- export-only mode ---
+# ExportOnly makes NO calls to the target organization at all -- gate here,
+# before the target process lookup/creation below, which is the first target
+# call in the script.
+
+if ($ProcessMode -eq 'ExportOnly') {
+    Write-Step "Export mode: no changes will be made in the target organization"
+    $logDirectory = Split-Path -Parent $adoRun.SuccessLogPath
+    $exportPath = Export-AdoProcessDefinition -SourceOrgUrl $srcOrgUrl -SourceHeaders $srcHeaders `
+        -SourceProcess $srcProcess -SourceProcessId $srcProcessId -LogDirectory $logDirectory -ProcessName $SourceProcess
+    Write-Ok "Process definition exported to: $exportPath"
+    Write-AdoRunLog -Level info -Operation export-process -Outcome exported -Target $SourceProcess -Message "Exported to $exportPath"
+    Complete-AdoScriptRun -Outcome succeeded -Operation 'migrate-process' -Target $SourceProcess `
+        -Message "Process '$SourceProcess' exported to $exportPath. No target-organization changes were made; hand this file to the customer's Azure DevOps admin, then run project setup again once the target project exists."
+    Write-Host "`nProcess definition exported: $exportPath" -ForegroundColor Green
+    exit $script:ExitCodeExported
+}
+
 # ---------------------------------------------------------------- target process ---
 
 Write-Step "Resolving target process: $TargetProcess"
@@ -217,6 +520,54 @@ if ($tgtProcess) {
 # Verify target process is inherited/customizable
 if ($tgtProcess.customizationType -eq 'system') {
     throw "Target process '$($tgtProcess.name)' is a system process and cannot be customized. Please specify an inherited process or a new process name."
+}
+
+# Apply process to target project according to -ProcessMode
+#
+# NOTE: Azure DevOps does not expose changing an existing project's process
+# through the public REST API. The Projects - Update endpoint
+# (PATCH _apis/projects/{projectId}) is documented as supporting only name,
+# abbreviation, description, or restore -- attempting to PATCH
+# capabilities.processTemplate.templateTypeId on an existing project fails
+# with HTTP 400 "The project update is invalid." Switching a project's
+# process is a UI-only operation (Organization Settings > Process). Creating a
+# BRAND NEW project already on a given process IS supported via the API
+# (Projects - Create, capabilities.processTemplate.templateTypeId) -- that is
+# what FullAuto mode uses below.
+# See: https://learn.microsoft.com/azure/devops/organizations/settings/work/manage-process
+
+if ($ProcessMode -eq 'FullAuto' -and [string]::IsNullOrWhiteSpace($TargetProject)) {
+    throw "TargetProject is required when -ProcessMode FullAuto is used (the project name is needed to create it)."
+}
+
+if (-not [string]::IsNullOrWhiteSpace($TargetProject)) {
+    Write-Step "Checking target project '$TargetProject'"
+    $projectsUri = "$tgtOrgUrl/_apis/projects/$TargetProject`?includeCapabilities=true&api-version=7.1"
+
+    if ($ProcessMode -eq 'FullAuto') {
+        $existingProject = $null
+        try {
+            $existingProject = Invoke-Ado -Uri $projectsUri -Headers $tgtHeaders -AllowNotFound
+        } catch {
+            Write-Warn2 "Failed to check whether target project already exists: $_"
+            Write-AdoRunLog -Level warning -Operation check-project-exists -Outcome failed -Target $TargetProject -Message $_.Exception.Message
+        }
+        if ($null -eq $existingProject) {
+            Write-Step "Creating target project '$TargetProject'"
+            New-AdoProject -OrgUrl $tgtOrgUrl -Headers $tgtHeaders -ProjectName $TargetProject -ProcessTypeId $tgtProcessId -Visibility 'private' -SourceControlType 'Git' | Out-Null
+            Write-Ok "Created project '$TargetProject' on process '$($tgtProcess.name)'"
+        } else {
+            # Project already exists -- likely a rerun after a prior partial FullAuto
+            # run. Fall back to the same check-and-continue logic AssistedManual uses
+            # rather than failing outright, so a rerun after a network blip is
+            # forgiving.
+            Resolve-AdoAssistedManualProject -ProjectsUri $projectsUri -Headers $tgtHeaders `
+                -TgtProcess $tgtProcess -TgtProcessId $tgtProcessId -TargetProject $TargetProject
+        }
+    } else {
+        Resolve-AdoAssistedManualProject -ProjectsUri $projectsUri -Headers $tgtHeaders `
+            -TgtProcess $tgtProcess -TgtProcessId $tgtProcessId -TargetProject $TargetProject
+    }
 }
 
 # ---------------------------------------------------------------- work item types ---
@@ -469,6 +820,14 @@ foreach ($srcWit in $srcWits) {
     
     # Migrate states
     Write-Step "  Migrating states for WIT: $($srcWit.name)"
+    
+    # Ensure we have a valid target WIT with referenceName before attempting state migration
+    if (-not $tgtWit -or -not $tgtWit.referenceName) {
+        Write-Warn2 "  Cannot migrate states - target WIT not properly initialized"
+        Write-AdoRunLog -Level warning -Operation migrate-states -Outcome skipped -Target $srcWit.name -Message "Target WIT not properly initialized"
+        continue
+    }
+    
     $srcStatesUri = "$srcOrgUrl/_apis/work/processes/$srcProcessId/workitemtypes/$($srcWit.referenceName)/states?$vStates"
     $srcStates = (Invoke-Ado -Uri $srcStatesUri -Headers $srcHeaders).value
     
@@ -507,12 +866,12 @@ foreach ($srcWit in $srcWits) {
 
     # Hide states that are hidden in source
     foreach ($srcState in $srcStates | Where-Object { (Get-Prop $_ 'hidden' $false) -eq $true }) {
-        $existing = $tgtStates | Where-Object { $_.name -eq $srcState.name -and (Get-Prop $_ 'hidden' $false) -eq $false }
-        if ($existing) {
-            $hideUri = "$tgtOrgUrl/_apis/work/processes/$tgtProcessId/workitemtypes/$($tgtWit.referenceName)/states/$($existing.id)?$vStates"
-            $hideBody = @{ hidden = $true }
+        $existing = $tgtStates | Where-Object { $_.name -eq $srcState.name -and (Get-Prop $_ 'hidden' $false) -eq $false } | Select-Object -First 1
+
+        if ($existing -and $existing.id -and $tgtWit -and $tgtWit.referenceName) {
             try {
-                Invoke-Ado -Method PATCH -Uri $hideUri -Headers $tgtHeaders -Body $hideBody | Out-Null
+                $hideBody = @{ hidden = $true }
+                Invoke-Ado -Method PATCH -Uri "$tgtOrgUrl/_apis/work/processes/$tgtProcessId/workitemtypes/$($tgtWit.referenceName)/states/$($existing.id)?$vStates" -Headers $tgtHeaders -Body $hideBody | Out-Null
                 $witStateCount++
                 Write-AdoRunLog -Level info -Operation hide-state -Outcome updated -Target "$($srcWit.name)/$($srcState.name)"
             } catch {

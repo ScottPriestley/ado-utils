@@ -2,7 +2,7 @@
 param(
     [string]$SourceProjectUrl,
     [string]$TargetProjectUrl,
-    [string[]]$Steps = @('team-config', 'iterations', 'areas', 'work-items', 'queries', 'dashboards', 'wiki'),
+    [string[]]$Steps = @('team-config', 'iterations', 'areas', 'work-items', 'queries', 'dashboards', 'wiki', 'test-management'),
     [string]$ProcessName,
     [ValidateSet('FullAuto', 'AssistedManual', 'ExportOnly')]
     [string]$ProcessMode = 'AssistedManual',
@@ -96,6 +96,7 @@ $script:StepCatalog = [ordered]@{
     'queries'     = [pscustomobject]@{ Number = 5; Activity = 'queries'; Name = 'Copy Shared Queries' }
     'dashboards'  = [pscustomobject]@{ Number = 6; Activity = 'dashboards'; Name = 'Copy Dashboards' }
     'wiki'        = [pscustomobject]@{ Number = 7; Activity = 'wiki'; Name = 'Copy Wiki' }
+    'test-management' = [pscustomobject]@{ Number = 8; Activity = 'test-management'; Name = 'Copy Test Plans, Suites & Test Cases' }
 }
 
 function UrlEnc { param([Parameter(Mandatory)][string]$Value) [uri]::EscapeDataString($Value) }
@@ -582,6 +583,12 @@ function Invoke-SetupStep {
                 if (-not [string]::IsNullOrWhiteSpace($SourceWikiName)) { $wikiArgs.SourceWikiName = $SourceWikiName }
                 if (-not [string]::IsNullOrWhiteSpace($TargetWikiName)) { $wikiArgs.TargetWikiName = $TargetWikiName }
                 Invoke-EntryScript -ScriptPath (Join-Path $PSScriptRoot '..\ado-migrate-wiki\ado-migrate-wiki.ps1') -LogPath $logPath -Arguments $wikiArgs | Out-Null
+            }
+            'test-management' {
+                $sourceUrl = 'https://dev.azure.com/{0}/{1}' -f (UrlEnc $Source.Org), (UrlEnc $Source.Project)
+                Invoke-EntryScript -ScriptPath (Join-Path $PSScriptRoot '..\ado-copy-test-management\ado-copy-test-management.ps1') -LogPath $logPath -Arguments @{
+                    SourceProjectUrl = $sourceUrl; TargetProjectUrl = $TargetProjectUrl; SourcePat = $ResolvedSourcePat; TargetPat = $ResolvedTargetPat; StatePath = (Join-Path (Get-TargetStateDirectory -Target $Target) 'test-management-state.json'); LogDirectory = $TechnicalLogDirectory; NonInteractive = $true
+                } | Out-Null
             }
             default { throw "Unknown setup step '$Step'." }
         }

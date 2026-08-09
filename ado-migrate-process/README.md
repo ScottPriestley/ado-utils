@@ -8,6 +8,41 @@ The script creates the target process (if needed), then migrates work item types
 
 It does not migrate backlog behavior assignments, extension-contribution controls, process permissions, projects, work items, process description beyond basic metadata, or deletions. Rules whose dependencies cannot be reconciled are warned and skipped.
 
+### Three process-migration modes (`-ProcessMode`)
+
+Azure DevOps has no REST API to switch an **existing** project's process --
+only its web UI can do that (Organization Settings > Process > select the
+process > Projects tab). It *does*, however, support creating a **brand-new**
+project already on a given process via the API. Real engagements vary in how
+much API access the customer grants, so `-ProcessMode` selects one of three
+behaviors:
+
+- **`AssistedManual`** (default): creates/verifies the process via API, then
+  checks `-TargetProject`. If the project doesn't exist yet, or exists but is
+  on a different process, the script prints the exact manual step needed and
+  stops -- it exits with code `3` rather than throwing, since this is an
+  expected pause, not a failure. Do the manual step, then run the script again
+  with the same parameters; it detects the project is now correct and
+  proceeds with the full migration. Without `-TargetProject`, this check is
+  skipped entirely and the full migration always runs.
+- **`FullAuto`**: creates the process via API, then also creates a brand-new
+  project (`-TargetProject`, required in this mode) already on that process
+  via the API -- private visibility, Git version control, not configurable --
+  and continues straight into the full WIT/field/state/rule/layout migration
+  in the same run, no manual step needed. Only use this when the customer has
+  granted API access to create projects in their target organization. If the
+  project already exists (e.g. a rerun after a prior partial `FullAuto` run),
+  it falls back to the same check-and-continue behavior as `AssistedManual`.
+- **`ExportOnly`**: makes **zero API calls to the target organization at
+  all**. Reads the source process definition and writes it to a local JSON
+  file (`process-export-<name>-<timestamp>.json` under `-LogDirectory`) for
+  hand-off to the customer's own Azure DevOps admin, who recreates the
+  process (and the project) themselves. Exits with code `4` -- there is
+  nothing to rerun in this same session; a fresh run happens later once the
+  customer's project exists. `-TargetOrganization`/`-TargetPat` are still
+  requested (the parameter set doesn't change per mode) but are not used for
+  anything in this mode.
+
 ## Prerequisites
 
 - Windows PowerShell 5.1 or PowerShell 7+.
@@ -42,6 +77,14 @@ Unattended:
   -LogDirectory './run-logs' -NonInteractive
 ```
 
+Export-only, no target organization access needed:
+
+```powershell
+./ado-migrate-process.ps1 `
+  -SourceOrganization 'source-org' -SourceProcess 'My Custom Process' -SourcePat $sourcePat `
+  -ProcessMode ExportOnly -LogDirectory './run-logs' -NonInteractive
+```
+
 ## Parameters and precedence
 
 | Parameter | Description |
@@ -49,6 +92,8 @@ Unattended:
 | `SourceOrganization` / `TargetOrganization` | Bare organization name or supported Azure DevOps URL. |
 | `SourceProcess` | Exact source process display name. |
 | `TargetProcess` | Exact target process display name (will be created if missing). |
+| `TargetProject` | Optional for `AssistedManual`/`ExportOnly`; required for `FullAuto` (the project to check/create). |
+| `ProcessMode` | `FullAuto`, `AssistedManual` (default), or `ExportOnly` -- see above. |
 | `SourcePat` / `TargetPat` | Role-specific `SecureString` PATs. |
 | `LogDirectory` | Shared JSONL directory; defaults to `logs` beside the script. |
 | `NonInteractive` | Rejects all missing interactive input. |

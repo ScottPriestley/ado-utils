@@ -17,7 +17,12 @@ The final home for the HTML and scripts must be determined and locked before Pro
 1. Open the bookmarkable HTML page.
 2. Click the launch link, which opens `ado-migrate://open`.
 3. Enter source project URL, source PAT, target project URL, and target PAT once.
-4. Select one or more steps. Selected steps run in this order:
+4. Optionally enter a process name if you want to migrate the process template (Step 0), and choose a process migration mode:
+   - **Full automation** -- creates the process and the target project via the API, then continues straight into the full migration in the same run. Needs the target project URL to name what to create. Only use this when the customer has granted API access to create projects in their target organization.
+   - **Process now, project later** (default) -- creates the process via API, then stops for a person to create or switch the target project by hand (there is no API for either). Rerun Step 0 once that's done.
+   - **Export process only** -- makes no changes in the target organization at all. Writes the process definition to a JSON file for hand-off to the customer's own Azure DevOps admin. Nothing else in this run can proceed without a target project, so the run ends here; start a new run once the customer's project exists.
+5. Select one or more steps. Selected steps run in this order:
+   0. Migrate Process Template (optional - WITs, fields, picklists, states, rules, and layout). What happens next depends on the mode chosen above: full automation keeps going, "process now, project later" shows an amber "action needed" result, and "export only" shows a blue "process exported" result -- neither of the latter two is a failure.
    1. Set target Team Configuration default area with Include Sub Areas.
    2. Copy Iteration Paths.
    3. Copy Area Paths.
@@ -25,7 +30,7 @@ The final home for the HTML and scripts must be determined and locked before Pro
    5. Copy Shared Query folders, subfolders, and queries.
    6. Copy Dashboards.
    7. Copy Wiki pages, subpages, and referenced images.
-5. Review the final success/failure screen and open per-step logs as needed.
+6. Review the final success/failure screen and open per-step logs as needed. After an "exported" result, use "Start New Run" to clear the form and begin fresh once the target project exists.
 
 ## Authentication and scopes
 
@@ -33,8 +38,10 @@ PATs are accepted in the UI as password fields. The UI passes them to the child 
 
 Minimum scopes depend on selected steps:
 
-- Source: Work Items Read, Team Dashboards Read, Code/Wiki Read, Project/team metadata Read.
-- Target: Work Items Read & write, Team Dashboards Manage, Code/Wiki Read & write, Project/team metadata Read, and permission to update Team Settings.
+- Source: Work Items Read, Process Read (for Step 0), Team Dashboards Read, Code/Wiki Read, Project/team metadata Read.
+- Target: Work Items Read & write, Process Read & write (for Step 0), Team Dashboards Manage, Code/Wiki Read & write, Project/team metadata Read, and permission to update Team Settings.
+
+Note: Step 0 (Process migration) requires Process Read & write scopes and Project Collection Administrator permission (or equivalent process permissions) in the target organization to create organization-level fields -- this applies to the "Full automation" and "Process now, project later" modes. "Export process only" makes no target-organization calls for Step 0 and needs no target write scopes for it (other selected steps, if any, are skipped in that same run since no target project exists yet).
 
 PATs are never written to the HTML page, config, command line, logs, or state files.
 
@@ -104,7 +111,7 @@ The HTML must not collect PATs or attempt to run migrations directly.
 
 The launcher is additive. Wrapped scripts preserve their existing behavior: they create missing objects, reuse state where supported, skip or patch according to their README, and do not perform implicit deletes. A failed run can be rerun for selected failed steps after reviewing logs and correcting the cause.
 
-The target project must already exist and use the intended process template. The launcher does not migrate permissions, organization extensions, work-item history, every identity mapping, or rollback state.
+The target project must already exist and use the intended process template, unless Step 0's "Full automation" mode is used to create it. The launcher does not migrate permissions, organization extensions, work-item history, every identity mapping, or rollback state.
 
 ### Process mismatch is the most common source of partial results
 
@@ -123,6 +130,16 @@ entire class of skip. That step is deliberately **not** part of the seven-step
 sequence: it changes the target's process definition, which is a heavier and less
 reversible operation than copying content, and many target projects intentionally
 use a different process.
+
+Step 0 in this launcher does the same job directly (see [ado-migrate-process](../ado-migrate-process/README.md)),
+in one of three modes chosen on the Connect screen. Because Azure DevOps has no
+API to switch an existing project onto a different process (only to create a
+brand-new one already on it), "Process now, project later" mode stops after
+creating/verifying the process and shows an "action needed" result instead of
+success or failure -- create or switch the project manually, then rerun Step 0
+to finish. "Full automation" mode creates the project itself instead of
+stopping. "Export process only" mode makes no target-org changes at all and
+ends the run with a "process exported" result once the file is written.
 
 ## Verification
 

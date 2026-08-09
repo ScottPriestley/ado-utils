@@ -365,6 +365,9 @@ $patchContentType = 'application/json-patch+json; charset=utf-8'
     $identityFieldNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     $unsupportedTypes   = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     $sourceRelations    = @{}
+    # Source Area/Iteration Path per item, captured during pass 1 while its fields are
+    # already in hand. Used only if pass 2's link PATCH hits TF51541 (see below).
+    $sourceClassification = @{}
 
     # --- Pass 1: create ------------------------------------------------------
 
@@ -378,6 +381,13 @@ $patchContentType = 'application/json-patch+json; charset=utf-8'
             $relationsProperty = $item.PSObject.Properties['relations']
             if ($null -ne $relationsProperty -and $null -ne $relationsProperty.Value) {
                 $sourceRelations[$sourceId] = @($relationsProperty.Value)
+            }
+
+            $areaPathProperty = $item.fields.PSObject.Properties['System.AreaPath']
+            $iterationPathProperty = $item.fields.PSObject.Properties['System.IterationPath']
+            $sourceClassification[$sourceId] = [pscustomobject]@{
+                AreaPath      = if ($areaPathProperty) { [string]$areaPathProperty.Value } else { $null }
+                IterationPath = if ($iterationPathProperty) { [string]$iterationPathProperty.Value } else { $null }
             }
 
             if ($map.ContainsKey($sourceId)) { $skipped++; continue }
@@ -491,6 +501,7 @@ $patchContentType = 'application/json-patch+json; charset=utf-8'
     $linked = 0
     $linksAlreadyPresent = 0
     $linkFailures = 0
+    $linkFailureDetails = [Collections.Generic.List[object]]::new()
 
     foreach ($sourceId in $sourceRelations.Keys) {
         if (-not $map.ContainsKey($sourceId)) { continue }
@@ -534,7 +545,43 @@ $patchContentType = 'application/json-patch+json; charset=utf-8'
                     continue
                 }
 
+                # TF51541 ("The Area/Iteration ID is not recognized") is Azure DevOps
+                # reporting that THIS work item's own stored Area/Iteration ID no longer
+                # maps to an existing classification node -- happens if that node was
+                # ever deleted and recreated (the path STRING can look identical; the
+                # underlying numeric ID does not survive that). It fires on any PATCH to
+                # the item, not just this link, and the fix is well documented: include
+                # the Area/Iteration Path again, BY NAME, in the same patch, which makes
+                # Azure DevOps re-resolve and refresh the stale ID. Retry once with that
+                # added before giving up.
+                if ($linkError -match 'TF51541') {
+                    $classification = $sourceClassification[$sourceId]
+                    $refreshOperations = [Collections.Generic.List[object]]::new($linkOperations)
+                    if ($classification -and -not [string]::IsNullOrWhiteSpace($classification.AreaPath)) {
+                        $areaPath = if ($PreserveClassificationPaths) { $classification.AreaPath } else {
+                            Convert-ClassificationPath -Path $classification.AreaPath -SourceProjectName $source.Project -TargetProjectName $target.Project
+                        }
+                        $refreshOperations.Add([ordered]@{ op = 'add'; path = '/fields/System.AreaPath'; value = $areaPath })
+                    }
+                    if ($classification -and -not [string]::IsNullOrWhiteSpace($classification.IterationPath)) {
+                        $iterationPath = if ($PreserveClassificationPaths) { $classification.IterationPath } else {
+                            Convert-ClassificationPath -Path $classification.IterationPath -SourceProjectName $source.Project -TargetProjectName $target.Project
+                        }
+                        $refreshOperations.Add([ordered]@{ op = 'add'; path = '/fields/System.IterationPath'; value = $iterationPath })
+                    }
+                    try {
+                        Invoke-AdoJson -Method Patch -Headers $patchHeaders -ContentType $patchContentType `
+                            -Body (ConvertTo-PatchBody -Operations $refreshOperations.ToArray()) `
+                            -Uri "$targetUrl/_apis/wit/workitems/${childTargetId}?api-version=7.1" | Out-Null
+                        $linked++
+                        continue
+                    } catch {
+                        $linkError = [string]$_.Exception.Message
+                    }
+                }
+
                 $linkFailures++
+                $linkFailureDetails.Add([pscustomobject]@{ ChildSourceId = $sourceId; ParentSourceId = $sourceParentId; Error = $linkError })
                 Write-AdoRunLog -Level error -Operation 'link-work-item' -Outcome failed `
                     -Target "$sourceId -> $sourceParentId" -Message $linkError `
                     -StatusCode (Get-ResponseStatusCode $_)
@@ -578,7 +625,19 @@ $patchContentType = 'application/json-patch+json; charset=utf-8'
     # item or link the target rejected for any other reason - still fail the run.
     if ($failures.Count -gt 0 -or $linkFailures -gt 0) {
         $failurePath = [IO.Path]::ChangeExtension($StatePath, '.failures.json')
-        $failures | ConvertTo-Json -Depth 4 | Set-Content -Path $failurePath -Encoding UTF8
+        # Wrap in a single object rather than piping $failures directly: ConvertTo-Json
+        # receives pipeline input one element at a time, and an EMPTY array piped to it
+        # produces zero pipeline objects -- so Set-Content never runs and the file is
+        # never created. That's exactly what happened here when work-item creation had
+        # zero failures (Count 0) but link creation did not: the "Details: <path>" in
+        # the failure message pointed at a file that silently never got written. A
+        # single wrapper object always serializes, even when its array properties are
+        # empty, and this also means link failures -- previously logged only to the
+        # JSONL error log -- are now in the same human-facing file as item failures.
+        [pscustomobject]@{
+            workItemFailures = $failures.ToArray()
+            linkFailures     = $linkFailureDetails.ToArray()
+        } | ConvertTo-Json -Depth 4 | Set-Content -Path $failurePath -Encoding UTF8
 
         $parts = @()
         if ($failures.Count -gt 0) { $parts += "$($failures.Count) work item(s) failed" }

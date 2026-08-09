@@ -43,7 +43,8 @@ param(
 Set-StrictMode -Version 3.0
 $ErrorActionPreference = 'Stop'
 # $PSScriptRoot is empty in parameter defaults for a [CmdletBinding()] script
-# started with powershell.exe -File, so this default is resolved here instead.if ([string]::IsNullOrWhiteSpace($StatePath)) { $StatePath = Join-Path $PSScriptRoot 'ado-copy-test-management.state.json' }
+# started with powershell.exe -File, so this default is resolved here instead.
+if ([string]::IsNullOrWhiteSpace($StatePath)) { $StatePath = Join-Path $PSScriptRoot 'ado-copy-test-management.state.json' }
 
 $commonModulePath = Join-Path $PSScriptRoot 'AdoUtils.Common.psm1'
 if (-not (Test-Path -LiteralPath $commonModulePath)) {

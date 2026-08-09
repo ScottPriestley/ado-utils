@@ -28,6 +28,10 @@ param(
     # not block page reloads. Use StrictAttachmentValidation to fail before target writes.
     [switch]$AllowMissingAttachments,
     [switch]$StrictAttachmentValidation,
+    # Custom sibling ordering (drag-and-drop reordering in the wiki UI) lives in
+    # '.order' files inside the wiki's backing Git repo, not in the Wiki Pages API.
+    # Sync-AzureDevOpsWikiPageOrder migrates them by default; opt out with this switch.
+    [switch]$SkipPageOrder,
     [switch]$NoExecute,
     [SecureString]$SourcePat,
     [SecureString]$TargetPat,
@@ -1158,6 +1162,160 @@ function Copy-AzureDevOpsWikiAttachments {
     return [pscustomobject]@{ Total = $attachments.Count; Uploaded = $uploaded; Repaired = $repaired; Skipped = ($skippedAttachments.Count + $identicalAttachments) }
 }
 
+function Get-WikiOrderDirectories {
+    <#
+        Every page path's parent directory can carry a '.order' file: the wiki root
+        (sibling order of top-level pages) plus one per page that has children (sibling
+        order of that page's subpages). Deepest-first is not required here because each
+        '.order' file only lists direct children, not descendants.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [object[]]$Pages
+    )
+
+    $directories = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $null = $directories.Add('/')
+    foreach ($page in $Pages) {
+        $segments = @(([string]$page.Path).Trim('/').Split('/') | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        if ($segments.Count -gt 1) {
+            $parentPath = '/' + ($segments[0..($segments.Count - 2)] -join '/')
+            $null = $directories.Add($parentPath)
+        }
+    }
+    return @($directories)
+}
+
+function ConvertTo-AzureDevOpsWikiOrderFilePath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$DirectoryPath
+    )
+
+    if ($DirectoryPath -eq '/') {
+        return '/.order'
+    }
+    return "$DirectoryPath/.order"
+}
+
+function Get-AzureDevOpsWikiOrderFileContent {
+    <#
+        Get-AzureDevOpsWikiAttachmentContent is a generic Git item reader despite its
+        name; '.order' files are read through the same Git Items API as attachments.
+        Returns $null when the directory has no custom order (default alphabetical
+        ordering), which is a normal, expected case rather than an error.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Organization,
+        [Parameter(Mandatory = $true)]
+        [string]$Project,
+        [Parameter(Mandatory = $true)]
+        [object]$Wiki,
+        [Parameter(Mandatory = $true)]
+        [string]$GitPath,
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Headers
+    )
+
+    try {
+        $content = Get-AzureDevOpsWikiAttachmentContent -Organization $Organization -Project $Project `
+            -Wiki $Wiki -GitPath $GitPath -Headers $Headers
+        if ($content.Count -eq 0) {
+            return $null
+        }
+        return $content
+    }
+    catch {
+        if ($_.Exception.Message -like '*status 404*') {
+            return $null
+        }
+        throw
+    }
+}
+
+function Sync-AzureDevOpsWikiPageOrder {
+    <#
+        Copies each directory's '.order' file from source to target verbatim. This is
+        safe only because this script preserves page paths exactly; '.order' lists
+        children by their path segment, so an unchanged path means an unchanged entry.
+        Must run after all target pages are created, since a child page's parent folder
+        does not exist in the target repo until that child page has been written.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [object[]]$Pages,
+        [Parameter(Mandatory = $true)]
+        [string]$SourceOrganization,
+        [Parameter(Mandatory = $true)]
+        [string]$SourceProject,
+        [Parameter(Mandatory = $true)]
+        [object]$SourceWiki,
+        [Parameter(Mandatory = $true)]
+        [hashtable]$SourceHeaders,
+        [Parameter(Mandatory = $true)]
+        [string]$TargetOrganization,
+        [Parameter(Mandatory = $true)]
+        [string]$TargetProject,
+        [Parameter(Mandatory = $true)]
+        [object]$TargetWiki,
+        [Parameter(Mandatory = $true)]
+        [hashtable]$TargetHeaders
+    )
+
+    $directories = Get-WikiOrderDirectories -Pages $Pages
+    $targetRepositoryId = Get-AzureDevOpsWikiRepositoryId -Wiki $TargetWiki
+    $targetBranchRefName = Get-AzureDevOpsWikiBranchRefName -Wiki $TargetWiki
+    if ([string]::IsNullOrWhiteSpace($targetBranchRefName)) {
+        $targetBranchRefName = Get-AzureDevOpsGitRepositoryDefaultBranch -Organization $TargetOrganization -Project $TargetProject `
+            -RepositoryId $targetRepositoryId -Headers $TargetHeaders
+    }
+    $targetBranchTip = Get-AzureDevOpsGitBranchTipObjectId -Organization $TargetOrganization -Project $TargetProject `
+        -RepositoryId $targetRepositoryId -BranchRefName $targetBranchRefName -Headers $TargetHeaders
+
+    $synced = 0
+    $identical = 0
+    foreach ($directory in $directories) {
+        $orderWikiPath = ConvertTo-AzureDevOpsWikiOrderFilePath -DirectoryPath $directory
+        $sourceGitPath = ConvertTo-AzureDevOpsWikiRepositoryPath -Wiki $SourceWiki -WikiPath $orderWikiPath
+        $sourceContent = Get-AzureDevOpsWikiOrderFileContent -Organization $SourceOrganization -Project $SourceProject `
+            -Wiki $SourceWiki -GitPath $sourceGitPath -Headers $SourceHeaders
+        if ($null -eq $sourceContent) {
+            # No custom order at this level in the source; nothing to migrate.
+            continue
+        }
+
+        $targetGitPath = ConvertTo-AzureDevOpsWikiRepositoryPath -Wiki $TargetWiki -WikiPath $orderWikiPath
+        $existingTargetContent = Get-AzureDevOpsWikiOrderFileContent -Organization $TargetOrganization -Project $TargetProject `
+            -Wiki $TargetWiki -GitPath $targetGitPath -Headers $TargetHeaders
+        $changeType = if ($null -eq $existingTargetContent) { 'add' } else { 'edit' }
+        if ($changeType -eq 'edit' -and $existingTargetContent.Count -eq $sourceContent.Count -and
+            (Get-ByteArraySha256 $existingTargetContent) -ceq (Get-ByteArraySha256 $sourceContent)) {
+            $identical++
+            Write-MigrationLog -Message "Skipped identical '.order' file for '$directory'."
+            continue
+        }
+
+        $targetBranchTip = Set-AzureDevOpsGitItemContent -Organization $TargetOrganization -Project $TargetProject `
+            -RepositoryId $targetRepositoryId -BranchRefName $targetBranchRefName -OldObjectId $targetBranchTip `
+            -GitPath $targetGitPath -Content $sourceContent -ChangeType $changeType -Headers $TargetHeaders
+
+        $writtenContent = Get-AzureDevOpsWikiOrderFileContent -Organization $TargetOrganization -Project $TargetProject `
+            -Wiki $TargetWiki -GitPath $targetGitPath -Headers $TargetHeaders
+        if ($null -eq $writtenContent -or $writtenContent.Count -ne $sourceContent.Count -or
+            (Get-ByteArraySha256 $writtenContent) -cne (Get-ByteArraySha256 $sourceContent)) {
+            throw "Target '.order' validation failed for '$directory'."
+        }
+
+        $synced++
+        Write-MigrationLog -Message "Synced '.order' for '$directory' ($($sourceContent.Count) bytes)." -Level Success
+    }
+
+    return [pscustomobject]@{ DirectoriesChecked = $directories.Count; Synced = $synced; Identical = $identical }
+}
+
 function Get-AzureDevOpsWikiPageState {
     param(
         [Parameter(Mandatory = $true)]
@@ -1314,6 +1472,16 @@ function Invoke-WikiMigration {
             if (-not $targetState.Exists -or $targetState.Content -cne $page.Content) {
                 throw "Target validation failed for '$($page.Path)'."
             }
+        }
+
+        if ($SkipPageOrder) {
+            Write-MigrationLog -Message "Skipped '.order' sync (-SkipPageOrder)." -Level Warning
+        }
+        else {
+            $orderResult = Sync-AzureDevOpsWikiPageOrder -Pages $sourcePages `
+                -SourceOrganization $sourceOrg -SourceProject ([string]$sourceProjectDetails.id) -SourceWiki $sourceWiki -SourceHeaders $sourceHeaders `
+                -TargetOrganization $targetOrg -TargetProject ([string]$targetProjectDetails.id) -TargetWiki $targetWiki -TargetHeaders $targetHeaders
+            Write-MigrationLog -Message "Page order sync complete. Directories checked: $($orderResult.DirectoriesChecked), Synced: $($orderResult.Synced), Identical: $($orderResult.Identical)." -Level Success
         }
 
         Write-MigrationLog -Message "Migration complete. Total: $($orderedPages.Count), Created: $created, Updated: $updated, Skipped: $skipped." -Level Success

@@ -234,7 +234,8 @@ $steps = [Collections.ObjectModel.ObservableCollection[object]]::new()
     @($true, 'work-items', '4. Copy all Work Items', 'All work item types. Source formatting preserved.'),
     @($true, 'queries', '5. Copy Shared Queries (folders + queries)', 'Full Shared Queries hierarchy.'),
     @($false, 'dashboards', '6. Copy Dashboards', 'All dashboards. Widgets rewired to target IDs.'),
-    @($false, 'wiki', '7. Copy Wiki (pages, subpages, images)', 'Hierarchy and referenced images preserved.')
+    @($false, 'wiki', '7. Copy Wiki (pages, subpages, images)', 'Hierarchy and referenced images preserved.'),
+    @($false, 'test-management', '8. Copy Test Plans, Suites & Test Cases', 'Additive and resumable. Run this before repointing Test Plan-based dashboard chart widgets, which are not rewired automatically.')
 ) | ForEach-Object {
     $steps.Add([pscustomobject]@{ 
         Selected = $_[0]; Id = $_[1]; Label = $_[2]; Detail = $_[3]; 
