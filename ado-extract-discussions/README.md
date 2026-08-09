@@ -2,13 +2,47 @@
 
 `ado-extract-discussions.ps1` executes one saved Azure DevOps query, exports the query-selected work item fields, and includes paged discussion comments for each record. It is read-only against Azure DevOps and creates a new CSV for each run.
 
-## Scripts, capabilities, and exclusions
+## Using the tool
+
+**What it does:** Runs one saved query in Azure DevOps and, for every work item it returns, writes a row to a CSV containing the columns that query selects plus the full discussion/comments thread for that item. It only reads from Azure DevOps — it never changes, deletes, or writes anything back to your project.
+
+**When you'd use it:** You need an offline copy of work item discussions — for example, before a migration where comments won't otherwise be carried over, or when you want to review or archive conversation history for a set of work items outside Azure DevOps.
+
+**Before you start, have ready:**
+- The Azure DevOps project URL (organization + project).
+- A saved query URL in that same project — this defines exactly which work items get exported.
+- A Personal Access Token (PAT) with at least Work Items Read access. Note: this script always asks for a PAT directly rather than reusing one from your environment, so have it ready to paste in or supply as a parameter.
+
+**How to run it, step by step:**
+```powershell
+$pat = Read-Host 'Azure DevOps PAT (input hidden)' -AsSecureString
+./ado-extract-discussions/ado-extract-discussions.ps1 `
+  -ProjectUrl 'https://dev.azure.com/contoso/Project' `
+  -QueryUrl 'https://dev.azure.com/contoso/Project/_queries/query/00000000-0000-0000-0000-000000000000/' `
+  -Pat $pat
+```
+If you omit `-ProjectUrl` or `-QueryUrl`, the script will prompt you for them interactively.
+
+**What to expect as output:**
+- A new CSV file named `AdoWorkItemDiscussions-<queryId>-<timestamp>.csv`, written next to the script, with one row per work item that finished exporting — including a "Discussions" column with that item's comments.
+- A folder of log files recording what the script did.
+- Every run creates a brand-new CSV; it never appends to or resumes a previous export. Old exports are left alone, so you'll want to clean up files you no longer need.
+
+**What it will NOT do:**
+- It will not modify or delete anything in Azure DevOps — it is strictly read-only.
+- It will not export revision history, attachments, work item relations/links, or identity/user mapping data.
+- It will not resume a partial or failed export — a rerun always starts a fresh CSV from scratch.
+- It cannot restore or import data anywhere; it only produces a local CSV for review.
+
+## Technical reference
+
+### Scripts, capabilities, and exclusions
 
 | Script | Capability | Exclusions |
 | --- | --- | --- |
 | `ado-extract-discussions.ps1` | Reads one saved query's WIQL, executes it, exports the selected query columns, pages each returned work item's comments, and writes one CSV row per completed work item. | Does not export revisions, attachments, relations, history, identity mappings, or restore/import data. |
 
-## Prerequisites
+### Prerequisites
 
 - Windows PowerShell 5.1 or PowerShell 7+.
 - Source project read access.
@@ -16,19 +50,19 @@
 - Work Items Read PAT scope.
 - Disk access to write `AdoWorkItemDiscussions-<queryId>-<timestamp>.csv` beside the script.
 
-## Authentication and minimum PAT scopes
+### Authentication and minimum PAT scopes
 
 `Pat` resolves from SecureString parameter -> hidden prompt `Azure DevOps PAT (input hidden)`. This script intentionally asks for a fresh PAT when `-Pat` is omitted instead of using `ADO_PAT`, so a stale environment token cannot silently drive the export. `-NonInteractive` rejects missing values instead of prompting. PATs are registered for redaction and not written to the CSV or logs.
 
 Minimum scope is Work Items Read. Project permission can still block comments or work items.
 
-## Safety and rerun behavior
+### Safety and rerun behavior
 
 The script performs read-only Azure DevOps calls and never deletes or writes remote data. It writes a fresh `AdoWorkItemDiscussions-<queryId>-<timestamp>.csv` beside the script on every run. It does not append to or resume from previous exports.
 
 There is no `-WhatIf` because the only writes are local CSV/log files. CSV file-sharing conflicts are retried and then surfaced as errors.
 
-## Quick start
+### Quick start
 
 ```powershell
 $pat = Read-Host 'Azure DevOps PAT (input hidden)' -AsSecureString
@@ -49,7 +83,7 @@ From this folder:
   -Pat $pat
 ```
 
-## Parameters and precedence
+### Parameters and precedence
 
 | Parameter | Description |
 | --- | --- |
@@ -61,13 +95,13 @@ From this folder:
 
 PAT precedence is SecureString parameter -> hidden prompt. `ProjectUrl` and `QueryUrl` use parameter -> prompt.
 
-## Input formats
+### Input formats
 
 `ProjectUrl` must identify `https://dev.azure.com/{org}/{project}`. `QueryUrl` must identify `https://dev.azure.com/{org}/{project}/_queries/query/{queryId}/`, and the organization/project must match `ProjectUrl`.
 
 Flat saved queries return their direct work item IDs. Tree and relationship queries return relation endpoints; the script de-duplicates source and target IDs before exporting records.
 
-## Outputs and logs
+### Outputs and logs
 
 `AdoWorkItemDiscussions-<queryId>-<timestamp>.csv` is written beside the script and includes one completed row per work item. Previous exports are left untouched.
 
@@ -75,11 +109,11 @@ Rows include `QueryId`, `QueryName`, the saved query's selected columns in query
 
 Every run creates `ado-extract-discussions-success log-<run-id>.jsonl` and `ado-extract-discussions-error log-<run-id>.jsonl` in `LogDirectory` or local `logs`, UTF-8 without BOM. Records include `timestampUtc`, `level`, `script`, `runId`, `operation`, `outcome`, `target`, `message`, `errorType`, and `statusCode`; secrets are redacted.
 
-## Detailed workflow and behavior
+### Detailed workflow and behavior
 
 The script parses the project and query URLs, resolves the PAT, reads the saved query WIQL, executes the query, de-duplicates the returned work item IDs, reads the query-selected fields for each work item, pages comments for each work item, and appends the CSV row only after that work item is complete. It logs progress and final outcome through the shared logger.
 
-## Verification checklist
+### Verification checklist
 
 - Run `pwsh -NoProfile -File ./tests/run-offline-checks.ps1`.
 - Confirm project URL, query URL, and Work Items Read scope.
@@ -89,7 +123,7 @@ The script parses the project and query URLs, resolves the PAT, reads the saved 
 
 Offline checks make no live calls and cannot prove comments visible to one PAT are complete for another identity.
 
-## Troubleshooting
+### Troubleshooting
 
 - CSV locked: close Excel or other viewers and rerun.
 - Missing comments: verify the PAT identity can see the work item and discussion.
@@ -97,14 +131,14 @@ Offline checks make no live calls and cannot prove comments visible to one PAT a
 - `401`/`403`: re-enter a PAT for the query's organization, then verify expiry, Work Items Read scope, and project/query permission.
 - Re-running always creates a new CSV. Archive or delete old CSVs manually when they are no longer needed.
 
-## Limitations
+### Limitations
 
 No revision/comment history beyond current comments API output, no attachments, no relation export beyond using relationship-query endpoint IDs as the record set, no import/restore path, and no remote dry run.
 
-## Security
+### Security
 
 Use a short-lived read-only PAT. Protect the CSV and logs because descriptions and comments can contain sensitive project content. Do not commit exports or PATs.
 
-## Related workflows
+### Related workflows
 
 Use before migrations when discussion content needs offline review. Other copy/migration tools in this repository do not migrate comments; see the [root README](../README.md) for workflow boundaries.
