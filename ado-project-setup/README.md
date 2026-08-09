@@ -173,7 +173,7 @@ Every run creates a timestamped folder under your Documents folder containing a 
 
 | Script | Capability | Exclusions |
 | --- | --- | --- |
-| `../ado-migration/ado-project-setup/azure-pipelines.yml` | Pipeline definition for the recommended, centrally-run path. See [Pipeline (recommended)](#pipeline-recommended). | Does not store PATs; target PAT is a queue-time-only secret. |
+| `azure-pipelines.yml` | Pipeline definition for the recommended, centrally-run path. Duplicated at `../ado-migration/ado-project-setup/azure-pipelines.yml`, with each copy's script paths pointing at its own tree. See [Pipeline (recommended)](#pipeline-recommended). | Does not store PATs; target PAT is a queue-time-only secret. |
 | `ado-project-setup-runner.ps1` | Runs selected setup steps in the prescribed order and writes PC-facing logs. Duplicated byte-for-byte at `../ado-migration/ado-project-setup/ado-project-setup-runner.ps1` for the pipeline to run from. | Does not create the target project (unless Step 0's "Full automation" mode is used), migrate permissions, or provide rollback. |
 | `ado-project-setup-ui.ps1` | Local WPF interface launched directly or through `ado-migrate://open`. | Legacy path, superseded by the Azure Pipeline; kept as a manual fallback. Does not store PATs or host the bookmark page. |
 | `install-ado-migrate-protocol.ps1` | Registers the Windows `ado-migrate://` protocol to open the local UI. | Legacy path, superseded by the Azure Pipeline; kept as a manual fallback. Does not deploy the final HTML/script hosting location. |
@@ -323,11 +323,11 @@ The pipeline exists to solve two problems the WPF/OneDrive-sync model had: scrip
 <details>
 <summary><strong>Why there are two copies of the scripts</strong> — <code>../ado-migration</code> vs. the repo root</summary>
 
-This repo root stays exactly as it's always been: every script here can be run individually by hand (see [Direct script invocation](#direct-script-invocation-bypassing-the-ui)), and nothing here was moved or deleted for the pipeline to exist.
+This repo root stays exactly as it's always been: every script here can be run individually by hand (see [Direct script invocation](#direct-script-invocation-bypassing-the-ui)), and nothing here was moved or deleted for the pipeline to exist — including `azure-pipelines.yml` itself, which exists at the repo root too, not only under `ado-migration/`.
 
-[`../ado-migration`](../ado-migration) is a separate, self-contained copy of only the files the automated sequence needs: `AdoUtils.Common.psm1`, `ado-project-setup-runner.ps1`, `azure-pipelines.yml`, and the nine wrapped step scripts (`ado-migrate-process`, `ado-set-default-area`, `ado-import-iterations`, `ado-import-area-paths`, `ado-copy-all-workitems`, the three `ado-dashboard-migration` scripts, `ado-migrate-wiki`, `ado-copy-test-management`). The folder nesting inside `ado-migration/` mirrors the repo root exactly, so the runner's existing relative-path logic (`Join-Path $PSScriptRoot '../ado-migrate-process/...'`) works there completely unmodified — nothing in the copied scripts was rewritten, only the two YAML path references inside `azure-pipelines.yml` itself point into `ado-migration/`.
+[`../ado-migration`](../ado-migration) is a second, self-contained copy of only the files the automated sequence needs: `AdoUtils.Common.psm1`, `ado-project-setup-runner.ps1`, `azure-pipelines.yml`, and the nine wrapped step scripts (`ado-migrate-process`, `ado-set-default-area`, `ado-import-iterations`, `ado-import-area-paths`, `ado-copy-all-workitems`, the three `ado-dashboard-migration` scripts, `ado-migrate-wiki`, `ado-copy-test-management`). The folder nesting inside `ado-migration/` mirrors the repo root exactly, so the runner's existing relative-path logic (`Join-Path $PSScriptRoot '../ado-migrate-process/...'`) works there completely unmodified.
 
-**These are two copies, not a shared reference** — updating a script at the repo root does not automatically update its `ado-migration/` counterpart. After changing any of the files listed above, re-copy the changed ones into `ado-migration/` before the next pipeline run needs them:
+**These are two independent, fully working copies, not a shared reference** — each tree can run this tool's automation on its own. Updating a script at the repo root does not automatically update its `ado-migration/` counterpart. After changing any of the files listed above, re-copy the changed ones into `ado-migration/` before the next pipeline run needs them:
 
 ```bash
 cp AdoUtils.Common.psm1 ado-migration/AdoUtils.Common.psm1
@@ -343,6 +343,8 @@ cp ado-dashboard-migration/03-import-dashboards.ps1 ado-migration/ado-dashboard-
 cp ado-migrate-wiki/ado-migrate-wiki.ps1 ado-migration/ado-migrate-wiki/ado-migrate-wiki.ps1
 cp ado-copy-test-management/ado-copy-test-management.ps1 ado-migration/ado-copy-test-management/ado-copy-test-management.ps1
 ```
+
+`azure-pipelines.yml` is **not** in that plain-`cp` list on purpose: the two copies are byte-identical except for two path references (the `AdoUtils.Common.psm1` import and the runner invocation), which point at each copy's own tree — `./AdoUtils.Common.psm1` / `./ado-project-setup/ado-project-setup-runner.ps1` at the repo root, `./ado-migration/AdoUtils.Common.psm1` / `./ado-migration/ado-project-setup/ado-project-setup-runner.ps1` under `ado-migration/`. When one changes in any other way (a new parameter, a new stage), port the change by hand and keep each copy's two path references as they are.
 
 `tests/run-offline-checks.ps1` recurses the whole repo, so it validates both copies automatically — its hardcoded entry-script count (36) already accounts for the 11 duplicated `.ps1` files in `ado-migration/`. If a script is ever added to or removed from the pipeline's file list above, that count needs updating too.
 
