@@ -60,6 +60,8 @@ The script issues GET/POST/PATCH/PUT operations and no DELETE. It reuses many na
 
 There is no `-WhatIf`, preview, rollback, or transaction. Use a nonproduction target organization first.
 
+The script explicitly sets `Set-StrictMode -Off` at the top rather than relying on PowerShell's own default. `Set-StrictMode` is inherited from the caller's scope, and `ado-project-setup-runner.ps1` (the [ado-project-setup](../ado-project-setup/README.md) launcher) sets `-Version Latest` at its own script scope before invoking this script in the same process; without the explicit override here, this script would silently run under StrictMode when launched through the launcher but not when run standalone, producing launcher-only failures that could not be reproduced from a plain PowerShell prompt or a static read of the code. The explicit `-Off` makes this script's behavior identical regardless of how it is invoked.
+
 ## Quick start
 
 ```powershell

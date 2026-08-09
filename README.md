@@ -8,7 +8,7 @@ Each top-level script now lives in its own folder with a dedicated README:
 
 | Script | Capability | Important exclusions |
 | --- | --- | --- |
-| [ado-project-setup](ado-project-setup/README.md) | PC-friendly launcher for selecting and running the project setup migration sequence through a local WPF UI and `ado-migrate://` protocol entry point. | Does not create the target project, migrate permissions, store PATs, or determine the final Production hosting location for HTML/scripts. |
+| [ado-project-setup](ado-project-setup/README.md) | PC-friendly launcher for selecting and running the project setup migration sequence through a local WPF UI and `ado-migrate://` protocol entry point. Optional Step 0 can migrate the process template and, in "Full automation" mode, create the target project itself. | Does not migrate permissions, store PATs, or determine the final Production hosting location for HTML/scripts. Creates the target project only when Step 0's "Full automation" mode is selected; otherwise the target project must already exist. |
 | [ado-copy-test-management](ado-copy-test-management/README.md) | Copies Test Plans, suite trees, Test Case work items, rich-text fields, and suite membership to another project. Falls back to Work Item Tracking source discovery when the source identity can read work items but the Test Plan service rejects source discovery because of licensing or service-specific project visibility. | Does not migrate history, attachments, test runs/results, shared-step artifacts, identity mapping, permissions, reusable shared-step artifacts, or cross-organization configuration IDs. Dynamic/requirement suites are copied as static suites unless opted out. WIT fallback fidelity depends on source test work-item links. |
 | [ado-copy-query-workitems](ado-copy-query-workitems/README.md) | Copies one saved query, its returned work items, supported fields, and query relationships to another project. | Does not clone every field, attachment, history entry, identity, or external relation. Classification paths are rewritten to the target root unless `-PreserveClassificationPaths` is used. |
 | [ado-copy-all-workitems](ado-copy-all-workitems/README.md) | Copies every work item in a source project, discovered with WIQL so no saved query and no source write access are needed. Rich-text fields are copied byte-for-byte and parent/child links are recreated in a second pass. | Does not copy history, revisions, attachments, comments, permissions, or links other than parent/child. Identity fields are skipped unless `-CopyIdentityFields` is used. |
@@ -69,6 +69,7 @@ Root URL inputs use the literal prompts `Source URL`, `Source Query URL`, `Targe
 | Wiki migration | Project/team metadata and Code/Wiki: Read | Project/team metadata and Code/Wiki: Read & write |
 | Process migration | Process and Work Items: Read | Process and Work Items: Read & write |
 | Work item type migration | Process and Work Items: Read | Process and Work Items: Read & write |
+| Project setup launcher | Work Items, Process (Step 0), Team dashboards, Code/Wiki, Test Management (Step 8), Project/team metadata: Read | Work Items, Process (Step 0), Code/Wiki, Test Management (Step 8): Read & write; Team dashboards: Manage; Team Settings: update permission |
 
 ## Safety and rerun behavior
 
@@ -133,6 +134,9 @@ Script-folder-specific parameters:
 | `ado-delete-query-test-scripts/ado-delete-query-test-scripts.ps1` | `QueryUrl`, `Pat`, `PromptForPat`, `DeleteWorkItemTypes`, `RequiredWorkItemType`, `ManifestPath`, `LogPath`, `ForceOverwriteManifest`, `AllowTitleResolution`, `AllowRelationshipResults`, `Apply`, `ConfirmationText`, `SkipNotifications`, common logging switches. |
 | `ado-extract-discussions/ado-extract-discussions.ps1` | `ProjectUrl`, `QueryUrl`, `Pat`, common logging switches. Output CSV is query-specific and timestamped beside the script. |
 | `ado-migrate-query/ado-migrate-query.ps1` | `SourceOrg`, `SourceProject`, `TargetOrg`, `TargetProject`, `QueryIds`, `TargetRootFolder`, `OutputDirectory`, `SourcePat`, `TargetPat`, common logging switches. |
+| `ado-migrate-process/ado-migrate-process.ps1` | `SourceOrganization`, `SourceProcess`, `SourcePat`, `TargetOrganization`, `TargetProcess`, `TargetPat`, `TargetProject`, `ProcessMode` (`FullAuto`, `AssistedManual` default, or `ExportOnly`), common logging switches. |
+| `ado-migrate-wiki/ado-migrate-wiki.ps1` | `SourceOrganization`, `SourceProject`, `SourceWikiName`, `TargetOrganization`, `TargetProject`, `TargetWikiName`, `ApiBaseUri`, `AllowMissingAttachments`, `StrictAttachmentValidation`, `SkipPageOrder`, `NoExecute`, `SourcePat`, `TargetPat`, common logging switches. |
+| `ado-project-setup/ado-project-setup-runner.ps1` | `SourceProjectUrl`, `TargetProjectUrl`, `Steps` (default: all except process migration), `ProcessName`, `ProcessMode`, `DefaultAreaPath`, `SourceWikiName`, `TargetWikiName`, `RunRoot`, `ProgressPath`, `SourcePat`, `TargetPat`, `NonInteractive`. Wraps other entry scripts in-process rather than exposing `LogPath`/`StatePath` directly; see its own README for run-root and state-file layout. |
 
 `LogPath` parameters control legacy human-readable script logs where present; they do not replace the shared JSONL logs controlled by `LogDirectory`.
 
@@ -161,7 +165,7 @@ Entry-point auxiliary outputs are:
 - Query/work-item copy: state JSON, optional text log, a `*.failures.json` summary, and console summary JSON.
 - Test Management copy: state JSON, optional text log, and console summary JSON. The state maps source plan IDs, suite IDs, Test Case work item IDs, and suite-case memberships to target artifacts for reruns.
 - Cleanup: review manifest CSV, optional `*.unresolved.csv`, `*.delete-results.csv`, and a human-readable log.
-- Discussion export: `AdoWorkItemDiscussions.csv` beside the script, appended one completed work item at a time.
+- Discussion export: a uniquely timestamped `AdoWorkItemDiscussions-<queryId>-<timestamp>.csv` beside the script per run, appended one completed work item at a time within that run.
 - Query migration: `migration-state.json`, `source-queries.json`, `field-schema.json`, plus legacy `success.log` and `error.log` in `-OutputDirectory`.
 
 ## Detailed workflow and behavior
@@ -172,7 +176,7 @@ Entry-point auxiliary outputs are:
 
 `ado-delete-query-test-scripts/ado-delete-query-test-scripts.ps1` resolves the saved query, rejects ambiguous result shapes unless explicitly allowed, maps only permitted test types to Test Management identifiers, and writes a review manifest. Apply mode refuses an implicit or changed manifest, requires the exact displayed confirmation, records prior successful deletes, and targets only reviewed Test Management API objects. Partial failures are logged and fail the run.
 
-`ado-extract-discussions/ado-extract-discussions.ps1` pages work-item IDs below the WIQL result limit, pages each comments collection, and appends one CSV row per completed ID. On rerun it reads existing CSV IDs and skips them. This resume rule assumes the existing row is complete; it does not freshly compare remote comments.
+`ado-extract-discussions/ado-extract-discussions.ps1` pages work-item IDs below the WIQL result limit, pages each comments collection, and appends one CSV row per completed ID within that run's uniquely timestamped output file. It always starts a fresh CSV; it does not read or skip IDs from a prior run's file.
 
 `ado-migrate-query/ado-migrate-query.ps1` reads each configured query, optionally uses checked-in fallback WIQL for three known default IDs, rewrites source-project literals and unsupported custom Boolean predicates, creates missing folders/query, freshly reads a created query, and records its target ID. A state hit is verified by target ID. An existing identical query is recorded and skipped; differing WIQL is never overwritten.
 

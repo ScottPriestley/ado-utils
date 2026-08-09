@@ -8,7 +8,7 @@ Three PowerShell scripts either copy one wiki directly or move current Markdown 
 | --- | --- | --- |
 | `ado-extract-wiki.ps1` | Exports one/all visible wikis to UTF-8 Markdown plus a SHA-256 manifest. | Does not export attachments, Git history, permissions, revisions, or `.order` files. |
 | `ado-load-wiki.ps1` | Validates one manifest-backed export, creates/reuses a project wiki, and creates/updates pages. | Does not load attachments or accept edited files whose hashes disagree. |
-| `ado-migrate-wiki.ps1` | Directly copies pages and referenced relative `.attachments/...` files. | Does not copy unreferenced binaries, history, permissions, or exact navigation order. |
+| `ado-migrate-wiki.ps1` | Directly copies pages, referenced relative `.attachments/...` files, and (by default) sibling page order (`.order` files). | Does not copy unreferenced binaries, history, permissions, comments, or deleted pages. Page-order sync can be turned off with `-SkipPageOrder`. |
 
 The synthetic `/` root is excluded. Target-only pages are retained; none of these scripts deletes pages.
 
@@ -27,7 +27,7 @@ Use source Project/team metadata and Code/Wiki Read, and target Project/team met
 
 ## Safety and rerun behavior
 
-Missing pages are created. Existing pages with byte-identical content are skipped. Non-identical matching pages are updated with the current ETag; a concurrent edit causes a conflict rather than an unconditional overwrite. Target-only pages remain. Direct migration skips an already-identical attachment and otherwise writes the referenced attachment; strict missing-attachment validation can fail before page writes.
+Missing pages are created. Existing pages with byte-identical content are skipped. Non-identical matching pages are updated with the current ETag; a concurrent edit causes a conflict rather than an unconditional overwrite. Target-only pages remain. Direct migration skips an already-identical attachment and otherwise writes the referenced attachment; strict missing-attachment validation can fail before page writes. After pages are written, direct migration also skips an already-identical `.order` file and otherwise writes the source one; this step runs last because a child page's parent folder does not exist in the target repository until that child page has been created.
 
 These scripts have no `-WhatIf`. `-NoExecute` only loads functions and records a preview outcome for offline testing; it does not inspect or preview a remote migration. Repeatability does not mean rollback or preservation of target edits: non-identical matching pages are intentionally replaced.
 
@@ -55,9 +55,9 @@ These scripts have no `-WhatIf`. `-NoExecute` only loads functions and records a
 | --- | --- |
 | Extract | `Organization`, `Project`, `WikiName`, `OutputPath`, `NoExecute`, `SourcePat`, `LogDirectory`, `NonInteractive`. |
 | Load | `SourcePath`, `Organization`, `Project`, `NoExecute`, `TargetPat`, `ApiBaseUri` (default `https://dev.azure.com`, test seam), common logging switches. |
-| Direct | `SourceOrganization`, `SourceProject`, `SourceWikiName`, `TargetOrganization`, `TargetProject`, `TargetWikiName`, `ApiBaseUri`, `AllowMissingAttachments`, `StrictAttachmentValidation`, `NoExecute`, source/target PATs, common logging switches. |
+| Direct | `SourceOrganization`, `SourceProject`, `SourceWikiName`, `TargetOrganization`, `TargetProject`, `TargetWikiName`, `ApiBaseUri`, `AllowMissingAttachments`, `StrictAttachmentValidation`, `SkipPageOrder`, `NoExecute`, source/target PATs, common logging switches. |
 
-Explicit parameters precede prompts; PAT precedence is SecureString → environment → prompt. Extract defaults to all visible wikis and a timestamped `WikiExport_<project>_<timestamp>` directory. Multiple source wikis require an explicit name for direct migration. Load accepts a wiki folder or a parent containing exactly one manifest. `StrictAttachmentValidation` overrides the default/explicit allowance of missing attachments.
+Explicit parameters precede prompts; PAT precedence is SecureString → environment → prompt. Extract defaults to all visible wikis and a timestamped `WikiExport_<project>_<timestamp>` directory. Multiple source wikis require an explicit name for direct migration. Load accepts a wiki folder or a parent containing exactly one manifest. `StrictAttachmentValidation` overrides the default/explicit allowance of missing attachments. `SkipPageOrder` opts out of the default sibling-order (`.order` file) sync that direct migration otherwise performs after all pages are written.
 
 ## Input formats
 
@@ -71,7 +71,7 @@ Extract writes one subdirectory per selected wiki with Markdown and manifest fil
 
 Every run creates JSONL files named `<script-base>-success log-<run-id>.jsonl` and `<script-base>-error log-<run-id>.jsonl` in `LogDirectory` or local `logs`, UTF-8 without BOM. Records contain `timestampUtc`, `level`, `script`, `runId`, `operation`, `outcome`, `target`, `message`, `errorType`, and `statusCode`; registered secrets and authorization/query-token values are redacted.
 
-There is no `WikiMigration_yyyyMMdd_HHmmss.log` contract in the current implementation; rely on the shared JSONL paths printed at completion.
+`ado-migrate-wiki.ps1` additionally writes a human-readable `WikiMigration_<yyyyMMdd_HHmmss>.log` (UTF-8, one line per step, mirrored to the console) resolved from `-LogDirectory` when supplied. Earlier versions wrote this file to the process's current directory, which failed when the script was launched from a directory the process couldn't write to (for example when invoked from `ado-project-setup`'s `ado-migrate://` protocol handler, which can start the process rooted in `C:\Windows\System32`); when `-LogDirectory` is passed explicitly -- as the launcher always does -- this log now lands there instead. When `-LogDirectory` is omitted entirely (a standalone run with no other flags), this file's default directory is one level above the JSONL logs' own default (a `logs` folder beside the repository root rather than beside the script); pass `-LogDirectory` explicitly to keep both together. Extract and load do not write this secondary log.
 
 ## Detailed workflow and behavior
 
@@ -79,7 +79,7 @@ Extract discovers wiki/page trees recursively, requests each page body separatel
 
 Load fully validates local data before connecting, resolves/creates a project wiki, processes parents before children, skips identical content, sends ETag-protected updates for differences, then freshly reads each written page and compares content/hash.
 
-Direct migration resolves source/target projects/wikis, recursively reads pages, optionally validates all referenced attachments before target page writes, copies or skips attachments, creates/updates pages parent-first, and freshly compares target page content. By default a missing referenced attachment is warned/skipped; `StrictAttachmentValidation` makes it fatal before page writes. Attachment and page verification is scoped to processed content, not repository history/order.
+Direct migration resolves source/target projects/wikis, recursively reads pages, optionally validates all referenced attachments before target page writes, copies or skips attachments, creates/updates pages parent-first, and freshly compares target page content. By default a missing referenced attachment is warned/skipped; `StrictAttachmentValidation` makes it fatal before page writes. After all pages are created and validated, it copies each directory's `.order` file (the sibling drag-and-drop ordering the wiki UI stores in the wiki's backing Git repo, not in the Wiki Pages API) from source to target verbatim, skipping directories with no custom order and identical existing files; `-SkipPageOrder` disables this step. Attachment, page, and order-file writes are all read back and byte/hash-compared against the source before being counted as successful.
 
 ## Verification checklist
 
@@ -88,7 +88,8 @@ Direct migration resolves source/target projects/wikis, recursively reads pages,
 - Test load/direct migration in a nonproduction project.
 - Review both JSONL logs, missing-attachment warnings, and every updated page path.
 - Compare representative rendered Markdown, links, images, hierarchy, and target-only content manually.
-- Verify repository/wiki permissions and navigation ordering separately.
+- For direct migration, review the `.order` sync summary (directories checked/synced/identical) in the console output and log; for extract/load, verify navigation ordering separately since neither carries `.order` files.
+- Verify repository/wiki permissions separately in all cases.
 
 Offline tests exercise manifest/path/hash, API-base seam, identical skip, attachment, failure, and representative read-back behavior without live Azure DevOps calls.
 
@@ -104,7 +105,7 @@ Offline tests exercise manifest/path/hash, API-base seam, identical skip, attach
 
 ## Limitations
 
-No workflow migrates Git history, authors/timestamps, revisions, `.order`, permissions, comments, deleted pages, or target-only cleanup. Offline extract/load omits all attachments; direct mode includes only referenced relative `.attachments/...` paths. Absolute links remain source-specific. No live validation is claimed.
+No workflow migrates Git history, authors/timestamps, revisions, permissions, comments, deleted pages, or target-only cleanup. Extract/load omit `.order` files and all attachments entirely; direct migration includes referenced relative `.attachments/...` paths and, unless `-SkipPageOrder` is used, each directory's `.order` file. Absolute links remain source-specific. No live validation is claimed.
 
 ## Security
 

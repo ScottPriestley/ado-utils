@@ -51,10 +51,56 @@ Area and Iteration Paths are rebased from the source project root onto the
 target project root: `Source\Team A\Web` becomes `Target\Team A\Web`. Supply
 `-PreserveClassificationPaths` to send them unchanged instead.
 
-If a rebased path does not exist in the target, the create fails and is retried
-once with the paths reset to the project root and the state omitted. Items
-created that way are counted and listed at the end of the run as reduced
-fidelity, and each one is recorded in the error log.
+## Targeted retry on create failure
+
+If a work item create fails for a reason other than a missing work item type
+(see below), the script inspects the error text before giving up rather than
+discarding classification paths and state on every failure:
+
+- If the message matches a `State`/`Reason` field error (`field 'State'`,
+  `field 'Reason'`, `not in the list of supported values`, `TF237124`), the
+  first retry resends every field except `System.State` and `System.Reason`.
+- If the message matches a classification-path error (`TF51011`, `Area Path`,
+  `Iteration Path`, `classification`), the first retry resends every field
+  with `System.AreaPath` and `System.IterationPath` reset to the target
+  project root, overriding `-PreserveClassificationPaths` for that item only.
+- If the message matches neither pattern, both reductions are applied
+  together on the first retry, since the cause is unclear.
+
+If the targeted retry still fails, one further attempt drops state and
+resets classification together. Items created on either retry are counted
+and listed at the end of the run as reduced fidelity ("created without
+original state" / "area/iteration path" / both), and each one is recorded in
+the error log along with the original failure reason. A work item that fails
+every attempt is recorded in `*.failures.json` and puts the run in a
+partial-failure outcome.
+
+## Parent/child link recreation (second pass)
+
+Items are created first, in id order, before any link is recreated, because a
+parent may not exist yet when its child is created. After all creates in a
+run, the script walks each source item's captured relations and, for every
+`System.LinkTypes.Hierarchy-Reverse` (child-to-parent) relation where both
+the child and its parent were themselves copied, adds the equivalent link
+between the two target items.
+
+- A link Azure DevOps reports as already existing (`already exists`,
+  `VS402313`, `RelationAlreadyExists`) is counted as already present, not a
+  failure. This makes rerunning a completed migration report its links as
+  unchanged rather than as new failures.
+- A link PATCH that fails with `TF51541` ("The Area/Iteration ID is not
+  recognized") means the child item's own stored Area/Iteration Path no
+  longer resolves to a live classification node. The script retries the same
+  link once, in the same PATCH, adding the child's Area and Iteration Path
+  again by name (rebased unless `-PreserveClassificationPaths` was used) to
+  force Azure DevOps to re-resolve the id. If that retry also fails, the
+  link is recorded as failed.
+- Any other link failure is recorded in the error log and in
+  `*.failures.json` under `linkFailures`, and puts the run in a
+  partial-failure outcome.
+
+The run prints how many links were recreated and, separately, how many were
+already present.
 
 ## Work item types missing from the target
 
@@ -121,7 +167,11 @@ There is no `-WhatIf` or remote dry run.
 
 - Canonical JSONL success and error logs under `-LogDirectory`.
 - `StatePath` JSON mapping source work item id to target id.
-- `*.failures.json` beside the state file when any item or link fails.
+- `*.failures.json` (same base name as `StatePath` with a `.failures.json`
+  extension) when any item or link fails, containing a single object with
+  `workItemFailures` (each `{ SourceId, Type, Error }`) and `linkFailures`
+  (each `{ ChildSourceId, ParentSourceId, Error }`). The file is written even
+  when one of the two arrays is empty.
 
 ## Scale
 
