@@ -149,7 +149,7 @@ behaviors:
 
 ### Safety and rerun behavior
 
-The script issues GET/POST/PATCH/PUT operations and no DELETE. It reuses many name/reference matches, patches field settings, and warns about failures rather than stopping. Reruns are intended to converge on supported metadata, but not every object is deeply compared and rule/layout reconciliation is best-effort; review warnings and target content after every run.
+The script issues GET/POST/PATCH/PUT operations, plus DELETE only for an empty, non-inherited form group it must recreate to hold an HTML field. It reuses many name/reference matches, patches field settings, and warns about failures rather than stopping. Reruns are intended to converge on supported metadata, but not every object is deeply compared and rule/layout reconciliation is best-effort; review warnings and target content after every run.
 
 > [!WARNING]
 > There is no `-WhatIf`, preview, rollback, or transaction. Use a nonproduction target organization first.
@@ -226,7 +226,7 @@ Each run creates UTF-8-without-BOM JSONL files named `<script-base>-success log-
 <details>
 <summary>Step-by-step behavior</summary>
 
-The script resolves source/target organizations and source process, then creates or reuses the target process. It enumerates and creates picklists, then organization-level fields. For each work item type in the source process, it creates or updates the WIT in the target, attaches or patches fields, creates custom states, hides inherited states that were hidden in source, creates rules where dependencies exist, and rebuilds the form layout: target pages and groups are matched by ID and then by label (they get new IDs in each organization), missing custom pages and groups are created, and each field control is added to (or moved into) its matched target group.
+The script resolves source/target organizations and source process, then creates or reuses the target process. It enumerates and creates picklists, then organization-level fields. For each work item type in the source process, it creates or updates the WIT in the target, attaches or patches fields, creates custom states, hides inherited states that were hidden in source, creates rules where dependencies exist, and rebuilds the form layout: target pages and groups are matched by ID and then by label (they get new IDs in each organization), missing custom pages and groups are created, and each field control is added to (or moved into) its matched target group. HTML (rich text) fields can only be added while creating their group, so an HTML field's group is created with the field in it; an empty, non-inherited target group already holding that label is deleted and recreated for this, which is the one DELETE the script issues.
 
 Warnings are expected for unsupported extension controls, target-only content, or rule dependencies that cannot be translated. A final success means the implemented calls completed; it is not a full semantic comparison of process behavior.
 

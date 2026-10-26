@@ -698,6 +698,14 @@ foreach ($srcField in $srcFields | Where-Object { -not (Get-Prop $_ 'isSystem' $
 }
 Write-Ok "Created $fieldCount new fields"
 
+# HTML fields can only be placed on a form as part of creating their group
+# (VS403106), so the layout step needs to know which fields are HTML. The source
+# layout's controlType is not reliable for this; the field type is.
+$htmlFieldRefs = @{}
+foreach ($f in (Invoke-Ado -Uri $tgtFieldsUri -Headers $tgtHeaders).value) {
+    if ($f.type -eq 'html') { $htmlFieldRefs[$f.referenceName] = $true }
+}
+
 # ---------------------------------------------------------------- migrate each WIT ---
 
 $witCount = 0
@@ -1053,19 +1061,41 @@ foreach ($srcWit in $srcWits) {
                     if (-not $tgtGroup) {
                         $tgtGroup = $tgtPage.sections.groups | Where-Object { $_.label -eq $srcGroup.label } | Select-Object -First 1
                     }
+
+                    # An HTML control already on the form elsewhere cannot be moved into
+                    # another group, so it stays where it is.
+                    $htmlControls = @($srcFieldControls | Where-Object { $htmlFieldRefs.ContainsKey($_.id) })
+                    $htmlToPlace = @($htmlControls | Where-Object { -not $tgtControlGroup.ContainsKey($_.id) })
+                    foreach ($c in $htmlControls | Where-Object { $tgtControlGroup.ContainsKey($_.id) -and (-not $tgtGroup -or $tgtControlGroup[$_.id] -ne $tgtGroup.id) }) {
+                        Write-Skip "  HTML field '$($c.id)' is already on the form in another group; left in place"
+                    }
+                    $srcFieldControls = @($srcFieldControls | Where-Object { -not $htmlFieldRefs.ContainsKey($_.id) }) + $htmlToPlace
+
+                    # An existing group can't take an HTML control. If it is empty and
+                    # not inherited, delete it so it is recreated with the control below.
+                    if ($tgtGroup -and $htmlToPlace.Count -gt 0 -and @($tgtGroup.controls).Count -eq 0 -and -not (Get-Prop $tgtGroup 'inherited' $false)) {
+                        $groupSectionId = ($tgtPage.sections | Where-Object { $_.groups.id -contains $tgtGroup.id } | Select-Object -First 1).id
+                        try {
+                            Invoke-Ado -Method DELETE -Uri "$tgtLayoutBase/pages/$($tgtPage.id)/sections/$groupSectionId/groups/$($tgtGroup.id)?$vLayout" -Headers $tgtHeaders | Out-Null
+                            Write-AdoRunLog -Level info -Operation delete-empty-layout-group -Outcome deleted -Target "$($tgtWit.name)/$($tgtGroup.label)" -Message 'Recreated to hold an HTML field'
+                            $tgtGroup = $null
+                        } catch {
+                            Write-Warn2 "  Failed to delete empty group '$($tgtGroup.label)' to recreate it with its HTML field: $_"
+                            Write-AdoRunLog -Level warning -Operation delete-empty-layout-group -Outcome failed -Target "$($tgtWit.name)/$($tgtGroup.label)" -Message $_.Exception.Message
+                        }
+                    }
+
                     if (-not $tgtGroup) {
                         if ($srcFieldControls.Count -eq 0) { continue }
                         $groupBody = @{ label = $srcGroup.label; visible = Get-Prop $srcGroup 'visible' $true }
                         $order = Get-Prop $srcGroup 'order'
                         if ($null -ne $order) { $groupBody['order'] = $order }
-                        # An HTML field needs a group of its own and is added with the group.
-                        $htmlControls = @($srcFieldControls | Where-Object { $_.controlType -eq 'HtmlFieldControl' -and -not $tgtControlGroup.ContainsKey($_.id) })
-                        if ($htmlControls.Count -gt 0) {
-                            $groupBody['controls'] = @($htmlControls | ForEach-Object { New-LayoutControlBody $_ })
+                        if ($htmlToPlace.Count -gt 0) {
+                            $groupBody['controls'] = @($htmlToPlace | ForEach-Object { New-LayoutControlBody $_ })
                         }
                         try {
                             $tgtGroup = Invoke-Ado -Method POST -Uri "$tgtLayoutBase/pages/$($tgtPage.id)/sections/$($tgtSection.id)/groups?$vLayout" -Headers $tgtHeaders -Body $groupBody
-                            foreach ($c in $htmlControls) { $tgtControlGroup[$c.id] = $tgtGroup.id; $layoutCount++ }
+                            foreach ($c in $htmlToPlace) { $tgtControlGroup[$c.id] = $tgtGroup.id; $layoutCount++ }
                             Write-Ok "  Created group: $($srcGroup.label)"
                             Write-AdoRunLog -Level info -Operation create-layout-group -Outcome created -Target "$($tgtWit.name)/$($srcGroup.label)"
                         } catch {
