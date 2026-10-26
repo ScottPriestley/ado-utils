@@ -424,6 +424,20 @@ function Resolve-AdoAssistedManualProject {
         -CompletionMessage "Process '$($TgtProcess.name)' created. Waiting for '$TargetProject' to be switched to it manually before WITs/fields/states are migrated."
 }
 
+function New-LayoutControlBody($SourceControl) {
+    $body = @{
+        id       = $SourceControl.id
+        label    = Get-Prop $SourceControl 'label' $SourceControl.id
+        readOnly = Get-Prop $SourceControl 'readOnly' $false
+        visible  = Get-Prop $SourceControl 'visible' $true
+    }
+    foreach ($name in 'controlType', 'height', 'watermark', 'metadata') {
+        $value = Get-Prop $SourceControl $name
+        if ($null -ne $value) { $body[$name] = $value }
+    }
+    $body
+}
+
 # API versions (process customization APIs are still -preview)
 $vProc   = 'api-version=7.1-preview.2'   # processes, work item types, WIT fields, rules
 $vLists  = 'api-version=7.1-preview.1'   # picklists
@@ -683,6 +697,14 @@ foreach ($srcField in $srcFields | Where-Object { -not (Get-Prop $_ 'isSystem' $
     }
 }
 Write-Ok "Created $fieldCount new fields"
+
+# HTML fields can only be placed on a form as part of creating their group
+# (VS403106), so the layout step needs to know which fields are HTML. The source
+# layout's controlType is not reliable for this; the field type is.
+$htmlFieldRefs = @{}
+foreach ($f in (Invoke-Ado -Uri $tgtFieldsUri -Headers $tgtHeaders).value) {
+    if ($f.type -eq 'html') { $htmlFieldRefs[$f.referenceName] = $true }
+}
 
 # ---------------------------------------------------------------- migrate each WIT ---
 
@@ -959,30 +981,147 @@ foreach ($srcWit in $srcWits) {
     }
     
     if ($srcLayout -and $srcLayout.pages) {
-        foreach ($srcPage in $srcLayout.pages) {
+        # Pages and groups created on a form get new IDs in each organization, so
+        # source group IDs cannot be used against the target. Match target pages
+        # by ID then label, groups by ID then label, create what is missing, and
+        # place each control into the matched target group.
+        $tgtLayoutBase = "$tgtOrgUrl/_apis/work/processes/$tgtProcessId/workitemtypes/$($tgtWit.referenceName)/layout"
+        $tgtLayout = $null
+        try {
+            $tgtLayout = Invoke-Ado -Uri "$tgtLayoutBase`?$vLayout" -Headers $tgtHeaders
+        } catch {
+            Write-Warn2 "  Failed to read target layout for WIT '$($tgtWit.name)': $_"
+            Write-AdoRunLog -Level warning -Operation read-layout -Outcome failed -Target $tgtWit.name -Message $_.Exception.Message
+        }
+
+        # Only controls bound to a field on the target WIT are placed; links,
+        # attachments and history controls come with the page itself.
+        $tgtWitFieldRefs = @{}
+        foreach ($f in (Invoke-Ado -Uri $tgtWitFieldsUri -Headers $tgtHeaders).value) { $tgtWitFieldRefs[$f.referenceName] = $true }
+
+        # Where each control currently sits in the target form: control id -> group id
+        $tgtControlGroup = @{}
+        if ($tgtLayout) {
+            foreach ($p in $tgtLayout.pages) { foreach ($s in $p.sections) { foreach ($g in $s.groups) { foreach ($c in $g.controls) {
+                if ($c.id) { $tgtControlGroup[$c.id] = $g.id }
+            } } } }
+        }
+
+        $srcPages = if ($tgtLayout) { $srcLayout.pages } else { @() }
+        foreach ($srcPage in $srcPages) {
+            if (Get-Prop $srcPage 'isContribution' $false) {
+                Write-Warn2 "  Page '$($srcPage.label)' is an extension contribution; add it manually"
+                continue
+            }
+            $tgtPage = $tgtLayout.pages | Where-Object { $_.id -eq $srcPage.id } | Select-Object -First 1
+            if (-not $tgtPage) {
+                $tgtPage = $tgtLayout.pages | Where-Object { $_.label -eq $srcPage.label -and $_.pageType -eq $srcPage.pageType } | Select-Object -First 1
+            }
+            if (-not $tgtPage) {
+                if ($srcPage.pageType -ne 'custom') {
+                    Write-Warn2 "  Page '$($srcPage.label)' ($($srcPage.pageType)) not found in target and cannot be created"
+                    continue
+                }
+                $pageBody = @{ label = $srcPage.label; pageType = 'custom'; visible = Get-Prop $srcPage 'visible' $true }
+                $order = Get-Prop $srcPage 'order'
+                if ($null -ne $order) { $pageBody['order'] = $order }
+                try {
+                    $newPage = Invoke-Ado -Method POST -Uri "$tgtLayoutBase/pages?$vLayout" -Headers $tgtHeaders -Body $pageBody
+                    $tgtLayout = Invoke-Ado -Uri "$tgtLayoutBase`?$vLayout" -Headers $tgtHeaders
+                    $tgtPage = $tgtLayout.pages | Where-Object { $_.id -eq $newPage.id } | Select-Object -First 1
+                    Write-Ok "  Created page: $($srcPage.label)"
+                    Write-AdoRunLog -Level info -Operation create-layout-page -Outcome created -Target "$($tgtWit.name)/$($srcPage.label)"
+                } catch {
+                    Write-Warn2 "  Failed to create page '$($srcPage.label)': $_"
+                    Write-AdoRunLog -Level warning -Operation create-layout-page -Outcome failed -Target "$($tgtWit.name)/$($srcPage.label)" -Message $_.Exception.Message
+                    continue
+                }
+            }
+
             foreach ($srcSection in $srcPage.sections) {
+                $tgtSection = $tgtPage.sections | Where-Object { $_.id -eq $srcSection.id } | Select-Object -First 1
+                if (-not $tgtSection) {
+                    Write-Warn2 "  Section '$($srcSection.id)' on page '$($srcPage.label)' not found in target"
+                    continue
+                }
+
                 foreach ($srcGroup in $srcSection.groups) {
-                    foreach ($srcControl in $srcGroup.controls) {
-                        if ($srcControl.controlType -eq 'FieldControl' -and $srcControl.id) {
-                            # Add control to target layout
-                            $controlBody = @{
-                                id = $srcControl.id
-                                label = Get-Prop $srcControl 'label' $srcControl.id
-                                readOnly = Get-Prop $srcControl 'readOnly' $false
-                                visible = Get-Prop $srcControl 'visible' $true
+                    if (Get-Prop $srcGroup 'isContribution' $false) {
+                        Write-Warn2 "  Group '$($srcGroup.label)' is an extension contribution; add it manually"
+                        continue
+                    }
+                    $srcFieldControls = @($srcGroup.controls | Where-Object {
+                        $_.id -and -not (Get-Prop $_ 'isContribution' $false) -and $tgtWitFieldRefs.ContainsKey($_.id)
+                    })
+
+                    $tgtGroup = $tgtSection.groups | Where-Object { $_.id -eq $srcGroup.id } | Select-Object -First 1
+                    if (-not $tgtGroup) {
+                        $tgtGroup = $tgtSection.groups | Where-Object { $_.label -eq $srcGroup.label } | Select-Object -First 1
+                    }
+                    if (-not $tgtGroup) {
+                        $tgtGroup = $tgtPage.sections.groups | Where-Object { $_.label -eq $srcGroup.label } | Select-Object -First 1
+                    }
+
+                    # An HTML control already on the form elsewhere cannot be moved into
+                    # another group, so it stays where it is.
+                    $htmlControls = @($srcFieldControls | Where-Object { $htmlFieldRefs.ContainsKey($_.id) })
+                    $htmlToPlace = @($htmlControls | Where-Object { -not $tgtControlGroup.ContainsKey($_.id) })
+                    foreach ($c in $htmlControls | Where-Object { $tgtControlGroup.ContainsKey($_.id) -and (-not $tgtGroup -or $tgtControlGroup[$_.id] -ne $tgtGroup.id) }) {
+                        Write-Skip "  HTML field '$($c.id)' is already on the form in another group; left in place"
+                    }
+                    $srcFieldControls = @($srcFieldControls | Where-Object { -not $htmlFieldRefs.ContainsKey($_.id) }) + $htmlToPlace
+
+                    # An existing group can't take an HTML control. If it is empty and
+                    # not inherited, delete it so it is recreated with the control below.
+                    if ($tgtGroup -and $htmlToPlace.Count -gt 0 -and @($tgtGroup.controls).Count -eq 0 -and -not (Get-Prop $tgtGroup 'inherited' $false)) {
+                        $groupSectionId = ($tgtPage.sections | Where-Object { $_.groups.id -contains $tgtGroup.id } | Select-Object -First 1).id
+                        try {
+                            Invoke-Ado -Method DELETE -Uri "$tgtLayoutBase/pages/$($tgtPage.id)/sections/$groupSectionId/groups/$($tgtGroup.id)?$vLayout" -Headers $tgtHeaders | Out-Null
+                            Write-AdoRunLog -Level info -Operation delete-empty-layout-group -Outcome deleted -Target "$($tgtWit.name)/$($tgtGroup.label)" -Message 'Recreated to hold an HTML field'
+                            $tgtGroup = $null
+                        } catch {
+                            Write-Warn2 "  Failed to delete empty group '$($tgtGroup.label)' to recreate it with its HTML field: $_"
+                            Write-AdoRunLog -Level warning -Operation delete-empty-layout-group -Outcome failed -Target "$($tgtWit.name)/$($tgtGroup.label)" -Message $_.Exception.Message
+                        }
+                    }
+
+                    if (-not $tgtGroup) {
+                        if ($srcFieldControls.Count -eq 0) { continue }
+                        $groupBody = @{ label = $srcGroup.label; visible = Get-Prop $srcGroup 'visible' $true }
+                        $order = Get-Prop $srcGroup 'order'
+                        if ($null -ne $order) { $groupBody['order'] = $order }
+                        if ($htmlToPlace.Count -gt 0) {
+                            $groupBody['controls'] = @($htmlToPlace | ForEach-Object { New-LayoutControlBody $_ })
+                        }
+                        try {
+                            $tgtGroup = Invoke-Ado -Method POST -Uri "$tgtLayoutBase/pages/$($tgtPage.id)/sections/$($tgtSection.id)/groups?$vLayout" -Headers $tgtHeaders -Body $groupBody
+                            foreach ($c in $htmlToPlace) { $tgtControlGroup[$c.id] = $tgtGroup.id; $layoutCount++ }
+                            Write-Ok "  Created group: $($srcGroup.label)"
+                            Write-AdoRunLog -Level info -Operation create-layout-group -Outcome created -Target "$($tgtWit.name)/$($srcGroup.label)"
+                        } catch {
+                            Write-Warn2 "  Failed to create group '$($srcGroup.label)': $_"
+                            Write-AdoRunLog -Level warning -Operation create-layout-group -Outcome failed -Target "$($tgtWit.name)/$($srcGroup.label)" -Message $_.Exception.Message
+                            continue
+                        }
+                    }
+
+                    foreach ($srcControl in $srcFieldControls) {
+                        $currentGroupId = $tgtControlGroup[$srcControl.id]
+                        if ($currentGroupId -eq $tgtGroup.id) { continue }
+
+                        $controlBody = New-LayoutControlBody $srcControl
+                        try {
+                            if ($currentGroupId) {
+                                $moveUri = "$tgtLayoutBase/groups/$($tgtGroup.id)/controls/$($srcControl.id)?removeFromGroupId=$currentGroupId&$vLayout"
+                                Invoke-Ado -Method PUT -Uri $moveUri -Headers $tgtHeaders -Body $controlBody | Out-Null
+                            } else {
+                                Invoke-Ado -Method POST -Uri "$tgtLayoutBase/groups/$($tgtGroup.id)/controls?$vLayout" -Headers $tgtHeaders -Body $controlBody | Out-Null
                             }
-                            
-                            $addControlUri = "$tgtOrgUrl/_apis/work/processes/$tgtProcessId/workitemtypes/$($tgtWit.referenceName)/layout/pages/$($srcPage.id)/sections/$($srcSection.id)/groups/$($srcGroup.id)/controls?$vLayout"
-                            try {
-                                Invoke-Ado -Method POST -Uri $addControlUri -Headers $tgtHeaders -Body $controlBody | Out-Null
-                                $layoutCount++
-                            } catch {
-                                # Silently ignore layout errors - many are expected:
-                                # - Control already exists
-                                # - Inherited controls cannot be modified
-                                # - WIT is locked (system WIT)
-                                # - Section/group doesn't exist in target
-                            }
+                            $tgtControlGroup[$srcControl.id] = $tgtGroup.id
+                            $layoutCount++
+                        } catch {
+                            Write-Warn2 "  Failed to place '$($srcControl.id)' in group '$($srcGroup.label)': $_"
+                            Write-AdoRunLog -Level warning -Operation place-layout-control -Outcome failed -Target "$($tgtWit.name)/$($srcControl.id)" -Message $_.Exception.Message
                         }
                     }
                 }

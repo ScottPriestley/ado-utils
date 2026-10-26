@@ -89,7 +89,7 @@ Run this from a PowerShell prompt in the script's folder. If you don't supply PA
 
 ### Scripts, capabilities, and exclusions
 
-The script creates the target process (if needed), then migrates work item types (both custom and inherited), organization-level fields, picklists, WIT field settings, custom states, state visibility rules, custom rules, and form layout controls.
+The script creates the target process (if needed), then migrates work item types (both custom and inherited), organization-level fields, picklists, WIT field settings, custom states, state visibility rules, custom rules, and form layout (custom pages, groups, and field controls).
 
 It does not migrate backlog behavior assignments, extension-contribution controls, process permissions, projects, work items, process description beyond basic metadata, or deletions. Rules whose dependencies cannot be reconciled are warned and skipped.
 
@@ -149,7 +149,7 @@ behaviors:
 
 ### Safety and rerun behavior
 
-The script issues GET/POST/PATCH/PUT operations and no DELETE. It reuses many name/reference matches, patches field settings, and warns about failures rather than stopping. Reruns are intended to converge on supported metadata, but not every object is deeply compared and rule/layout reconciliation is best-effort; review warnings and target content after every run.
+The script issues GET/POST/PATCH/PUT operations, plus DELETE only for an empty, non-inherited form group it must recreate to hold an HTML field. It reuses many name/reference matches, patches field settings, and warns about failures rather than stopping. Reruns are intended to converge on supported metadata, but not every object is deeply compared and rule/layout reconciliation is best-effort; review warnings and target content after every run.
 
 > [!WARNING]
 > There is no `-WhatIf`, preview, rollback, or transaction. Use a nonproduction target organization first.
@@ -226,7 +226,7 @@ Each run creates UTF-8-without-BOM JSONL files named `<script-base>-success log-
 <details>
 <summary>Step-by-step behavior</summary>
 
-The script resolves source/target organizations and source process, then creates or reuses the target process. It enumerates and creates picklists, then organization-level fields. For each work item type in the source process, it creates or updates the WIT in the target, attaches or patches fields, creates custom states, hides inherited states that were hidden in source, creates rules where dependencies exist, and adds missing layout controls.
+The script resolves source/target organizations and source process, then creates or reuses the target process. It enumerates and creates picklists, then organization-level fields. For each work item type in the source process, it creates or updates the WIT in the target, attaches or patches fields, creates custom states, hides inherited states that were hidden in source, creates rules where dependencies exist, and rebuilds the form layout: target pages and groups are matched by ID and then by label (they get new IDs in each organization), missing custom pages and groups are created, and each field control is added to (or moved into) its matched target group. HTML (rich text) fields can only be added while creating their group, so an HTML field's group is created with the field in it; an empty, non-inherited target group already holding that label is deleted and recreated for this, which is the one DELETE the script issues.
 
 Warnings are expected for unsupported extension controls, target-only content, or rule dependencies that cannot be translated. A final success means the implemented calls completed; it is not a full semantic comparison of process behavior.
 
@@ -262,7 +262,7 @@ Offline checks make no live calls and cannot prove process permissions, UI rende
 - Target organization doesn't allow process creation: verify your permissions or ask an administrator to create an empty inherited process first.
 - Field/picklist creation forbidden: verify target PAT scope and collection-level process permissions.
 - Rule skipped: create/map the referenced identity, field, state, or group and rerun, then inspect duplicates.
-- Layout warning: extension controls are unsupported; configure them manually.
+- Layout warning: extension controls are unsupported; configure them manually. A `Failed to place` warning names the field and group; the field still exists on the work item type, so fix the group in the target and rerun.
 - WIT creation failed: the target process may already have a conflicting WIT; check manually.
 - `401`/`403`: verify PAT organization/expiry/scope and the user's process administration permission.
 
