@@ -51,6 +51,7 @@ This is a collection of separate, single-purpose PowerShell tools. Each one move
 | Copy every work item in a project (no saved query needed) | [ado-copy-all-workitems](ado-copy-all-workitems/README.md) |
 | Review and, after confirming, delete test artifacts returned by a query | [ado-delete-query-test-scripts](ado-delete-query-test-scripts/README.md) |
 | Export a query's work items and their comments to a spreadsheet-friendly CSV | [ado-extract-discussions](ado-extract-discussions/README.md) |
+| Export every work item in a project (fit-gap fields, related work links, all discussion entries) to one Excel-ready CSV | [ado-extract-workitems](ado-extract-workitems/README.md) |
 | Copy saved queries from one project to another | [ado-migrate-query](ado-migrate-query/README.md) |
 | Copy dashboards between teams/projects | [ado-dashboard-migration](ado-dashboard-migration/README.md) |
 | Pull field/process definitions out of a project for review | [ado-field-extraction](ado-field-extraction/README.md) |
@@ -124,6 +125,7 @@ Each top-level script lives in its own folder with a dedicated README:
 | [ado-copy-all-workitems](ado-copy-all-workitems/README.md) | Copies every work item in a source project, discovered with WIQL so no saved query and no source write access are needed. Rich-text fields are copied byte-for-byte and parent/child links are recreated in a second pass. | Does not copy history, revisions, attachments, comments, permissions, or links other than parent/child. Identity fields are skipped unless `-CopyIdentityFields` is used. |
 | [ado-delete-query-test-scripts](ado-delete-query-test-scripts/README.md) | Builds a review manifest for test artifacts returned by one saved query and, only with `-Apply` plus exact confirmation, deletes reviewed Test Management artifacts. | Does not delete arbitrary Work Item Tracking records. Relationship queries and title-based resolution are opt-in. |
 | [ado-extract-discussions](ado-extract-discussions/README.md) | Executes one saved query and exports its selected fields plus paged comments to CSV. | Does not export revisions, attachments, relations, or restore data. |
+| [ado-extract-workitems](ado-extract-workitems/README.md) | Exports all project work items with a fixed fit-gap column set (resolved by field name), related work links, and all comments to `ADO Extract <Org>-<Project>-<date>.csv`. Self-contained. | Does not export revisions or attachments; read-only. |
 | [ado-migrate-query](ado-migrate-query/README.md) | Copies a configurable query-ID set, rewrites project references, and records completed target IDs. | Does not overwrite differing target WIQL or migrate query permissions/favorites. Its checked-in defaults are environment-specific and must be reviewed. |
 
 Other folder workflows:
